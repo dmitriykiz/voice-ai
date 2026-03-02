@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rapida Widget — Local Dev</title>
+
+    <!--
+      Local development example: loads the widget from the locally built dist file.
+
+      Prerequisites:
+        1. Build the widget:
+             cd sdks/react-widget && yarn && yarn build
+        2. Serve this file with a local HTTP server (required — file:// won't work):
+             cd examples/react-widget
+             python3 -m http.server 8000
+        3. Open: http://localhost:8000/local-dev.html
+
+      The widget script path below is relative to the served root.
+      Adjust if you serve from a different directory.
+    -->
+
+    <!-- Optional: customize widget dimensions, position, and border radius -->
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        max-width: 800px;
+        margin: 60px auto;
+        padding: 0 24px;
+        color: #111;
+      }
+      h1 { font-size: 1.75rem; margin-bottom: 8px; }
+      p  { color: #555; line-height: 1.6; }
+
+      #RPDContainer.RPDContainer .RPD_Wrapper {
+        /* Widget panel size */
+        --cds-chat-BASE-width: 400px;
+        --cds-chat-BASE-height: 600px;
+        /* Position from bottom-right corner */
+        --cds-chat-BASE-bottom-position: 20px;
+        --cds-chat-BASE-right-position: 20px;
+        /* Border radius */
+        --cds-chat-BASE-border-radius-large: 12px;
+      }
+    </style>
+
+    <script>
+      window.chatbotConfig = {
+        // ----------------------------------------------------------------
+        // Required
+        // ----------------------------------------------------------------
+        assistant_id: "YOUR_ASSISTANT_ID",
+        token: "YOUR_API_KEY",
+
+        // ----------------------------------------------------------------
+        // Optional
+        // ----------------------------------------------------------------
+
+        // Override the API base URL (self-hosted or regional deployment).
+        // api_base: "http://localhost:9007",
+
+        // Pin to a specific published version; omit for "latest".
+        // assistant_version: "latest",
+
+        // Identify the current user for conversation tracking.
+        user: {
+          name: "Dev User",
+          user_id: "local-dev-001",
+          meta: { env: "local" },
+        },
+
+        // BCP 47 language tag; defaults to <html lang> attribute.
+        language: "en",
+
+        // Accent color for the launcher button and widget header.
+        theme: {
+          color: "#2563eb",
+        },
+
+        // Enable verbose console logging during development.
+        debug: true,
+      };
+    </script>
+
+    <!--
+      Load from local build.
+      Path is relative to the HTTP server root — adjust if needed.
+      CDN alternative: https://cdn-01.rapida.ai/public/scripts/app.min.js
+    -->
+    <script defer src="../../sdks/react-widget/dist/app.min.js"></script>
+  </head>
+  <body>
+    <h1>Rapida Widget — Local Dev</h1>
+    <p>
+      The chat widget will appear as a floating button in the bottom-right
+      corner. Open the browser console to see debug logs.
+    </p>
+    <p>
+      Edit <code>window.chatbotConfig</code> in this file to change the
+      <code>assistant_id</code>, <code>token</code>, and other options.
+    </p>
+  </body>
+</html>

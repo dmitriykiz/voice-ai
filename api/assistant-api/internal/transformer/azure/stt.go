@@ -70,6 +70,7 @@ func NewAzureSpeechToText(
 
 // Initialize sets up the Azure Speech-to-Text recognizer with audio stream and event handlers.
 func (s *azureSpeechToText) Initialize() error {
+	start := time.Now()
 	inputStream, err := audio.CreatePushAudioInputStreamFromFormat(s.GetAudioStreamFormat())
 	if err != nil {
 		s.logger.Errorf("azure-stt: failed to create push audio input stream: %v", err)
@@ -108,6 +109,7 @@ func (s *azureSpeechToText) Initialize() error {
 		Data: map[string]string{
 			"type":     "initialized",
 			"provider": s.Name(),
+			"init_ms":  fmt.Sprintf("%d", time.Since(start).Milliseconds()),
 		},
 		Time: time.Now(),
 	})

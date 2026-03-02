@@ -293,18 +293,20 @@ func (eos *SilenceBasedEOS) fire(ctx context.Context, seg SpeechSegment) {
 	}
 
 	wordCount := len(strings.Fields(seg.Text))
+	triggerAt := time.Now()
 	_ = eos.callback(ctx,
 		internal_type.EndOfSpeechPacket{Speech: seg.Text, ContextID: seg.ContextID},
 		internal_type.ConversationEventPacket{
 			Name: "eos",
 			Data: map[string]string{
-				"type":       "detected",
-				"context_id": seg.ContextID,
-				"speech":     seg.Text,
-				"word_count": fmt.Sprintf("%d", wordCount),
-				"char_count": fmt.Sprintf("%d", len(seg.Text)),
+				"type":               "detected",
+				"context_id":         seg.ContextID,
+				"speech":             seg.Text,
+				"word_count":         fmt.Sprintf("%d", wordCount),
+				"char_count":         fmt.Sprintf("%d", len(seg.Text)),
+				"text_to_trigger_ms": fmt.Sprintf("%d", triggerAt.Sub(seg.Timestamp).Milliseconds()),
 			},
-			Time: time.Now(),
+			Time: triggerAt,
 		},
 	)
 

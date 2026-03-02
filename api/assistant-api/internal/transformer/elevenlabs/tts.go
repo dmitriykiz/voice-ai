@@ -65,6 +65,7 @@ func NewElevenlabsTextToSpeech(ctx context.Context, logger commons.Logger, crede
 
 // Initialize implements internal_transformer.OutputAudioTransformer.
 func (ct *elevenlabsTTS) Initialize() error {
+	start := time.Now()
 	header := http.Header{}
 	header.Set("xi-api-key", ct.GetKey())
 	conn, resp, err := websocket.DefaultDialer.Dial(ct.GetTextToSpeechConnectionString(), header)
@@ -83,6 +84,7 @@ func (ct *elevenlabsTTS) Initialize() error {
 		Data: map[string]string{
 			"type":     "initialized",
 			"provider": ct.Name(),
+			"init_ms":  fmt.Sprintf("%d", time.Since(start).Milliseconds()),
 		},
 		Time: time.Now(),
 	})

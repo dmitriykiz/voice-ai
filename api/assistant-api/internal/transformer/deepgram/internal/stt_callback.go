@@ -9,6 +9,7 @@ package deepgram_internal
 import (
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	msginterfaces "github.com/deepgram/deepgram-go-sdk/v3/pkg/api/listen/v1/websocket/interfaces"
@@ -20,23 +21,24 @@ import (
 
 // Implement the LiveMessageCallback interface
 type deepgramSttCallback struct {
-	logger    commons.Logger
-	onPacket  func(pkt ...internal_type.Packet) error
-	options   utils.Option
-	startedAt time.Time
+	logger        commons.Logger
+	onPacket      func(pkt ...internal_type.Packet) error
+	options       utils.Option
+	startedAtNano *atomic.Int64 // shared with parent deepgramSTT; 0 = not started
 }
 
 func NewDeepgramSttCallback(
 	logger commons.Logger,
 	onPacket func(pkt ...internal_type.Packet) error,
 	options utils.Option,
+	startedAtNano *atomic.Int64,
 ) msginterfaces.LiveMessageCallback {
 	return &deepgramSttCallback{
-		logger:   logger,
-		onPacket: onPacket,
-		options:  options,
+		logger:        logger,
+		onPacket:      onPacket,
+		options:       options,
+		startedAtNano: startedAtNano,
 	}
-
 }
 
 // Handle when the WebSocket is opened
@@ -78,12 +80,12 @@ func (d *deepgramSttCallback) Message(mr *msginterfaces.MessageResponse) error {
 		}
 
 		if mr.IsFinal {
-			// Final transcript — emit completed event + latency metric
+			// Final transcript — emit completed event + latency metric.
+			// Swap resets startedAtNano to 0 atomically so the next utterance starts fresh.
 			now := time.Now()
 			var latencyMs int64
-			if !d.startedAt.IsZero() {
-				latencyMs = now.Sub(d.startedAt).Milliseconds()
-				d.startedAt = time.Time{}
+			if startNano := d.startedAtNano.Swap(0); startNano != 0 {
+				latencyMs = (now.UnixNano() - startNano) / 1_000_000
 			}
 			wordCount := len(strings.Fields(alternative.Transcript))
 			d.onPacket(
@@ -146,11 +148,8 @@ func (d *deepgramSttCallback) Metadata(md *msginterfaces.MetadataResponse) error
 	return nil
 }
 
-// Handle speech started event
+// Handle speech started event — no-op; timing is driven by Transform() via startedAtNano.
 func (d *deepgramSttCallback) SpeechStarted(ssr *msginterfaces.SpeechStartedResponse) error {
-	if d.startedAt.IsZero() {
-		d.startedAt = time.Now()
-	}
 	return nil
 }
 

@@ -60,6 +60,7 @@ func NewCartesiaTextToSpeech(ctx context.Context, logger commons.Logger, credent
 }
 
 func (ct *cartesiaTTS) Initialize() error {
+	start := time.Now()
 	conn, _, err := websocket.DefaultDialer.Dial(ct.GetTextToSpeechConnectionString(), nil)
 	if err != nil {
 		ct.logger.Errorf("cartesia-stt: unable to dial %v", err)
@@ -75,6 +76,7 @@ func (ct *cartesiaTTS) Initialize() error {
 		Data: map[string]string{
 			"type":     "initialized",
 			"provider": ct.Name(),
+			"init_ms":  fmt.Sprintf("%d", time.Since(start).Milliseconds()),
 		},
 		Time: time.Now(),
 	})

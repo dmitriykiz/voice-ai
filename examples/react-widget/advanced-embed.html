@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rapida Widget — Advanced Embed</title>
+
+    <!--
+      Advanced embed: full configuration with user identity, custom theme,
+      custom API base, language, and debug mode.
+    -->
+
+    <!-- Optional: customize widget dimensions and position via CSS variables -->
+    <style>
+      #RPDContainer.RPDContainer .RPD_Wrapper {
+        --cds-chat-BASE-border-radius-xsmall: 0px;
+        --cds-chat-BASE-border-radius-small: 0px;
+        --cds-chat-BASE-border-radius-med: 0px;
+        --cds-chat-BASE-border-radius-large: 10px;
+        --cds-chat-BASE-border-radius-xlarge: 10px;
+        /* Widget panel size */
+        --cds-chat-BASE-width: 400px;
+        --cds-chat-BASE-height: 600px;
+        /* Position from bottom-right corner */
+        --cds-chat-BASE-bottom-position: 20px;
+        --cds-chat-BASE-right-position: 20px;
+      }
+    </style>
+
+    <script>
+      window.chatbotConfig = {
+        // Required: your assistant ID from the Rapida console
+        assistant_id: "YOUR_ASSISTANT_ID",
+
+        // Required: your project API key (SDK credential)
+        token: "YOUR_API_KEY",
+
+        // Optional: pin the assistant to a specific published version.
+        // Omit to always use the latest version.
+        assistant_version: "latest",
+
+        // Optional: override the default Rapida API base URL.
+        // Useful for self-hosted or regional deployments.
+        // api_base: "https://assistant-01.rapida.ai",
+
+        // Optional: identify the current user for conversation tracking.
+        user: {
+          name: "Jane Doe",
+          user_id: "user-123",           // stable identifier for this user
+          meta: {
+            plan: "pro",
+            source: "landing-page",
+          },
+        },
+
+        // Optional: UI language (BCP 47 tag). Defaults to the page's <html lang>.
+        language: "en",
+
+        // Optional: accent color for the widget launcher button and header.
+        theme: {
+          color: "#2563eb",
+        },
+
+        // Optional: enable verbose logging in the browser console.
+        debug: false,
+      };
+    </script>
+    <script defer src="https://cdn-01.rapida.ai/public/scripts/app.min.js"></script>
+  </head>
+  <body>
+    <h1>My Website</h1>
+    <p>The Rapida chat widget will appear as a floating button in the bottom-right corner.</p>
+  </body>
+</html>

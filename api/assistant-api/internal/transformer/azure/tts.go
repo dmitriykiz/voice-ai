@@ -88,6 +88,7 @@ func (azure *azureTextToSpeech) Close(ctx context.Context) error {
 }
 
 func (azure *azureTextToSpeech) Initialize() (err error) {
+	start := time.Now()
 	stream, err := audio.CreatePullAudioOutputStream()
 	if err != nil {
 		azure.logger.Errorf("azure-tts: failed to create audio stream:", err)
@@ -133,6 +134,7 @@ func (azure *azureTextToSpeech) Initialize() (err error) {
 		Data: map[string]string{
 			"type":     "initialized",
 			"provider": azure.Name(),
+			"init_ms":  fmt.Sprintf("%d", time.Since(start).Milliseconds()),
 		},
 		Time: time.Now(),
 	})

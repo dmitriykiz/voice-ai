@@ -120,7 +120,7 @@ func (executor *modelAssistantExecutor) Initialize(ctx context.Context, communic
 	llmData["provider"] = communication.Assistant().AssistantProviderModel.ModelProviderName
 	llmData["init_ms"] = fmt.Sprintf("%d", time.Since(start).Milliseconds())
 	communication.OnPacket(ctx, internal_type.ConversationEventPacket{
-		Name: "session",
+		Name: "llm",
 		Data: llmData,
 		Time: time.Now(),
 	})
@@ -137,6 +137,42 @@ func (executor *modelAssistantExecutor) chat(
 	// Build and send the chat request over persistent stream
 	request := executor.buildChatRequest(communication, contextID, in, histories...)
 	executor.history = append(executor.history, in)
+	if err := executor.send(request); err != nil {
+		executor.logger.Errorf("error sending chat request: %v", err)
+		return fmt.Errorf("failed to send chat request: %w", err)
+	}
+	return nil
+}
+
+// chatWithHistory sends a chat request using all messages already in executor.history.
+// Unlike chat(), it does not append any new message — the caller is responsible for
+// ensuring history is already up-to-date before calling this.
+func (executor *modelAssistantExecutor) chatWithHistory(
+	ctx context.Context,
+	communication internal_type.Communication,
+	contextID string,
+) error {
+	assistant := communication.Assistant()
+	template := assistant.AssistantProviderModel.Template.GetTextChatCompleteTemplate()
+	messages := executor.inputBuilder.Message(
+		template.Prompt,
+		utils.MergeMaps(executor.inputBuilder.PromptArguments(template.Variables), communication.GetArgs()),
+	)
+	request := executor.inputBuilder.Chat(
+		contextID,
+		&protos.Credential{
+			Id:    executor.providerCredential.GetId(),
+			Value: executor.providerCredential.GetValue(),
+		},
+		executor.inputBuilder.Options(utils.MergeMaps(assistant.AssistantProviderModel.GetOptions(), communication.GetOptions()), nil),
+		executor.toolExecutor.GetFunctionDefinitions(),
+		map[string]string{
+			"assistant_id":                fmt.Sprintf("%d", assistant.Id),
+			"message_id":                  contextID,
+			"assistant_provider_model_id": fmt.Sprintf("%d", assistant.AssistantProviderModel.Id),
+		},
+		append(messages, executor.history...)...,
+	)
 	if err := executor.send(request); err != nil {
 		executor.logger.Errorf("error sending chat request: %v", err)
 		return fmt.Errorf("failed to send chat request: %w", err)
@@ -235,9 +271,19 @@ func (executor *modelAssistantExecutor) handleResponse(ctx context.Context, comm
 
 	// Check if this is the final message (has metrics)
 	if len(metrics) > 0 {
-		executor.history = append(executor.history, output)
+		hasToolCalls := len(output.GetAssistant().GetToolCalls()) > 0
 		responseText := strings.Join(output.GetAssistant().GetContents(), "")
 		now := time.Now()
+
+		// When tool_calls are present, defer adding the assistant message to history
+		// until tool results are ready. This prevents a race where a concurrent user
+		// message could see the assistant message with tool_calls but no tool results,
+		// causing OpenAI to reject with: "An assistant message with 'tool_calls' must
+		// be followed by tool messages responding to each 'tool_call_id'."
+		if !hasToolCalls {
+			executor.history = append(executor.history, output)
+		}
+
 		communication.OnPacket(ctx,
 			internal_type.LLMResponseDonePacket{
 				ContextID: resp.GetRequestId(),
@@ -259,7 +305,7 @@ func (executor *modelAssistantExecutor) handleResponse(ctx context.Context, comm
 			},
 		)
 
-		if len(output.GetAssistant().GetToolCalls()) > 0 {
+		if hasToolCalls {
 			executor.executeToolCalls(ctx, communication, resp.GetRequestId(), output, executor.history)
 		}
 		return
@@ -297,13 +343,21 @@ func (executor *modelAssistantExecutor) buildChatRequest(communication internal_
 	)
 }
 
-// executeToolCalls handles tool execution and recursive chat
+// executeToolCalls handles tool execution and recursive chat.
+// The assistant message (output) is NOT yet in executor.history — we add both
+// the assistant message and tool result atomically to prevent a race where a
+// concurrent user message could see the assistant message with tool_calls but
+// without the corresponding tool results (which causes OpenAI 400 errors).
 func (executor *modelAssistantExecutor) executeToolCalls(ctx context.Context, communication internal_type.Communication, contextID string, output *protos.Message, histories []*protos.Message,
 ) error {
 	toolExecution := executor.toolExecutor.ExecuteAll(ctx, contextID, output.GetAssistant().GetToolCalls(), communication)
-	// histories = append(histories, output, toolExecution)
-	err := executor.chat(ctx, communication, contextID, toolExecution, histories...)
-	return err
+	// Atomically append both the assistant message (with tool_calls) and the tool
+	// result to history, so any concurrent reader always sees them as a pair.
+	executor.history = append(executor.history, output, toolExecution)
+	// Build the follow-up request using the full history (which now includes
+	// output + toolExecution). We pass nil as 'in' since both messages are
+	// already in history.
+	return executor.chatWithHistory(ctx, communication, contextID)
 }
 
 // recordLLMInteraction appends messages to history and persists to storage

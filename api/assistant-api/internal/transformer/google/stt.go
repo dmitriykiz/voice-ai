@@ -79,6 +79,9 @@ func NewGoogleSpeechToText(ctx context.Context, logger commons.Logger, credentia
 func (google *googleSpeechToText) Transform(c context.Context, in internal_type.UserAudioPacket) error {
 	google.mu.Lock()
 	strm := google.stream
+	if google.startedAt.IsZero() {
+		google.startedAt = time.Now()
+	}
 	google.mu.Unlock()
 
 	if strm == nil {
@@ -128,12 +131,6 @@ func (g *googleSpeechToText) speechToTextCallback(stram speechpb.Speech_Streamin
 					confStr := fmt.Sprintf("%.4f", float64(alt.GetConfidence()))
 					transcript := alt.GetTranscript()
 
-					g.mu.Lock()
-					if g.startedAt.IsZero() {
-						g.startedAt = time.Now()
-					}
-					g.mu.Unlock()
-
 					if v, err := g.mdlOpts.GetFloat64("listen.threshold"); err == nil {
 						if alt.GetConfidence() < float32(v) {
 							g.onPacket(
@@ -162,6 +159,7 @@ func (g *googleSpeechToText) speechToTextCallback(stram speechpb.Speech_Streamin
 						g.mu.Lock()
 						if !g.startedAt.IsZero() {
 							latencyMs = now.Sub(g.startedAt).Milliseconds()
+							g.startedAt = time.Time{}
 						}
 						g.mu.Unlock()
 						g.onPacket(
@@ -216,7 +214,7 @@ func (g *googleSpeechToText) speechToTextCallback(stram speechpb.Speech_Streamin
 }
 
 func (google *googleSpeechToText) Initialize() error {
-
+	start := time.Now()
 	stream, err := google.client.StreamingRecognize(google.ctx)
 	if err != nil {
 		google.logger.Errorf("google-stt: error creating google-stt stream: %v", err)
@@ -249,6 +247,7 @@ func (google *googleSpeechToText) Initialize() error {
 		Data: map[string]string{
 			"type":     "initialized",
 			"provider": google.Name(),
+			"init_ms":  fmt.Sprintf("%d", time.Since(start).Milliseconds()),
 		},
 		Time: time.Now(),
 	})

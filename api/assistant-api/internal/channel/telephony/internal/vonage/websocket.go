@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 
 	"github.com/gorilla/websocket"
 	callcontext "github.com/rapidaai/api/assistant-api/internal/callcontext"
@@ -19,6 +18,7 @@ import (
 	"github.com/rapidaai/pkg/commons"
 	protos "github.com/rapidaai/protos"
 	"github.com/vonage/vonage-go-sdk"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type vonageWebsocketStreamer struct {
@@ -31,51 +31,59 @@ type vonageWebsocketStreamer struct {
 // Vonage sends linear16 16kHz — same as the internal Rapida format, so no
 // resampling is needed (nil source audio config defaults to linear16 16kHz).
 func NewVonageWebsocketStreamer(logger commons.Logger, connection *websocket.Conn, cc *callcontext.CallContext, vaultCred *protos.VaultCredential) internal_type.Streamer {
-	return &vonageWebsocketStreamer{
+	vng := &vonageWebsocketStreamer{
 		BaseTelephonyStreamer: internal_telephony_base.NewBaseTelephonyStreamer(
 			logger, cc, vaultCred,
 		),
 		connection: connection,
 	}
+	go vng.runWebSocketReader()
+	return vng
 }
 
-func (vng *vonageWebsocketStreamer) Recv() (internal_type.Stream, error) {
-	if vng.connection == nil {
-		return nil, vng.handleError("WebSocket connection is nil", io.EOF)
+func (vng *vonageWebsocketStreamer) runWebSocketReader() {
+	conn := vng.connection
+	if conn == nil {
+		return
 	}
-	messageType, message, err := vng.connection.ReadMessage()
-	if err != nil {
-		return nil, vng.handleWebSocketError(err)
-	}
-	switch messageType {
-	case websocket.TextMessage:
-		var textEvent map[string]interface{}
-		if err := json.Unmarshal(message, &textEvent); err != nil {
-			vng.Logger.Error("Failed to unmarshal text event", "error", err.Error())
-			return nil, err
+	for {
+		messageType, message, err := conn.ReadMessage()
+		if err != nil {
+			vng.PushDisconnection(protos.ConversationDisconnection_DISCONNECTION_TYPE_USER)
+			vng.BaseStreamer.Cancel()
+			return
 		}
-		switch textEvent["event"] {
-		case "websocket:connected":
-			return vng.CreateConnectionRequest(), nil
-
-		case "stop":
-			return nil, io.EOF
-
+		switch messageType {
+		case websocket.TextMessage:
+			var textEvent map[string]interface{}
+			if err := json.Unmarshal(message, &textEvent); err != nil {
+				vng.Logger.Error("Failed to unmarshal text event", "error", err.Error())
+				continue
+			}
+			switch textEvent["event"] {
+			case "websocket:connected":
+				vng.PushInput(vng.CreateConnectionRequest())
+				vng.PushInputLow(&protos.ConversationEvent{
+					Name: "channel",
+					Data: map[string]string{"type": "connected", "provider": "vonage"},
+					Time: timestamppb.Now(),
+				})
+			case "stop":
+				vng.PushDisconnection(protos.ConversationDisconnection_DISCONNECTION_TYPE_USER)
+				vng.BaseStreamer.Cancel()
+				return
+			default:
+				vng.Logger.Debugf("Unhandled event type: %s", textEvent["event"])
+			}
+		case websocket.BinaryMessage:
+			msg, _ := vng.handleMediaEvent(message)
+			if msg != nil {
+				vng.PushInput(msg)
+			}
 		default:
-			vng.Logger.Debugf("Unhandled event type: %s", textEvent["event"])
+			vng.Logger.Warn("Unhandled message type", "type", messageType)
 		}
-
-	case websocket.BinaryMessage:
-		msg, err := vng.handleMediaEvent(message)
-		if msg == nil {
-			return nil, err
-		}
-		return msg, err
-	default:
-		vng.Logger.Warn("Unhandled message type", "type", messageType)
-		return nil, nil
 	}
-	return nil, nil
 }
 
 func (vng *vonageWebsocketStreamer) Send(response internal_type.Stream) error {
@@ -163,16 +171,6 @@ func (vng *vonageWebsocketStreamer) handleMediaEvent(message []byte) (*protos.Co
 	return audioRequest, nil
 }
 
-func (vng *vonageWebsocketStreamer) handleError(message string, err error) error {
-	vng.Logger.Error(message, "error", err.Error())
-	return err
-}
-
-func (vng *vonageWebsocketStreamer) handleWebSocketError(err error) error {
-	vng.Cancel()
-	return io.EOF
-}
-
 func (tpc *vonageWebsocketStreamer) Auth(vaultCredential *protos.VaultCredential) (vonage.Auth, error) {
 	privateKey, ok := vaultCredential.GetValue().AsMap()["private_key"]
 	if !ok {
@@ -194,7 +192,10 @@ func (tws *vonageWebsocketStreamer) GetConversationUuid() string {
 }
 
 func (tws *vonageWebsocketStreamer) Cancel() error {
-	tws.connection.Close()
-	tws.connection = nil
+	if tws.connection != nil {
+		tws.connection.Close()
+		tws.connection = nil
+	}
+	tws.BaseStreamer.Cancel()
 	return nil
 }

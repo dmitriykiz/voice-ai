@@ -28,6 +28,7 @@ import (
 	"github.com/rapidaai/pkg/commons"
 	"github.com/rapidaai/protos"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // ============================================================================
@@ -70,6 +71,10 @@ type webrtcStreamer struct {
 	// SRTP session is established. Uses atomic for lock-free access from
 	// runOutputWriter's hot loop.
 	peerConnected atomic.Bool
+
+	// iceStartedAt records when ICE negotiation began (inside setupAudioAndHandshake)
+	// so we can report ICE latency in the peer_connected observability event.
+	iceStartedAt time.Time
 }
 
 // NewWebRTCStreamer creates a new WebRTC streamer with gRPC signaling.
@@ -194,23 +199,13 @@ func (s *webrtcStreamer) createPeerConnection() error {
 }
 
 func (s *webrtcStreamer) setupPeerEventHandlers() {
-	// ICE candidates - send via gRPC using clean proto types
+	// ICE candidates are NOT sent individually (no trickle ICE).
+	// Instead we wait for gathering to complete in initiateWebRTCHandshake()
+	// and embed all candidates inline in the offer SDP. Safari has consistent
+	// issues processing trickle ICE candidates that arrive as separate messages
+	// after the offer/answer exchange; a complete offer avoids those bugs.
 	s.pc.OnICECandidate(func(c *pionwebrtc.ICECandidate) {
-		if c == nil {
-			return
-		}
-		cJSON := c.ToJSON()
-		ice := &webrtc_internal.ICECandidate{Candidate: cJSON.Candidate}
-		if cJSON.SDPMid != nil {
-			ice.SDPMid = *cJSON.SDPMid
-		}
-		if cJSON.SDPMLineIndex != nil {
-			ice.SDPMLineIndex = int(*cJSON.SDPMLineIndex)
-		}
-		if cJSON.UsernameFragment != nil {
-			ice.UsernameFragment = *cJSON.UsernameFragment
-		}
-		s.sendICECandidate(ice)
+		// no-op: candidates are captured via LocalDescription() after gathering
 	})
 
 	// Connection state
@@ -235,6 +230,18 @@ func (s *webrtcStreamer) setupPeerEventHandlers() {
 		case pionwebrtc.PeerConnectionStateConnected:
 			// Unblock runOutputWriter so buffered greeting audio can drain.
 			s.peerConnected.Store(true)
+			s.Mu.Lock()
+			iceLatencyMs := time.Since(s.iceStartedAt).Milliseconds()
+			s.Mu.Unlock()
+			s.PushInputLow(&protos.ConversationEvent{
+				Name: "webrtc",
+				Data: map[string]string{
+					"type":           "peer_connected",
+					"session_id":     s.sessionID,
+					"ice_latency_ms": fmt.Sprintf("%d", iceLatencyMs),
+				},
+				Time: timestamppb.Now(),
+			})
 			s.sendReady()
 
 		case pionwebrtc.PeerConnectionStateFailed:
@@ -242,6 +249,15 @@ func (s *webrtcStreamer) setupPeerEventHandlers() {
 			// resolved on a cloud server). Do NOT close the gRPC session; fall
 			// back to text mode so the conversation stays alive.
 			s.Logger.Warnw("WebRTC ICE failed, falling back to text mode", "session", s.sessionID)
+			s.PushInputLow(&protos.ConversationEvent{
+				Name: "webrtc",
+				Data: map[string]string{
+					"type":       "peer_failed",
+					"session_id": s.sessionID,
+					"reason":     "ice_failed",
+				},
+				Time: timestamppb.Now(),
+			})
 			s.resetAudioSession()
 
 		case pionwebrtc.PeerConnectionStateDisconnected:
@@ -249,6 +265,14 @@ func (s *webrtcStreamer) setupPeerEventHandlers() {
 			// Only reset audio; do NOT close the gRPC stream/context so the
 			// session can continue in text mode or reconnect.
 			s.Logger.Warnw("WebRTC peer disconnected, resetting audio", "session", s.sessionID)
+			s.PushInputLow(&protos.ConversationEvent{
+				Name: "webrtc",
+				Data: map[string]string{
+					"type":       "peer_disconnected",
+					"session_id": s.sessionID,
+				},
+				Time: timestamppb.Now(),
+			})
 			s.resetAudioSession()
 		}
 	})
@@ -259,6 +283,15 @@ func (s *webrtcStreamer) setupPeerEventHandlers() {
 			return
 		}
 		s.Logger.Infow("Remote audio track received", "codec", track.Codec().MimeType)
+		s.PushInputLow(&protos.ConversationEvent{
+			Name: "webrtc",
+			Data: map[string]string{
+				"type":       "audio_track_received",
+				"session_id": s.sessionID,
+				"codec":      track.Codec().MimeType,
+			},
+			Time: timestamppb.Now(),
+		})
 		// Add to WaitGroup before launching goroutine to prevent
 		// audioWg.Wait() from racing with audioWg.Add(1).
 		s.audioWg.Add(1)
@@ -660,7 +693,10 @@ func (s *webrtcStreamer) handleClientSignaling(signaling *protos.ClientSignaling
 			SDPMLineIndex:    &idx,
 			UsernameFragment: &usernameFragment,
 		}); err != nil {
-			s.Logger.Errorw("Failed to add ICE candidate", "error", err)
+			// Non-fatal: with complete ICE we use candidates embedded in the SDP;
+			// individual trickle candidates are unnecessary and may arrive before
+			// remote description is set on older clients. Log at Warn, not Error.
+			s.Logger.Warnw("Failed to add ICE candidate (non-fatal)", "error", err)
 		}
 
 	case *protos.ClientSignaling_Disconnect:
@@ -693,6 +729,7 @@ func (s *webrtcStreamer) setupAudioAndHandshake() error {
 		s.pc = nil
 		s.localTrack = nil
 	}
+	s.iceStartedAt = time.Now()
 	s.Mu.Unlock()
 
 	if err := s.createPeerConnection(); err != nil {
@@ -702,16 +739,40 @@ func (s *webrtcStreamer) setupAudioAndHandshake() error {
 	return s.initiateWebRTCHandshake()
 }
 
-// initiateWebRTCHandshake sends config and creates/sends SDP offer via outputCh.
+// initiateWebRTCHandshake sends config and a complete SDP offer.
+//
+// We wait for ICE gathering to finish before sending the offer so all
+// candidates are embedded inline in the SDP (complete ICE, not trickle).
+// Safari consistently fails when ICE candidates arrive as separate messages
+// after the offer; embedding them in the SDP avoids those timing bugs.
 func (s *webrtcStreamer) initiateWebRTCHandshake() error {
 	s.sendConfig()
 
-	offer, err := s.createAndSetLocalOffer()
-	if err != nil {
+	if _, err := s.createAndSetLocalOffer(); err != nil {
 		return err
 	}
 
-	s.sendOffer(offer.SDP)
+	// Wait for ICE gathering so LocalDescription has all candidates.
+	gatherComplete := pionwebrtc.GatheringCompletePromise(s.pc)
+
+	s.Mu.Lock()
+	audioCtx := s.audioCtx
+	s.Mu.Unlock()
+
+	select {
+	case <-gatherComplete:
+		// all candidates gathered
+	case <-time.After(5 * time.Second):
+		s.Logger.Warnw("ICE gathering timed out after 5s, sending partial offer", "session", s.sessionID)
+	case <-audioCtx.Done():
+		return fmt.Errorf("context cancelled during ICE gathering")
+	}
+
+	finalDesc := s.pc.LocalDescription()
+	if finalDesc == nil {
+		return fmt.Errorf("local description is nil after ICE gathering")
+	}
+	s.sendOffer(finalDesc.SDP)
 	return nil
 }
 

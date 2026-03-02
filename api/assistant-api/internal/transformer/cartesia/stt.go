@@ -62,6 +62,7 @@ func NewCartesiaSpeechToText(ctx context.Context, logger commons.Logger, credent
 }
 
 func (cst *cartesiaSpeechToText) Initialize() error {
+	start := time.Now()
 	conn, _, err := websocket.DefaultDialer.Dial(cst.GetSpeechToTextConnectionString(), nil)
 	if err != nil {
 		cst.logger.Errorf("cartesia-stt: failed to connect to Cartesia WebSocket: %w", err)
@@ -72,7 +73,6 @@ func (cst *cartesiaSpeechToText) Initialize() error {
 	cst.connection = conn
 	defer cst.mu.Unlock()
 
-	cst.startedAt = time.Now()
 	go cst.speechToTextCallback(conn, cst.ctx)
 	cst.logger.Debugf("cartesia-stt: connection established")
 
@@ -81,6 +81,7 @@ func (cst *cartesiaSpeechToText) Initialize() error {
 		Data: map[string]string{
 			"type":     "initialized",
 			"provider": cst.Name(),
+			"init_ms":  fmt.Sprintf("%d", time.Since(start).Milliseconds()),
 		},
 		Time: time.Now(),
 	})
@@ -129,10 +130,12 @@ func (cst *cartesiaSpeechToText) speechToTextCallback(conn *websocket.Conn, ctx 
 					} else {
 						now := time.Now()
 						var latencyMs int64
+						cst.mu.Lock()
 						if !cst.startedAt.IsZero() {
 							latencyMs = now.Sub(cst.startedAt).Milliseconds()
 							cst.startedAt = time.Time{}
 						}
+						cst.mu.Unlock()
 						cst.onPacket(
 							internal_type.InterruptionPacket{Source: internal_type.InterruptionSourceWord},
 							internal_type.SpeechToTextPacket{
@@ -166,6 +169,9 @@ func (cst *cartesiaSpeechToText) speechToTextCallback(conn *websocket.Conn, ctx 
 func (cst *cartesiaSpeechToText) Transform(ctx context.Context, in internal_type.UserAudioPacket) error {
 	cst.mu.Lock()
 	conn := cst.connection
+	if cst.startedAt.IsZero() {
+		cst.startedAt = time.Now()
+	}
 	defer cst.mu.Unlock()
 
 	if conn == nil {

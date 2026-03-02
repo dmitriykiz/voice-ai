@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	interfaces "github.com/deepgram/deepgram-go-sdk/v3/pkg/client/interfaces/v1"
@@ -34,6 +35,10 @@ type deepgramSTT struct {
 	logger    commons.Logger
 	client    *client.WSCallback
 	onPacket  func(pkt ...internal_type.Packet) error
+	// startedAtNano stores Unix nanoseconds of when the first audio chunk was
+	// sent for the current utterance. 0 means "not started". Shared with the
+	// callback via pointer so the callback can atomically get-and-reset it.
+	startedAtNano atomic.Int64
 }
 
 func (*deepgramSTT) Name() string {
@@ -61,11 +66,12 @@ func NewDeepgramSpeechToText(ctx context.Context, logger commons.Logger, vaultCr
 // The `Initialize` method in the `deepgram` struct is responsible for establishing a connection to the
 // Deepgram service using the WebSocket client `dg.client`.
 func (dg *deepgramSTT) Initialize() error {
+	start := time.Now()
 	dgClient, err := client.NewWSUsingCallback(
 		dg.ctx,
 		dg.GetKey(),
 		&interfaces.ClientOptions{APIKey: dg.GetKey(), EnableKeepAlive: true},
-		dg.SpeechToTextOptions(), deepgram_internal.NewDeepgramSttCallback(dg.logger, dg.onPacket, dg.deepgramOption.mdlOpts))
+		dg.SpeechToTextOptions(), deepgram_internal.NewDeepgramSttCallback(dg.logger, dg.onPacket, dg.deepgramOption.mdlOpts, &dg.startedAtNano))
 	if err != nil {
 		dg.logger.Errorf("deepgram-stt: unable create dg client with error %+v", err.Error())
 		return err
@@ -84,6 +90,7 @@ func (dg *deepgramSTT) Initialize() error {
 		Data: map[string]string{
 			"type":     "initialized",
 			"provider": dg.Name(),
+			"init_ms":  fmt.Sprintf("%d", time.Since(start).Milliseconds()),
 		},
 		Time: time.Now(),
 	})
@@ -99,11 +106,14 @@ func (dg *deepgramSTT) Initialize() error {
 func (dg *deepgramSTT) Transform(ctx context.Context, in internal_type.UserAudioPacket) error {
 	dg.mu.Lock()
 	client := dg.client
-	defer dg.mu.Unlock()
+	dg.mu.Unlock()
 
 	if client == nil {
 		return fmt.Errorf("deepgram-stt: connection is not initialized")
 	}
+	// Record when the first audio chunk arrives for this utterance.
+	// CAS from 0 ensures only the first chunk per utterance sets the timer.
+	dg.startedAtNano.CompareAndSwap(0, time.Now().UnixNano())
 	err := client.Stream(bufio.NewReader(bytes.NewReader(in.Audio)))
 	if err != nil {
 		if errors.Is(err, io.EOF) {

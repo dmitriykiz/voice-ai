@@ -8,6 +8,7 @@ package deepgram_internal
 
 import (
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	msginterfaces "github.com/deepgram/deepgram-go-sdk/v3/pkg/api/listen/v1/websocket/interfaces"
@@ -59,7 +60,7 @@ func (pc *packetCollector) Clear() {
 func createTestCallback(opts utils.Option) (*packetCollector, commons.Logger, msginterfaces.LiveMessageCallback) {
 	logger, _ := commons.NewApplicationLogger()
 	collector := newPacketCollector()
-	callback := NewDeepgramSttCallback(logger, collector.OnPacket, opts)
+	callback := NewDeepgramSttCallback(logger, collector.OnPacket, opts, new(atomic.Int64))
 	return collector, logger, callback
 }
 

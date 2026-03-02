@@ -9,7 +9,6 @@ package internal_sip_telephony
 import (
 	"bytes"
 	"context"
-	"io"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -22,6 +21,7 @@ import (
 	"github.com/rapidaai/pkg/commons"
 	"github.com/rapidaai/protos"
 	"github.com/zaf/g711"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Streamer constants
@@ -64,8 +64,6 @@ type Streamer struct {
 	// overriding the BaseStreamer context.
 	ctx    context.Context
 	cancel context.CancelFunc
-
-	configSent atomic.Bool
 }
 
 // NewStreamer creates a SIP streamer.
@@ -126,6 +124,7 @@ func NewStreamer(ctx context.Context,
 		logger.Info("NewStreamer: Starting forwardIncomingAudio goroutine")
 		go s.forwardIncomingAudio()
 		go s.runRTPWriter()
+		s.PushInput(s.CreateConnectionRequest())
 
 		localIP, localPort := rtpHandler.LocalAddr()
 		logger.Infow("SIP streamer created (inbound)",
@@ -226,44 +225,62 @@ func (s *Streamer) handleInvite(session *sip_infra.Session, fromURI, toURI strin
 		"to", toURI,
 		"codec", codec.Name)
 
+	s.PushInputLow(&protos.ConversationEvent{
+		Name: "channel",
+		Data: map[string]string{
+			"type":     "call_answered",
+			"provider": "sip",
+			"call_id":  session.GetCallID(),
+			"codec":    codec.Name,
+		},
+		Time: timestamppb.Now(),
+	})
+	s.PushInput(s.CreateConnectionRequest())
+
 	return nil
 }
 
 func (s *Streamer) handleBye(session *sip_infra.Session) error {
 	s.Logger.Infow("BYE received, closing streamer", "call_id", session.GetCallID())
+	s.PushInputLow(&protos.ConversationEvent{
+		Name: "channel",
+		Data: map[string]string{"type": "call_ended", "provider": "sip", "call_id": session.GetCallID()},
+		Time: timestamppb.Now(),
+	})
 	return s.Close()
 }
 
 func (s *Streamer) handleError(session *sip_infra.Session, err error) {
-	s.Logger.Error("SIP error occurred",
-		"call_id", session.GetCallID(),
-		"error", err)
+	s.Logger.Error("SIP error occurred", "call_id", session.GetCallID(), "error", err)
+	s.PushInputLow(&protos.ConversationEvent{
+		Name: "channel",
+		Data: map[string]string{"type": "error", "provider": "sip", "call_id": session.GetCallID(), "error_message": err.Error()},
+		Time: timestamppb.Now(),
+	})
 }
 
 // forwardIncomingAudio reads RTP audio packets, transcodes from A-law to
-// µ-law when PCMA is negotiated, and buffers the resulting µ-law audio for
-// Recv(). Performing the A-law→µ-law conversion here (close to the source)
-// keeps Recv() simple and ensures the inputBuffer always contains µ-law data.
+// µ-law when PCMA is negotiated, and pushes to InputCh via PushInput.
+// Performing the A-law→µ-law conversion here (close to the source)
+// keeps the channel-based pipeline simple and ensures the inputBuffer always
+// contains µ-law data.
 //
-// Audio flow: RTP packets → [A-law→µ-law if PCMA] → inputBuffer → Recv()
+// Audio flow: RTP packets → [A-law→µ-law if PCMA] → inputBuffer → PushInput → InputCh
 func (s *Streamer) forwardIncomingAudio() {
 	s.mu.RLock()
 	rtpHandler := s.rtpHandler
 	s.mu.RUnlock()
-
 	if rtpHandler == nil {
 		s.Logger.Error("forwardIncomingAudio: RTP handler is nil")
 		return
 	}
-
-	// Check if context is already cancelled
 	select {
 	case <-s.ctx.Done():
 		s.Logger.Error("forwardIncomingAudio: Context already cancelled at start!", "err", s.ctx.Err())
 		return
 	default:
 	}
-
+	bufferThreshold := s.InputBufferThreshold()
 	for {
 		select {
 		case <-s.ctx.Done():
@@ -272,93 +289,28 @@ func (s *Streamer) forwardIncomingAudio() {
 			if !ok {
 				return
 			}
-
-			// Transcode A-law → µ-law if PCMA codec is negotiated, so the
-			// inputBuffer always holds µ-law samples regardless of codec.
 			if codec := rtpHandler.GetCodec(); codec != nil && codec.Name == "PCMA" {
 				audioData = g711.Alaw2Ulaw(audioData)
 			}
+			var audioReq *protos.ConversationUserMessage
 			s.WithInputBuffer(func(buf *bytes.Buffer) {
 				buf.Write(audioData)
+				if buf.Len() >= bufferThreshold {
+					data := make([]byte, buf.Len())
+					copy(data, buf.Bytes())
+					buf.Reset()
+					audioReq = s.CreateVoiceRequest(data)
+				}
 			})
+			if audioReq != nil {
+				s.PushInput(audioReq)
+			}
 		}
 	}
 }
 
 func (s *Streamer) Context() context.Context {
 	return s.ctx
-}
-
-// Recv returns the next audio chunk for STT processing.
-// forwardIncomingAudio already transcodes PCMA→PCMU, so the inputBuffer
-// always contains µ-law samples by the time Recv reads them.
-//
-// Audio flow: inputBuffer (µ-law 8kHz) → Resample → LINEAR16 16kHz → STT
-func (s *Streamer) Recv() (internal_type.Stream, error) {
-	if s.closed.Load() {
-		return nil, io.EOF
-	}
-
-	// Send connection/config request on first call
-	if s.configSent.CompareAndSwap(false, true) {
-		s.Logger.Info("Recv: Sending connection request")
-		return s.CreateConnectionRequest(), nil
-	}
-
-	// Use the input buffer threshold from BaseTelephonyStreamer, which is
-	// derived from the source audio config (µ-law 8kHz → 8 bytes/ms × 60ms = 480 bytes).
-	bufferThreshold := s.InputBufferThreshold()
-
-	// Use a reusable timer instead of time.After to avoid creating a new
-	// timer on every poll iteration (reduces GC pressure on long calls).
-	waitTimer := time.NewTimer(packetIntervalMs * time.Millisecond)
-	defer waitTimer.Stop()
-
-	for {
-		select {
-		case <-s.ctx.Done():
-			return nil, io.EOF
-		default:
-		}
-
-		// Check session liveness. Use IsEnded() instead of IsActive() to
-		// avoid false negatives during transient state transitions (e.g.
-		// re-INVITE). IsActive() can briefly return false while the session
-		// is being renegotiated, causing Recv to return EOF prematurely.
-		s.mu.RLock()
-		session := s.session
-		s.mu.RUnlock()
-
-		if session == nil || session.IsEnded() {
-			s.Logger.Warn("Recv: Session ended")
-			return nil, io.EOF
-		}
-
-		var audioData []byte
-		s.WithInputBuffer(func(buf *bytes.Buffer) {
-			if buf.Len() >= bufferThreshold {
-				// Extract exactly bufferThreshold bytes of µ-law audio.
-				audioData = make([]byte, bufferThreshold)
-				buf.Read(audioData)
-			}
-		})
-
-		if audioData != nil {
-			// s.Logger.Debug("Recv: Sending audio to STT",
-			// 	"audio_size", len(audioData))
-
-			// Resample µ-law 8kHz → LINEAR16 16kHz and wrap for STT
-			return s.CreateVoiceRequest(audioData), nil
-		}
-
-		// Wait for the next RTP packet interval before re-checking the buffer.
-		waitTimer.Reset(packetIntervalMs * time.Millisecond)
-		select {
-		case <-s.ctx.Done():
-			return nil, io.EOF
-		case <-waitTimer.C:
-		}
-	}
 }
 
 func (s *Streamer) Send(response internal_type.Stream) error {
@@ -498,6 +450,7 @@ func (s *Streamer) Close() error {
 	}
 	// Cancel context first
 	s.cancel()
+	s.BaseStreamer.Cancel() // ensure Recv() returns io.EOF
 
 	s.mu.Lock()
 	rtpHandler := s.rtpHandler

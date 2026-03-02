@@ -8,6 +8,7 @@ package internal_transformer_openai
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	openai "github.com/openai/openai-go"
@@ -26,6 +27,7 @@ type openaiSpeechToText struct {
 }
 
 func (o *openaiSpeechToText) Initialize() error {
+	start := time.Now()
 	o.ctx, o.cancel = context.WithCancel(context.Background())
 	o.client = openai.NewClient(option.WithAPIKey("YOUR_API_KEY"))
 
@@ -34,6 +36,7 @@ func (o *openaiSpeechToText) Initialize() error {
 		Data: map[string]string{
 			"type":     "initialized",
 			"provider": o.Name(),
+			"init_ms":  fmt.Sprintf("%d", time.Since(start).Milliseconds()),
 		},
 		Time: time.Now(),
 	})

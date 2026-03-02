@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rapida Widget — Basic Embed</title>
+    <!--
+      Basic embed: add the chatbot widget to any HTML page in two steps.
+      1. Set window.chatbotConfig with your assistant_id and token.
+      2. Load the widget script from the CDN.
+    -->
+    <script>
+      window.chatbotConfig = {
+        // Required: your assistant ID from the Rapida console
+        assistant_id: "YOUR_ASSISTANT_ID",
+
+        // Required: your project API key (SDK credential)
+        token: "YOUR_API_KEY",
+      };
+    </script>
+    <script defer src="https://cdn-01.rapida.ai/public/scripts/app.min.js"></script>
+  </head>
+  <body>
+    <h1>My Website</h1>
+    <p>The Rapida chat widget will appear as a floating button in the bottom-right corner.</p>
+  </body>
+</html>

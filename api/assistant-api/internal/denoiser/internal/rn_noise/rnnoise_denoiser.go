@@ -154,16 +154,16 @@ func (rnd *rnnoiseDenoiser) Denoise(ctx context.Context, pkt internal_type.Denoi
 				Confidence:   combinedCnf,
 				NoiseReduced: true,
 			},
-			internal_type.ConversationEventPacket{
-				ContextID: pkt.ContextID,
-				Name:      "denoise",
-				Data: map[string]string{
-					"type":         "completed",
-					"input_bytes":  fmt.Sprintf("%d", len(input)),
-					"output_bytes": fmt.Sprintf("%d", len(idm)),
-				},
-				Time: time.Now(),
-			},
+			// internal_type.ConversationEventPacket{
+			// 	ContextID: pkt.ContextID,
+			// 	Name:      "denoise",
+			// 	Data: map[string]string{
+			// 		"type":         "completed",
+			// 		"input_bytes":  fmt.Sprintf("%d", len(input)),
+			// 		"output_bytes": fmt.Sprintf("%d", len(idm)),
+			// 	},
+			// 	Time: time.Now(),
+			// },
 		)
 	}
 	return nil

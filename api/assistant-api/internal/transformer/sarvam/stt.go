@@ -97,6 +97,7 @@ func (cst *sarvamSpeechToText) speechToTextCallback(conn *websocket.Conn, ctx co
 					cst.mu.Lock()
 					if !cst.startedAt.IsZero() {
 						latencyMs = now.Sub(cst.startedAt).Milliseconds()
+						cst.startedAt = time.Time{}
 					}
 					cst.mu.Unlock()
 					langCode := ""
@@ -162,6 +163,7 @@ func (cst *sarvamSpeechToText) speechToTextCallback(conn *websocket.Conn, ctx co
 }
 
 func (cst *sarvamSpeechToText) Initialize() error {
+	start := time.Now()
 	headers := make(map[string][]string)
 	headers["Api-Subscription-Key"] = []string{cst.GetKey()}
 
@@ -172,7 +174,6 @@ func (cst *sarvamSpeechToText) Initialize() error {
 
 	cst.mu.Lock()
 	cst.connection = conn
-	cst.startedAt = time.Now()
 	cst.mu.Unlock()
 
 	go cst.speechToTextCallback(conn, cst.ctx)
@@ -182,6 +183,7 @@ func (cst *sarvamSpeechToText) Initialize() error {
 		Data: map[string]string{
 			"type":     "initialized",
 			"provider": cst.Name(),
+			"init_ms":  fmt.Sprintf("%d", time.Since(start).Milliseconds()),
 		},
 		Time: time.Now(),
 	})
@@ -197,6 +199,9 @@ func (cst *sarvamSpeechToText) Transform(ctx context.Context, in internal_type.U
 
 	cst.mu.Lock()
 	connection := cst.connection
+	if cst.startedAt.IsZero() {
+		cst.startedAt = time.Now()
+	}
 	cst.mu.Unlock()
 
 	if connection == nil {

@@ -287,9 +287,17 @@ type BaseStreamer struct {
 	// Resolved configuration (from options).
 	config streamerConfig
 
-	// InputCh: all downstream-bound messages (gRPC + decoded audio) funnelled here.
-	// recv (non-blocking) -> InputCh -> loop (Recv) -> downstream service
+	// Three-priority input channels — Recv() drains them in priority order.
+	// Mirrors the dispatcher's criticalCh / normalCh / lowCh pattern.
+	//
+	//   CriticalCh (cap 16)  — disconnection, must-process-now signals
+	//   InputCh    (cap cfg) — audio, initialization, configuration, user messages
+	//   LowCh      (cap 512) — ConversationEvent observability packets
+	//
+	// recv (non-blocking) -> CriticalCh|InputCh|LowCh -> Recv() -> Talk loop
+	CriticalCh           chan internal_type.Stream
 	InputCh              chan internal_type.Stream
+	LowCh                chan internal_type.Stream
 	inputAudioBuffer     *bytes.Buffer
 	inputAudioBufferLock sync.Mutex
 
@@ -337,7 +345,9 @@ func NewBaseStreamer(logger commons.Logger, opts ...Option) BaseStreamer {
 		Ctx:               ctx,
 		Cancel:            cancel,
 		config:            cfg,
+		CriticalCh:        make(chan internal_type.Stream, 16),
 		InputCh:           make(chan internal_type.Stream, cfg.inputChannelSize),
+		LowCh:             make(chan internal_type.Stream, 512),
 		OutputCh:          make(chan internal_type.Stream, cfg.outputChannelSize),
 		inputAudioBuffer:  bytes.NewBuffer(make([]byte, 0, inputBufCap)),
 		outputAudioBuffer: bytes.NewBuffer(make([]byte, 0, outputBufCap)),
@@ -378,14 +388,17 @@ func (s *BaseStreamer) BufferAndSendInput(audio []byte) {
 	})
 }
 
-// ClearInputBuffer resets the input PCM buffer and drains the input channel.
+// ClearInputBuffer resets the input PCM buffer and drains all three priority
+// input channels (CriticalCh, InputCh, LowCh).
 func (s *BaseStreamer) ClearInputBuffer() {
 	s.inputAudioBufferLock.Lock()
 	s.inputAudioBuffer.Reset()
 	s.inputAudioBufferLock.Unlock()
 	for {
 		select {
+		case <-s.CriticalCh:
 		case <-s.InputCh:
+		case <-s.LowCh:
 		default:
 			return
 		}
@@ -510,13 +523,35 @@ func (s *BaseStreamer) ResetInputBuffer() {
 // Channel push helpers
 // ============================================================================
 
-// PushInput sends a message to the unified input channel (non-blocking).
-// Safe to call after Close — the send is guarded by the Closed flag.
+// PushInput sends a message to the normal-priority input channel (non-blocking).
+// Use for audio, initialization, configuration, and user messages.
 func (s *BaseStreamer) PushInput(msg internal_type.Stream) {
 	select {
 	case s.InputCh <- msg:
 	default:
-		s.Logger.Warnw("Input channel full, dropping message", "type", fmt.Sprintf("%T", msg))
+		s.Logger.Warnw("Normal input channel full, dropping message", "type", fmt.Sprintf("%T", msg))
+	}
+}
+
+// PushInputCritical sends a message to the critical-priority input channel (non-blocking).
+// Use for disconnection signals and must-process-now events. Recv() drains this
+// channel before InputCh or LowCh.
+func (s *BaseStreamer) PushInputCritical(msg internal_type.Stream) {
+	select {
+	case s.CriticalCh <- msg:
+	default:
+		s.Logger.Warnw("Critical input channel full, dropping message", "type", fmt.Sprintf("%T", msg))
+	}
+}
+
+// PushInputLow sends a message to the low-priority input channel (non-blocking).
+// Use for ConversationEvent observability packets that must not delay audio.
+// Recv() only drains this channel when CriticalCh and InputCh are empty.
+func (s *BaseStreamer) PushInputLow(msg internal_type.Stream) {
+	select {
+	case s.LowCh <- msg:
+	default:
+		s.Logger.Warnw("Low input channel full, dropping message", "type", fmt.Sprintf("%T", msg))
 	}
 }
 
@@ -533,10 +568,10 @@ func (s *BaseStreamer) PushOutput(msg internal_type.Stream) {
 // Disconnect helpers
 // ============================================================================
 
-// PushDisconnection pushes a ConversationDisconnection into InputCh.
+// PushDisconnection pushes a ConversationDisconnection into CriticalCh.
 // It is idempotent — safe to call from multiple goroutines or multiple times.
-// FIFO ordering guarantees the Talk loop processes any preceding metrics before
-// the disconnection signal.
+// Using CriticalCh ensures the Talk loop processes the disconnection signal
+// ahead of any pending audio or observability packets.
 func (s *BaseStreamer) PushDisconnection(reason protos.ConversationDisconnection_DisconnectionType) {
 	s.Mu.Lock()
 	alreadyClosed := s.Closed
@@ -546,7 +581,7 @@ func (s *BaseStreamer) PushDisconnection(reason protos.ConversationDisconnection
 		return
 	}
 
-	s.PushInput(&protos.ConversationDisconnection{
+	s.PushInputCritical(&protos.ConversationDisconnection{
 		Type: reason,
 		Time: timestamppb.Now(),
 	})
@@ -584,13 +619,48 @@ func (s *BaseStreamer) Context() context.Context {
 // transport setup. Concrete streamers (e.g. webrtcStreamer) override this.
 func (s *BaseStreamer) NotifyMode(_ protos.StreamMode) {}
 
-// Recv reads the next downstream-bound message from the unified input channel.
-// Both transport messages and decoded audio are fed into the same channel by
-// background goroutines. Shutdown is signalled by a ConversationDisconnection
-// message through InputCh, which the Talk loop handles to trigger Disconnect().
+// Recv reads the next downstream-bound message using a two-stage priority select.
+// Priority order: CriticalCh > InputCh > LowCh.
+//
+// Stage 1 (non-blocking): drain CriticalCh first, then InputCh.
+// Stage 2 (blocking): wait on all three channels + context cancellation.
+//
+// This mirrors the dispatcher's priority pattern so that disconnection signals
+// always preempt audio, and observability events never delay audio packets.
 func (s *BaseStreamer) Recv() (internal_type.Stream, error) {
+	// Stage 1: drain critical non-blocking.
+	select {
+	case msg, ok := <-s.CriticalCh:
+		if !ok {
+			return nil, io.EOF
+		}
+		return msg, nil
+	default:
+	}
+
+	// Stage 1b: drain normal non-blocking.
 	select {
 	case msg, ok := <-s.InputCh:
+		if !ok {
+			return nil, io.EOF
+		}
+		return msg, nil
+	default:
+	}
+
+	// Stage 2: block until any channel has a message or context is cancelled.
+	select {
+	case msg, ok := <-s.CriticalCh:
+		if !ok {
+			return nil, io.EOF
+		}
+		return msg, nil
+	case msg, ok := <-s.InputCh:
+		if !ok {
+			return nil, io.EOF
+		}
+		return msg, nil
+	case msg, ok := <-s.LowCh:
 		if !ok {
 			return nil, io.EOF
 		}

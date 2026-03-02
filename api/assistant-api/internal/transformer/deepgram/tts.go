@@ -69,7 +69,7 @@ func NewDeepgramTextToSpeech(ctx context.Context, logger commons.Logger, credent
 
 // Initialize implements internal_transformer.OutputAudioTransformer.
 func (t *deepgramTTS) Initialize() error {
-
+	start := time.Now()
 	header := http.Header{}
 	header.Set("Authorization", fmt.Sprintf("token %s", t.GetKey()))
 	conn, resp, err := websocket.DefaultDialer.Dial(t.GetTextToSpeechConnectionString(), header)
@@ -88,6 +88,7 @@ func (t *deepgramTTS) Initialize() error {
 		Data: map[string]string{
 			"type":     "initialized",
 			"provider": t.Name(),
+			"init_ms":  fmt.Sprintf("%d", time.Since(start).Milliseconds()),
 		},
 		Time: time.Now(),
 	})

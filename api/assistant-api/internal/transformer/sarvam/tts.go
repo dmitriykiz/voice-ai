@@ -60,6 +60,7 @@ func NewSarvamTextToSpeech(ctx context.Context, logger commons.Logger, credentia
 
 // Initialize implements internal_transformer.OutputAudioTransformer.
 func (rt *sarvamTextToSpeech) Initialize() error {
+	start := time.Now()
 	headers := map[string][]string{
 		"Api-Subscription-Key": {rt.GetKey()},
 	}
@@ -86,6 +87,7 @@ func (rt *sarvamTextToSpeech) Initialize() error {
 		Data: map[string]string{
 			"type":     "initialized",
 			"provider": rt.Name(),
+			"init_ms":  fmt.Sprintf("%d", time.Since(start).Milliseconds()),
 		},
 		Time: time.Now(),
 	})

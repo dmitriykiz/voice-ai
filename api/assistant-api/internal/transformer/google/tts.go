@@ -80,6 +80,7 @@ func NewGoogleTextToSpeech(ctx context.Context, logger commons.Logger, credentia
 
 // Initialize sets up the streaming synthesis functionality.
 func (google *googleTextToSpeech) Initialize() error {
+	start := time.Now()
 	// Start a streaming synthesis session.
 	stream, err := google.client.StreamingSynthesize(google.ctx)
 	if err != nil {
@@ -117,6 +118,7 @@ func (google *googleTextToSpeech) Initialize() error {
 		Data: map[string]string{
 			"type":     "initialized",
 			"provider": google.Name(),
+			"init_ms":  fmt.Sprintf("%d", time.Since(start).Milliseconds()),
 		},
 		Time: time.Now(),
 	})

@@ -150,6 +150,17 @@ func (t *genericRequestor) Talk(_ context.Context, auth types.SimplePrinciple) e
 				}
 			}
 
+		case *protos.ConversationEvent:
+			if initialized {
+				if err := t.OnPacket(t.streamer.Context(), internal_type.ConversationEventPacket{
+					Name: payload.Name,
+					Data: payload.Data,
+					Time: payload.Time.AsTime(),
+				}); err != nil {
+					t.logger.Errorf("error processing channel event: %v", err)
+				}
+			}
+
 		case *protos.ConversationDisconnection:
 			if initialized {
 				t.OnPacket(context.Background(),

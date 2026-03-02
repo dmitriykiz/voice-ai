@@ -170,15 +170,16 @@ func (executor *toolExecutor) ExecuteAll(ctx context.Context, contextID string, 
 	if len(calls) == 0 {
 		return nil
 	}
-	// Use mutex-protected slices for concurrent writes
-	result := make([]*protos.ToolMessage_Tool, 0, len(calls))
+	// Pre-allocate result slice indexed by position to avoid concurrent append race
+	result := make([]*protos.ToolMessage_Tool, len(calls))
 	var wg sync.WaitGroup
-	for _, xt := range calls {
+	for i, xt := range calls {
+		idx := i
 		xtCopy := xt
 		wg.Add(1)
 		utils.Go(context.Background(), func() {
 			defer wg.Done()
-			result = append(result, executor.execute(ctx, contextID, xtCopy, communication))
+			result[idx] = executor.execute(ctx, contextID, xtCopy, communication)
 		})
 	}
 	wg.Wait()

@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 
 	"github.com/gorilla/websocket"
 	internal_audio "github.com/rapidaai/api/assistant-api/internal/audio"
@@ -22,6 +21,7 @@ import (
 	"github.com/rapidaai/protos"
 	"github.com/twilio/twilio-go"
 	openapi "github.com/twilio/twilio-go/rest/api/v2010"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // RAPIDA_AUDIO_CONFIG is the internal Rapida audio format (linear16 16kHz).
@@ -40,7 +40,7 @@ type twilioWebsocketStreamer struct {
 }
 
 func NewTwilioWebsocketStreamer(logger commons.Logger, connection *websocket.Conn, cc *callcontext.CallContext, vaultCred *protos.VaultCredential) internal_type.Streamer {
-	return &twilioWebsocketStreamer{
+	tws := &twilioWebsocketStreamer{
 		BaseTelephonyStreamer: internal_telephony_base.NewBaseTelephonyStreamer(
 			logger, cc, vaultCred,
 			internal_telephony_base.WithSourceAudioConfig(internal_audio.NewMulaw8khzMonoAudioConfig()),
@@ -48,42 +48,55 @@ func NewTwilioWebsocketStreamer(logger commons.Logger, connection *websocket.Con
 		streamID:   "",
 		connection: connection,
 	}
+	go tws.runWebSocketReader()
+	return tws
 }
 
-func (tws *twilioWebsocketStreamer) Recv() (internal_type.Stream, error) {
-	if tws.connection == nil {
-		return nil, tws.handleError("WebSocket connection is nil", io.EOF)
+func (tws *twilioWebsocketStreamer) runWebSocketReader() {
+	conn := tws.connection
+	if conn == nil {
+		return
 	}
-	_, message, err := tws.connection.ReadMessage()
-	if err != nil {
-		return nil, tws.handleWebSocketError(err)
-	}
-
-	var mediaEvent internal_twilio.TwilioMediaEvent
-	if err := json.Unmarshal(message, &mediaEvent); err != nil {
-		tws.Logger.Error("Failed to unmarshal Twilio media event", "error", err.Error())
-		return nil, nil
-	}
-	switch mediaEvent.Event {
-	case "connected":
-		return nil, nil
-	case "start":
-		tws.handleStartEvent(mediaEvent)
-		return tws.CreateConnectionRequest(), nil
-	case "media":
-		msg, err := tws.handleMediaEvent(mediaEvent)
-		if msg == nil {
-			return nil, err
+	for {
+		_, message, err := conn.ReadMessage()
+		if err != nil {
+			tws.PushDisconnection(protos.ConversationDisconnection_DISCONNECTION_TYPE_USER)
+			tws.BaseStreamer.Cancel()
+			return
 		}
-		return msg, err
-	case "stop":
-		tws.Logger.Info("Twilio stream stopped")
-		tws.connection.Close()
-		tws.connection = nil
-		return nil, io.EOF
-	default:
-		tws.Logger.Warn("Unhandled Twilio event", "event", mediaEvent.Event)
-		return nil, nil
+		var mediaEvent internal_twilio.TwilioMediaEvent
+		if err := json.Unmarshal(message, &mediaEvent); err != nil {
+			tws.Logger.Error("Failed to unmarshal Twilio media event", "error", err.Error())
+			continue
+		}
+		switch mediaEvent.Event {
+		case "connected":
+			tws.PushInputLow(&protos.ConversationEvent{
+				Name: "channel",
+				Data: map[string]string{"type": "connected", "provider": "twilio"},
+				Time: timestamppb.Now(),
+			})
+		case "start":
+			tws.handleStartEvent(mediaEvent)
+			tws.PushInput(tws.CreateConnectionRequest())
+			tws.PushInputLow(&protos.ConversationEvent{
+				Name: "channel",
+				Data: map[string]string{"type": "stream_started", "provider": "twilio", "stream_id": tws.streamID},
+				Time: timestamppb.Now(),
+			})
+		case "media":
+			msg, _ := tws.handleMediaEvent(mediaEvent)
+			if msg != nil {
+				tws.PushInput(msg)
+			}
+		case "stop":
+			tws.Logger.Info("Twilio stream stopped")
+			tws.Cancel()
+			tws.PushDisconnection(protos.ConversationDisconnection_DISCONNECTION_TYPE_USER)
+			return
+		default:
+			tws.Logger.Warn("Unhandled Twilio event", "event", mediaEvent.Event)
+		}
 	}
 }
 
@@ -182,6 +195,7 @@ func (tws *twilioWebsocketStreamer) Cancel() error {
 		tws.connection.Close()
 		tws.connection = nil
 	}
+	tws.BaseStreamer.Cancel()
 	return nil
 }
 
@@ -235,16 +249,6 @@ func (tws *twilioWebsocketStreamer) sendTwilioMessage(
 func (tws *twilioWebsocketStreamer) handleError(message string, err error) error {
 	tws.Logger.Error(message, "error", err.Error())
 	return err
-}
-
-func (tws *twilioWebsocketStreamer) handleWebSocketError(err error) error {
-	if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-		tws.Logger.Error("Unexpected websocket close error", "error", err.Error())
-	} else {
-		tws.Logger.Error("Failed to read message from WebSocket", "error", err.Error())
-	}
-	tws.Cancel()
-	return io.EOF
 }
 
 func (tpc *twilioWebsocketStreamer) client(vaultCredential *protos.VaultCredential) (*twilio.RestClient, error) {

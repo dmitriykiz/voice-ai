@@ -9,7 +9,6 @@ package internal_exotel_telephony
 import (
 	"bytes"
 	"encoding/json"
-	"io"
 
 	"github.com/gorilla/websocket"
 	internal_audio "github.com/rapidaai/api/assistant-api/internal/audio"
@@ -19,6 +18,7 @@ import (
 	internal_type "github.com/rapidaai/api/assistant-api/internal/type"
 	"github.com/rapidaai/pkg/commons"
 	"github.com/rapidaai/protos"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // LINEAR_8K_AUDIO_CONFIG is the Exotel-native audio format (linear16 8kHz).
@@ -33,7 +33,7 @@ type exotelWebsocketStreamer struct {
 
 func NewExotelWebsocketStreamer(logger commons.Logger, connection *websocket.Conn, cc *callcontext.CallContext, vaultCred *protos.VaultCredential,
 ) internal_type.Streamer {
-	return &exotelWebsocketStreamer{
+	exotel := &exotelWebsocketStreamer{
 		BaseTelephonyStreamer: internal_telephony_base.NewBaseTelephonyStreamer(
 			logger, cc, vaultCred,
 			internal_telephony_base.WithSourceAudioConfig(EXOTEL_LINEAR_8K_AUDIO_CONFIG),
@@ -41,46 +41,61 @@ func NewExotelWebsocketStreamer(logger commons.Logger, connection *websocket.Con
 		streamID:   "",
 		connection: connection,
 	}
+	go exotel.runWebSocketReader()
+	return exotel
 }
 
-func (exotel *exotelWebsocketStreamer) Recv() (internal_type.Stream, error) {
-	if exotel.connection == nil {
-		return nil, io.EOF
+func (exotel *exotelWebsocketStreamer) runWebSocketReader() {
+	conn := exotel.connection
+	if conn == nil {
+		return
 	}
-
-	_, message, err := exotel.connection.ReadMessage()
-	if err != nil {
-		exotel.connection.Close()
-		exotel.connection = nil
-		return nil, io.EOF
-	}
-
-	var mediaEvent internal_exotel.ExotelMediaEvent
-	if err := json.Unmarshal(message, &mediaEvent); err != nil {
-		exotel.Logger.Error("Failed to unmarshal Exotel media event", "error", err.Error())
-		return nil, nil
-	}
-
-	switch mediaEvent.Event {
-	case "connected":
-		return exotel.CreateConnectionRequest(), nil
-	case "start":
-		exotel.handleStartEvent(mediaEvent)
-		return nil, nil
-	case "media":
-		msg, err := exotel.handleMediaEvent(mediaEvent)
-		if msg == nil {
-			return nil, err
+	for {
+		_, message, err := conn.ReadMessage()
+		if err != nil {
+			exotel.connection = nil
+			exotel.PushDisconnection(protos.ConversationDisconnection_DISCONNECTION_TYPE_USER)
+			exotel.BaseStreamer.Cancel()
+			return
 		}
-		return msg, err
-	case "dtmf":
-		return nil, nil
-	case "stop":
-		exotel.Cancel()
-		return nil, io.EOF
-	default:
-		exotel.Logger.Warn("Unhandled Exotel event", "event", mediaEvent.Event)
-		return nil, nil
+		var mediaEvent internal_exotel.ExotelMediaEvent
+		if err := json.Unmarshal(message, &mediaEvent); err != nil {
+			exotel.Logger.Error("Failed to unmarshal Exotel media event", "error", err.Error())
+			continue
+		}
+		switch mediaEvent.Event {
+		case "connected":
+			exotel.PushInput(exotel.CreateConnectionRequest())
+			exotel.PushInputLow(&protos.ConversationEvent{
+				Name: "channel",
+				Data: map[string]string{"type": "connected", "provider": "exotel"},
+				Time: timestamppb.Now(),
+			})
+		case "start":
+			exotel.handleStartEvent(mediaEvent)
+			exotel.PushInputLow(&protos.ConversationEvent{
+				Name: "channel",
+				Data: map[string]string{"type": "stream_started", "provider": "exotel", "stream_id": exotel.streamID},
+				Time: timestamppb.Now(),
+			})
+		case "media":
+			msg, _ := exotel.handleMediaEvent(mediaEvent)
+			if msg != nil {
+				exotel.PushInput(msg)
+			}
+		case "dtmf":
+			exotel.PushInputLow(&protos.ConversationEvent{
+				Name: "channel",
+				Data: map[string]string{"type": "dtmf", "provider": "exotel"},
+				Time: timestamppb.Now(),
+			})
+		case "stop":
+			exotel.Cancel()
+			exotel.PushDisconnection(protos.ConversationDisconnection_DISCONNECTION_TYPE_USER)
+			return
+		default:
+			exotel.Logger.Warn("Unhandled Exotel event", "event", mediaEvent.Event)
+		}
 	}
 }
 
@@ -194,7 +209,10 @@ func (exo *exotelWebsocketStreamer) handleError(message string, err error) error
 }
 
 func (tws *exotelWebsocketStreamer) Cancel() error {
-	tws.connection.Close()
-	tws.connection = nil
+	if tws.connection != nil {
+		tws.connection.Close()
+		tws.connection = nil
+	}
+	tws.BaseStreamer.Cancel()
 	return nil
 }

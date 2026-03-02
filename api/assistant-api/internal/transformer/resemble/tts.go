@@ -67,6 +67,7 @@ func NewResembleTextToSpeech(
 
 // Initialize implements internal_transformer.TextToSpeechTransformer.
 func (rt *resembleTTS) Initialize() error {
+	start := time.Now()
 	headers := http.Header{}
 	headers.Set("Authorization", fmt.Sprintf("Bearer %s", rt.GetKey()))
 	conn, _, err := websocket.DefaultDialer.Dial("wss://websocket.cluster.resemble.ai/stream", headers)
@@ -86,6 +87,7 @@ func (rt *resembleTTS) Initialize() error {
 		Data: map[string]string{
 			"type":     "initialized",
 			"provider": rt.Name(),
+			"init_ms":  fmt.Sprintf("%d", time.Since(start).Milliseconds()),
 		},
 		Time: time.Now(),
 	})

@@ -110,12 +110,13 @@ export const AssistantAnalytics: FC<{ assistant: Assistant }> = props => {
     conversations.reduce((sum, conversation) => {
       const sortedMessages = conversation.sort(
         (a, b) =>
-          a.getCreateddate()!.getSeconds() - b.getCreateddate()!.getSeconds(),
+          toDate(a.getCreateddate()!).getTime() -
+          toDate(b.getCreateddate()!).getTime(),
       );
       const duration =
-        sortedMessages[sortedMessages.length - 1]
-          .getCreateddate()!
-          .getSeconds() - sortedMessages[0].getCreateddate()!.getSeconds();
+        (toDate(sortedMessages[sortedMessages.length - 1].getCreateddate()!).getTime() -
+          toDate(sortedMessages[0].getCreateddate()!).getTime()) /
+        1000;
       return sum + duration;
     }, 0) / totalSessions;
 

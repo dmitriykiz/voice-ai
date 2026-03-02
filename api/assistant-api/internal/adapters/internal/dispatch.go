@@ -507,7 +507,6 @@ func (talking *genericRequestor) handleLLMDone(ctx context.Context, vl internal_
 
 func (talking *genericRequestor) handleLLMError(ctx context.Context, vl internal_type.LLMErrorPacket) {
 	talking.logger.Errorf("LLM error for context %s: %v", vl.ContextID, vl.Error)
-	talking.OnError(ctx)
 }
 
 // =============================================================================

@@ -68,6 +68,7 @@ func (aai *assemblyaiSTT) Name() string {
 }
 
 func (aai *assemblyaiSTT) Initialize() error {
+	start := time.Now()
 	headers := http.Header{}
 	headers.Set("Authorization", aai.GetKey())
 	dialer := websocket.Dialer{
@@ -93,6 +94,7 @@ func (aai *assemblyaiSTT) Initialize() error {
 		Data: map[string]string{
 			"type":     "initialized",
 			"provider": aai.Name(),
+			"init_ms":  fmt.Sprintf("%d", time.Since(start).Milliseconds()),
 		},
 		Time: time.Now(),
 	})
@@ -124,10 +126,7 @@ func (aai *assemblyaiSTT) speechToTextCallback(conn *websocket.Conn, ctx context
 			}
 
 			switch transcript.Type {
-			case "Turn":
-				if aai.startedAt.IsZero() {
-					aai.startedAt = time.Now()
-				}
+				case "Turn":
 				if len(transcript.Words) == 0 {
 					aai.logger.Warnf("assembly-ai-stt: received Turn message with no words")
 					continue
@@ -179,10 +178,12 @@ func (aai *assemblyaiSTT) speechToTextCallback(conn *websocket.Conn, ctx context
 				} else {
 					now := time.Now()
 					var latencyMs int64
+					aai.mu.Lock()
 					if !aai.startedAt.IsZero() {
 						latencyMs = now.Sub(aai.startedAt).Milliseconds()
 						aai.startedAt = time.Time{}
 					}
+					aai.mu.Unlock()
 					aai.onPacket(
 						internal_type.InterruptionPacket{Source: internal_type.InterruptionSourceWord},
 						internal_type.SpeechToTextPacket{
@@ -225,6 +226,9 @@ func (aai *assemblyaiSTT) Transform(ctx context.Context, in internal_type.UserAu
 	defer aai.mu.Unlock()
 	if aai.connection == nil {
 		return fmt.Errorf("assembly-ai-stt: websocket connection is not initialized")
+	}
+	if aai.startedAt.IsZero() {
+		aai.startedAt = time.Now()
 	}
 	if err := aai.connection.WriteMessage(websocket.BinaryMessage, in.Content()); err != nil {
 		aai.logger.Errorf("assembly-ai-stt: error sending audio: %v", err)

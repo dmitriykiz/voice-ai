@@ -177,7 +177,7 @@ func main() {
 			grpcweb.WithWebsocketOriginFunc(func(req *http.Request) bool {
 				return true
 			}),
-			grpcweb.WithWebsocketPingInterval(15*time.Second),
+			grpcweb.WithWebsocketPingInterval(2*time.Second),
 			grpcweb.WithWebsocketsMessageReadLimit(100*1024*1024),
 		)
 		handler := func(resp http.ResponseWriter, req *http.Request) {

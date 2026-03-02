@@ -10,7 +10,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"net"
 	"strings"
@@ -21,6 +20,7 @@ import (
 	internal_type "github.com/rapidaai/api/assistant-api/internal/type"
 	"github.com/rapidaai/pkg/commons"
 	"github.com/rapidaai/protos"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Streamer implements AudioSocket media streaming over TCP.
@@ -40,7 +40,6 @@ type Streamer struct {
 	outputCancel context.CancelFunc
 
 	initialUUID string
-	configSent  bool
 }
 
 // NewStreamer creates a new AudioSocket streamer.
@@ -86,6 +85,7 @@ func NewStreamer(
 	audioProcessor.SetInputAudioCallback(as.sendProcessedInputAudio)
 	audioProcessor.SetOutputChunkCallback(as.sendAudioChunk)
 	go audioProcessor.RunOutputSender(as.outputCtx)
+	go as.runFrameReader()
 	return as, nil
 }
 
@@ -117,41 +117,46 @@ func (as *Streamer) Context() context.Context {
 	return as.ctx
 }
 
-// Recv reads AudioSocket frames and returns input for the talker.
-func (as *Streamer) Recv() (internal_type.Stream, error) {
-	if as.conn == nil {
-		return nil, io.EOF
-	}
-	if !as.configSent && as.initialUUID != "" {
-		as.configSent = true
-		return as.CreateConnectionRequest(), nil
+// runFrameReader reads AudioSocket frames in a background goroutine and pushes
+// to the priority channels inherited from BaseStreamer.
+func (as *Streamer) runFrameReader() {
+	as.PushInputLow(&protos.ConversationEvent{
+		Name: "channel",
+		Data: map[string]string{
+			"type":     "connected",
+			"provider": "asterisk_as",
+		},
+		Time: timestamppb.Now(),
+	})
+	if as.initialUUID != "" {
+		as.PushInput(as.CreateConnectionRequest())
 	}
 	for {
+		select {
+		case <-as.ctx.Done():
+			return
+		default:
+		}
 		frame, err := ReadFrame(as.reader)
 		if err != nil {
 			if err == io.EOF {
-				return nil, io.EOF
+				as.PushDisconnection(protos.ConversationDisconnection_DISCONNECTION_TYPE_USER)
+				as.BaseStreamer.Cancel()
+				return
 			}
-			return nil, err
+			as.PushDisconnection(protos.ConversationDisconnection_DISCONNECTION_TYPE_USER)
+			as.BaseStreamer.Cancel()
+			return
 		}
-
 		switch frame.Type {
 		case FrameTypeUUID:
 			as.initialUUID = strings.TrimSpace(string(frame.Payload))
-			if !as.configSent {
-				as.configSent = true
-				return &protos.ConversationInitialization{
-					AssistantConversationId: as.GetConversationId(),
-					Assistant:               as.GetAssistantDefinition(),
-					StreamMode:              protos.StreamMode_STREAM_MODE_AUDIO,
-				}, nil
-			}
+			as.PushInput(as.CreateConnectionRequest())
 		case FrameTypeAudio:
 			if err := as.audioProcessor.ProcessInputAudio(frame.Payload); err != nil {
 				as.Logger.Debug("Failed to process input audio", "error", err.Error())
 				continue
 			}
-
 			var audioRequest *protos.ConversationUserMessage
 			as.WithInputBuffer(func(buf *bytes.Buffer) {
 				if buf.Len() > 0 {
@@ -162,16 +167,18 @@ func (as *Streamer) Recv() (internal_type.Stream, error) {
 				}
 			})
 			if audioRequest != nil {
-				return audioRequest, nil
+				as.PushInput(audioRequest)
 			}
 		case FrameTypeSilence:
-			// Silence frame, no action needed
+			// no-op
 		case FrameTypeHangup:
-			return nil, io.EOF
+			as.PushDisconnection(protos.ConversationDisconnection_DISCONNECTION_TYPE_USER)
+			as.BaseStreamer.Cancel()
+			return
 		case FrameTypeError:
-			return nil, fmt.Errorf("audiosocket error frame received")
-		default:
-			// Ignore unknown frame types
+			as.PushDisconnection(protos.ConversationDisconnection_DISCONNECTION_TYPE_USER)
+			as.BaseStreamer.Cancel()
+			return
 		}
 	}
 }
@@ -207,6 +214,7 @@ func (as *Streamer) close() error {
 	if as.cancel != nil {
 		as.cancel()
 	}
+	as.BaseStreamer.Cancel()
 	if as.conn != nil {
 		_ = as.conn.Close()
 		as.conn = nil
