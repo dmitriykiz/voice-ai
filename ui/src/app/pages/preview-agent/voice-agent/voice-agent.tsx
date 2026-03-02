@@ -666,7 +666,7 @@ const AssistantPlaceholder: FC<{
   </div>
 );
 
-const ConfigBlock: FC<{ title: string; children: React.ReactNode }> = ({
+export const ConfigBlock: FC<{ title: string; children: React.ReactNode }> = ({
   title,
   children,
 }) => (
@@ -678,7 +678,10 @@ const ConfigBlock: FC<{ title: string; children: React.ReactNode }> = ({
   </div>
 );
 
-const InfoRow: FC<{ label: string; value: string }> = ({ label, value }) => (
+export const InfoRow: FC<{ label: string; value: string }> = ({
+  label,
+  value,
+}) => (
   <div className="flex justify-between gap-4 text-sm/6">
     <span className="text-gray-500 dark:text-gray-400 lowercase tracking-wide shrink-0">
       {label}
@@ -689,7 +692,10 @@ const InfoRow: FC<{ label: string; value: string }> = ({ label, value }) => (
   </div>
 );
 
-const MetricCard: FC<{ label: string; value: string }> = ({ label, value }) => (
+export const MetricCard: FC<{ label: string; value: string }> = ({
+  label,
+  value,
+}) => (
   <div className="flex flex-col gap-0.5">
     <span className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 truncate">
       {label.replace(/_/g, ' ')}

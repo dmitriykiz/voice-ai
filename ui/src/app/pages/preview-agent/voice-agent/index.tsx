@@ -2,7 +2,6 @@ import { GreenNoticeBlock } from '@/app/components/container/message/notice-bloc
 import { Dropdown } from '@/app/components/dropdown';
 import { IBlueBGArrowButton } from '@/app/components/form/button';
 import { ErrorMessage } from '@/app/components/form/error-message';
-import { FieldSet } from '@/app/components/form/fieldset';
 import { Input } from '@/app/components/form/input';
 import {
   JsonTextarea,
@@ -11,11 +10,18 @@ import {
   TextTextarea,
   UrlTextarea,
 } from '@/app/components/form/textarea';
-import { InputGroup } from '@/app/components/input-group';
 import { InputVarForm } from '@/app/pages/endpoint/view/try-playground/experiment-prompt/components/input-var-form';
-import { VoiceAgent } from '@/app/pages/preview-agent/voice-agent/voice-agent';
+import {
+  ConfigBlock,
+  InfoRow,
+  VoiceAgent,
+} from '@/app/pages/preview-agent/voice-agent/voice-agent';
+import {
+  PHONE_COUNTRIES,
+  DEFAULT_COUNTRY,
+  Country,
+} from '@/app/pages/preview-agent/voice-agent/phone-agent-constants';
 import { CONFIG } from '@/configs';
-import { useRapidaStore } from '@/hooks';
 import { useCurrentCredential } from '@/hooks/use-credential';
 import { InputVarType } from '@/models/common';
 import { cn, randomMeaningfullName } from '@/utils';
@@ -34,9 +40,12 @@ import {
   GetAssistantRequest,
   Variable,
 } from '@rapidaai/react';
-import { useEffect, useState } from 'react';
+import { ChevronLeft } from 'lucide-react';
+import React, { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { PageLoader } from '@/app/components/loader/page-loader';
+import { PageHeaderBlock } from '@/app/components/blocks/page-header-block';
+import { PageTitleBlock } from '@/app/components/blocks/page-title-block';
 
 /**
  *
@@ -105,10 +114,17 @@ export const PreviewVoiceAgent = () => {
   );
 };
 
+// ---------------------------------------------------------------------------
+// Phone Agent
+// ---------------------------------------------------------------------------
+
+type PhoneCallStatus = 'idle' | 'calling' | 'success' | 'failed';
+type PhoneDebugTab = 'configuration' | 'arguments';
+
 //
 export const PreviewPhoneAgent = () => {
   const { authId, token, projectId } = useCurrentCredential();
-  let connectionCfg = ConnectionConfig.DefaultConnectionConfig(
+  const connectionCfg = ConnectionConfig.DefaultConnectionConfig(
     ConnectionConfig.WithPersonalToken({
       Authorization: token,
       AuthId: authId,
@@ -116,495 +132,444 @@ export const PreviewPhoneAgent = () => {
     }),
   ).withCustomEndpoint(CONFIG.connection);
 
-  const { showLoader, hideLoader, loading } = useRapidaStore();
   const { assistantId } = useParams();
   const [assistant, setAssistant] = useState<Assistant | null>(null);
-
-  const countries = [
-    { name: 'Afghanistan', value: '+93', code: 'AF' },
-    { name: 'Albania', value: '+355', code: 'AL' },
-    { name: 'Algeria', value: '+213', code: 'DZ' },
-    { name: 'Andorra', value: '+376', code: 'AD' },
-    { name: 'Angola', value: '+244', code: 'AO' },
-    { name: 'Argentina', value: '+54', code: 'AR' },
-    { name: 'Armenia', value: '+374', code: 'AM' },
-    { name: 'Australia', value: '+61', code: 'AU' },
-    { name: 'Austria', value: '+43', code: 'AT' },
-    { name: 'Azerbaijan', value: '+994', code: 'AZ' },
-    { name: 'Bahrain', value: '+973', code: 'BH' },
-    { name: 'Bangladesh', value: '+880', code: 'BD' },
-    { name: 'Belgium', value: '+32', code: 'BE' },
-    { name: 'Brazil', value: '+55', code: 'BR' },
-    { name: 'Bulgaria', value: '+359', code: 'BG' },
-    { name: 'Cambodia', value: '+855', code: 'KH' },
-    { name: 'Cameroon', value: '+237', code: 'CM' },
-    { name: 'Canada', value: '+1', code: 'CA' },
-    { name: 'Chile', value: '+56', code: 'CL' },
-    { name: 'China', value: '+86', code: 'CN' },
-    { name: 'Colombia', value: '+57', code: 'CO' },
-    { name: 'Costa Rica', value: '+506', code: 'CR' },
-    { name: 'Croatia', value: '+385', code: 'HR' },
-    { name: 'Czech Republic', value: '+420', code: 'CZ' },
-    { name: 'Denmark', value: '+45', code: 'DK' },
-    { name: 'Egypt', value: '+20', code: 'EG' },
-    { name: 'Estonia', value: '+372', code: 'EE' },
-    { name: 'Finland', value: '+358', code: 'FI' },
-    { name: 'France', value: '+33', code: 'FR' },
-    { name: 'Germany', value: '+49', code: 'DE' },
-    { name: 'Greece', value: '+30', code: 'GR' },
-    { name: 'Hong Kong', value: '+852', code: 'HK' },
-    { name: 'Hungary', value: '+36', code: 'HU' },
-    { name: 'Iceland', value: '+354', code: 'IS' },
-    { name: 'India', value: '+91', code: 'IN' },
-    { name: 'Indonesia', value: '+62', code: 'ID' },
-    { name: 'Iran', value: '+98', code: 'IR' },
-    { name: 'Iraq', value: '+964', code: 'IQ' },
-    { name: 'Ireland', value: '+353', code: 'IE' },
-    { name: 'Israel', value: '+972', code: 'IL' },
-    { name: 'Italy', value: '+39', code: 'IT' },
-    { name: 'Japan', value: '+81', code: 'JP' },
-    { name: 'Jordan', value: '+962', code: 'JO' },
-    { name: 'Kazakhstan', value: '+7', code: 'KZ' },
-    { name: 'Kenya', value: '+254', code: 'KE' },
-    { name: 'Kuwait', value: '+965', code: 'KW' },
-    { name: 'Latvia', value: '+371', code: 'LV' },
-    { name: 'Lebanon', value: '+961', code: 'LB' },
-    { name: 'Lithuania', value: '+370', code: 'LT' },
-    { name: 'Luxembourg', value: '+352', code: 'LU' },
-    { name: 'Malaysia', value: '+60', code: 'MY' },
-    { name: 'Maldives', value: '+960', code: 'MV' },
-    { name: 'Malta', value: '+356', code: 'MT' },
-    { name: 'Mexico', value: '+52', code: 'MX' },
-    { name: 'Monaco', value: '+377', code: 'MC' },
-    { name: 'Morocco', value: '+212', code: 'MA' },
-    { name: 'Nepal', value: '+977', code: 'NP' },
-    { name: 'Netherlands', value: '+31', code: 'NL' },
-    { name: 'New Zealand', value: '+64', code: 'NZ' },
-    { name: 'Nigeria', value: '+234', code: 'NG' },
-    { name: 'Norway', value: '+47', code: 'NO' },
-    { name: 'Oman', value: '+968', code: 'OM' },
-    { name: 'Pakistan', value: '+92', code: 'PK' },
-    { name: 'Peru', value: '+51', code: 'PE' },
-    { name: 'Philippines', value: '+63', code: 'PH' },
-    { name: 'Poland', value: '+48', code: 'PL' },
-    { name: 'Portugal', value: '+351', code: 'PT' },
-    { name: 'Qatar', value: '+974', code: 'QA' },
-    { name: 'Romania', value: '+40', code: 'RO' },
-    { name: 'Russia', value: '+7', code: 'RU' },
-    { name: 'Saudi Arabia', value: '+966', code: 'SA' },
-    { name: 'Serbia', value: '+381', code: 'RS' },
-    { name: 'Singapore', value: '+65', code: 'SG' },
-    { name: 'Slovakia', value: '+421', code: 'SK' },
-    { name: 'Slovenia', value: '+386', code: 'SI' },
-    { name: 'South Africa', value: '+27', code: 'ZA' },
-    { name: 'South Korea', value: '+82', code: 'KR' },
-    { name: 'Spain', value: '+34', code: 'ES' },
-    { name: 'Sri Lanka', value: '+94', code: 'LK' },
-    { name: 'Sweden', value: '+46', code: 'SE' },
-    { name: 'Switzerland', value: '+41', code: 'CH' },
-    { name: 'Syria', value: '+963', code: 'SY' },
-    { name: 'Taiwan', value: '+886', code: 'TW' },
-    { name: 'Thailand', value: '+66', code: 'TH' },
-    { name: 'Turkey', value: '+90', code: 'TR' },
-    { name: 'Ukraine', value: '+380', code: 'UA' },
-    { name: 'United Arab Emirates', value: '+971', code: 'AE' },
-    { name: 'United Kingdom', value: '+44', code: 'GB' },
-    { name: 'United States', value: '+1', code: 'US' },
-    { name: 'Uruguay', value: '+598', code: 'UY' },
-    { name: 'Uzbekistan', value: '+998', code: 'UZ' },
-    { name: 'Venezuela', value: '+58', code: 'VE' },
-    { name: 'Vietnam', value: '+84', code: 'VN' },
-    { name: 'Yemen', value: '+967', code: 'YE' },
-    { name: 'Zimbabwe', value: '+263', code: 'ZW' },
-    { name: 'Other', value: '', code: 'OTH' },
-  ];
-  const [country, setCountry] = useState({
-    name: 'Singapore',
-    value: '+65',
-  });
-  const [variables, setVaribales] = useState<Variable[]>([]);
+  const [variables, setVariables] = useState<Variable[]>([]);
+  const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [callStatus, setCallStatus] = useState<PhoneCallStatus>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
   const [argumentMap, setArgumentMap] = useState<Map<string, string>>(
     new Map(),
   );
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredCountries = useMemo(() => {
+    if (!searchQuery) return PHONE_COUNTRIES;
+    const q = searchQuery.toLowerCase();
+    return PHONE_COUNTRIES.filter(
+      c =>
+        c.name.toLowerCase().includes(q) ||
+        c.value.includes(q) ||
+        c.code.toLowerCase().includes(q),
+    );
+  }, [searchQuery]);
 
   useEffect(() => {
-    if (assistantId) {
-      const request = new GetAssistantRequest();
-      const assistantDef = new AssistantDefinition();
-      assistantDef.setAssistantid(assistantId);
-      request.setAssistantdefinition(assistantDef);
-      GetAssistant(connectionCfg, request)
-        .then(response => {
-          hideLoader();
-          if (response?.getSuccess()) {
-            setAssistant(response.getData()!);
-            const assistantProvider = response
-              .getData()
-              ?.getAssistantprovidermodel();
-            if (assistantProvider?.getTemplate()?.getPromptvariablesList()) {
-              setVaribales(
-                assistantProvider?.getTemplate()?.getPromptvariablesList()!,
-              );
-              assistantProvider
-                ?.getTemplate()
-                ?.getPromptvariablesList()
-                .forEach(v => {
-                  if (v.getDefaultvalue()) {
-                    onChangeArgument(v.getName(), v.getDefaultvalue());
-                  }
-                });
-              return;
-            }
+    if (!assistantId) return;
+    const request = new GetAssistantRequest();
+    const assistantDef = new AssistantDefinition();
+    assistantDef.setAssistantid(assistantId);
+    request.setAssistantdefinition(assistantDef);
+    GetAssistant(connectionCfg, request)
+      .then(response => {
+        if (response?.getSuccess()) {
+          setAssistant(response.getData()!);
+          const pmtVars = response
+            .getData()
+            ?.getAssistantprovidermodel()
+            ?.getTemplate()
+            ?.getPromptvariablesList();
+          if (pmtVars) {
+            setVariables(pmtVars);
+            pmtVars.forEach(v => {
+              if (v.getDefaultvalue())
+                onChangeArgument(v.getName(), v.getDefaultvalue());
+            });
           }
-        })
-        .catch(err => {
-          hideLoader();
-        });
-    }
+        }
+      })
+      .catch(() => {});
   }, []);
 
   if (!assistantId) {
     return <Navigate to="/404" replace />;
   }
 
-  const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // const value = e.target.value.replace(/\D/g, ''); // Remove non-digit characters
-    setPhoneNumber(e.target.value);
-    setError('');
+  const onChangeArgument = (k: string, vl: string) => {
+    setArgumentMap(prev => {
+      const m = new Map(prev);
+      m.set(k, vl);
+      return m;
+    });
   };
 
   const validatePhoneNumber = () => {
     if (!country.name) {
-      setError('Please select a country');
+      setErrorMessage('Please select a country.');
       return false;
     }
-
     if (
       (country.name !== 'Other' && phoneNumber.length < 7) ||
       phoneNumber.length > 15
     ) {
-      setError('Please enter a valid phone number for call.');
+      setErrorMessage('Please enter a valid phone number.');
       return false;
     }
     return true;
   };
 
-  const onChangeArgument = (k: string, vl: string) => {
-    setArgumentMap(prev => {
-      const updatedMap = new Map(prev);
-      updatedMap.set(k, vl);
-      return updatedMap;
-    });
-  };
-
   const handleSubmit = () => {
-    if (validatePhoneNumber()) {
-      setError('');
-      showLoader();
-      const phoneCallRequest = new CreatePhoneCallRequest();
-      const assistant = new AssistantDefinition();
-      assistant.setAssistantid(assistantId);
-      assistant.setVersion('latest');
-      phoneCallRequest.setAssistant(assistant);
-      argumentMap.forEach((value, key) => {
-        phoneCallRequest.getArgsMap().set(key, StringToAny(value));
-      });
+    if (!validatePhoneNumber()) return;
+    setErrorMessage('');
+    setCallStatus('calling');
 
-      //   phoneCallRequest.setFromnumber('FROM_NUMBER');
-      phoneCallRequest.setTonumber(country.value + phoneNumber);
-      CreatePhoneCall(connectionCfg, phoneCallRequest)
-        .then(x => {
-          hideLoader();
-          if (x.getSuccess()) {
-            const status = getStatusMetric(x.getData()?.getMetricsList());
-            if (status === 'FAILED') {
-              setError('Unable to start the call, please try again.');
-              return;
-            }
-            setSuccess('Call has been create successfully.');
-            setTimeout(() => setSuccess(''), 60000);
+    const phoneCallRequest = new CreatePhoneCallRequest();
+    const assistantDef = new AssistantDefinition();
+    assistantDef.setAssistantid(assistantId);
+    assistantDef.setVersion('latest');
+    phoneCallRequest.setAssistant(assistantDef);
+    argumentMap.forEach((value, key) => {
+      phoneCallRequest.getArgsMap().set(key, StringToAny(value));
+    });
+    phoneCallRequest.setTonumber(country.value + phoneNumber);
+
+    CreatePhoneCall(connectionCfg, phoneCallRequest)
+      .then(x => {
+        if (x.getSuccess()) {
+          const status = getStatusMetric(x.getData()?.getMetricsList());
+          if (status === 'FAILED') {
+            setCallStatus('failed');
+            setErrorMessage('Unable to start the call, please try again.');
             return;
           }
-          let err = x.getError();
-          if (err?.getHumanmessage()) setError(err?.getHumanmessage());
-        })
-        .catch(x => {
-          hideLoader();
-          setError('Unable to start the call, please try again.');
-        });
-    }
+          setCallStatus('success');
+          return;
+        }
+        setCallStatus('failed');
+        const err = x.getError();
+        setErrorMessage(
+          err?.getHumanmessage() ||
+            'Unable to start the call, please try again.',
+        );
+      })
+      .catch(() => {
+        setCallStatus('failed');
+        setErrorMessage('Unable to start the call, please try again.');
+      });
   };
 
+  const handleReset = () => {
+    setPhoneNumber('');
+    setCallStatus('idle');
+    setErrorMessage('');
+  };
+
+  if (!assistant) return <PageLoader />;
+
+  const deployment = assistant.getPhonedeployment() ?? null;
+  const stt = deployment?.getInputaudio() ?? null;
+  const tts = deployment?.getOutputaudio() ?? null;
+  const model = assistant.getAssistantprovidermodel() ?? null;
+
   return (
-    <>
-      {assistant ? (
-        <div className="h-dvh flex justify-center">
-          <div className="bg-light-background dark:bg-gray-950/50 w-[700px]! mx-auto my-auto shadow-sm border-[0.5px] rounded-md">
-            <div className="space-y-6 m-10">
-              <div className="space-y-2">
-                <h1 className="text-3xl font-semibold">Hello,</h1>
-                <h3 className="text-xl font-medium opacity-80">
-                  How can I help you with your call today?
-                </h3>
-              </div>
-              <FieldSet className="mt-8">
-                <div
-                  className={cn(
-                    'p-px',
-                    'text-sm!',
-                    'outline-solid outline-transparent',
-                    'focus-within:outline-blue-600 focus:outline-blue-600 -outline-offset-1',
-                    'border-b border-gray-300 dark:border-gray-700',
-                    'dark:focus-within:border-blue-600 focus-within:border-blue-600',
-                    'transition-all duration-200 ease-in-out',
-                    'flex relative',
-                    'divide-x',
-                  )}
-                >
-                  <div className="w-44 relative">
-                    <Dropdown
-                      className="bg-white max-w-full dark:bg-gray-950 focus-within:border-none! focus-within:outline-hidden! border-none! outline-hidden"
-                      currentValue={country}
-                      setValue={v => {
-                        setCountry(v);
-                      }}
-                      allValue={countries}
-                      placeholder="Select country"
-                      option={c => (
-                        <span className="inline-flex items-center gap-2 sm:gap-2.5 max-w-full text-sm font-medium">
-                          <span className="truncate capitalize">{c.name}</span>
-                        </span>
-                      )}
-                      label={c => (
-                        <span className="inline-flex items-center gap-2 sm:gap-2.5 max-w-full text-sm font-medium">
-                          <span className="truncate capitalize">{c.name}</span>
-                        </span>
-                      )}
-                    />
-                  </div>
-                  <Input
-                    type="tel"
-                    placeholder="Enter your phone number"
-                    className="bg-white max-w-full dark:bg-gray-950 focus-within:border-none! focus-within:outline-hidden! border-none!"
-                    value={phoneNumber}
-                    onChange={handlePhoneNumberChange}
-                  />
-                </div>
-                <ErrorMessage message={error}></ErrorMessage>
-                {success && <GreenNoticeBlock>{success}</GreenNoticeBlock>}
-              </FieldSet>
-              <div className="flex justify-end">
-                <IBlueBGArrowButton onClick={handleSubmit} isLoading={loading}>
-                  Start Call
-                </IBlueBGArrowButton>
-              </div>
+    <div className="h-dvh flex p-8 text-sm/6 w-full gap-3 md:gap-6">
+      {/* ── Left: phone call form ───────────────────────────────────── */}
+      <div className="flex flex-col overflow-hidden h-full w-2/3 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-950">
+        {/* Header */}
+        <PageHeaderBlock className="border-b pl-3 shrink-0">
+          <a
+            href={`/deployment/assistant/${assistantId}/overview`}
+            className="flex items-center hover:text-red-600 hover:cursor-pointer"
+          >
+            <ChevronLeft className="w-5 h-5 mr-1" strokeWidth={1.5} />
+            <PageTitleBlock className="text-sm/6">
+              Back to Assistant
+            </PageTitleBlock>
+          </a>
+        </PageHeaderBlock>
+
+        {/* Body */}
+        <div className="flex-1 flex flex-col items-center justify-center px-8">
+          <div className="w-full max-w-lg space-y-6">
+            <div className="space-y-1">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                Make a Phone Call
+              </h2>
+              <p className="text-gray-500 dark:text-gray-400">
+                Enter a phone number to start a call with your assistant.
+              </p>
             </div>
-          </div>
-          <div className="w-[500px] border-l h-dvh overflow-auto">
-            <div className="px-4 py-4 text-sm leading-normal ">
-              <div className="flex flex-row justify-between items-center text-sm tracking-wider">
-                <h3>Name</h3>
-              </div>
-              <div className="py-2 text-sm leading-normal">
-                {assistant.getName()}
-              </div>
-              {assistant.getDescription() && (
-                <>
-                  <div className="flex mt-4 flex-row  justify-between items-center text-sm tracking-wider">
-                    <h3>Description</h3>
-                  </div>
-                  <div className="py-2 text-sm leading-normal">
-                    {assistant.getDescription()}
-                  </div>
-                </>
+
+            <div
+              className={cn(
+                'p-px text-sm!',
+                'outline-solid outline-transparent',
+                'focus-within:outline-blue-600 focus:outline-blue-600 -outline-offset-1',
+                'border-b border-gray-300 dark:border-gray-700',
+                'dark:focus-within:border-blue-600 focus-within:border-blue-600',
+                'transition-all duration-200 ease-in-out',
+                'flex relative divide-x',
               )}
-            </div>
-            {variables.length > 0 && (
-              <InputGroup
-                title="Arguments"
-                className="m-0 border-x-0 rounded-none"
-                childClass="text-muted px-3"
-              >
-                <div className="text-sm leading-normal">
-                  {variables.map((x, idx) => {
-                    return (
-                      <InputVarForm
-                        key={idx}
-                        var={x}
-                        className="bg-light-background"
-                      >
-                        {x.getType() === InputVarType.textInput && (
-                          <TextTextarea
-                            id={x.getName()}
-                            defaultValue={x.getDefaultvalue()}
-                            onChange={(
-                              e: React.ChangeEvent<HTMLTextAreaElement>,
-                            ) => onChangeArgument(x.getName(), e.target.value)}
-                          />
-                        )}
-                        {x.getType() === InputVarType.paragraph && (
-                          <ParagraphTextarea
-                            id={x.getName()}
-                            defaultValue={x.getDefaultvalue()}
-                            onChange={(
-                              e: React.ChangeEvent<HTMLTextAreaElement>,
-                            ) => onChangeArgument(x.getName(), e.target.value)}
-                          />
-                        )}
-                        {x.getType() === InputVarType.number && (
-                          <NumberTextarea
-                            id={x.getName()}
-                            defaultValue={x.getDefaultvalue()}
-                            onChange={(
-                              e: React.ChangeEvent<HTMLTextAreaElement>,
-                            ) => onChangeArgument(x.getName(), e.target.value)}
-                          />
-                        )}
-                        {x.getType() === InputVarType.json && (
-                          <JsonTextarea
-                            id={x.getName()}
-                            defaultValue={x.getDefaultvalue()}
-                            onChange={(
-                              e: React.ChangeEvent<HTMLTextAreaElement>,
-                            ) => onChangeArgument(x.getName(), e.target.value)}
-                          />
-                        )}
-                        {x.getType() === InputVarType.url && (
-                          <UrlTextarea
-                            id={x.getName()}
-                            defaultValue={x.getDefaultvalue()}
-                            onChange={(
-                              e: React.ChangeEvent<HTMLTextAreaElement>,
-                            ) => onChangeArgument(x.getName(), e.target.value)}
-                          />
-                        )}
-                      </InputVarForm>
-                    );
-                  })}
-                </div>
-              </InputGroup>
-            )}
-            <InputGroup
-              title="Deployment"
-              className="m-0 border-x-0 rounded-none"
-              childClass="text-muted px-3"
             >
-              <div className="space-y-4">
-                <div className="flex justify-between">
-                  <div className="text-sm font-mono lowercase tracking-wider">
-                    Input Mode
-                  </div>
-                  <div className="text-sm font-mono lowercase">
-                    Text
-                    {assistant?.getPhonedeployment()?.getInputaudio() &&
-                      ', Audio'}
-                  </div>
-                </div>
-                <div className="flex justify-between">
-                  <div className="text-sm font-mono lowercase tracking-wider">
-                    Output Mode
-                  </div>
-                  <div className="text-sm font-mono lowercase">
-                    Text
-                    {assistant?.getPhonedeployment()?.getOutputaudio() &&
-                      ', Audio'}
-                  </div>
-                </div>
-                {/*  */}
-                {assistant
-                  .getPhonedeployment()
-                  ?.getInputaudio()
-                  ?.getAudiooptionsList() &&
-                  assistant
-                    .getPhonedeployment()
-                    ?.getInputaudio()
-                    ?.getAudiooptionsList().length! > 0 && (
-                    <div className="space-y-4">
-                      <div className="flex justify-between">
-                        <div className="text-sm text-muted font-mono lowercase">
-                          Listen.Provider
-                        </div>
-                        <div className="text-sm font-mono lowercase mt-1">
-                          {assistant
-                            .getPhonedeployment()
-                            ?.getInputaudio()
-                            ?.getAudioprovider()}
-                        </div>
-                      </div>
-                      {assistant
-                        .getPhonedeployment()
-                        ?.getInputaudio()
-                        ?.getAudiooptionsList()
-                        .filter(d => d.getValue())
-                        .filter(d => d.getKey().startsWith('listen.'))
-                        .map((detail, index) => (
-                          <div className="flex justify-between" key={index}>
-                            <div className="text-sm font-mono lowercase tracking-wider">
-                              {detail.getKey()}
-                            </div>
-                            <div className="font-mono text-sm lowercase">
-                              {detail.getValue()}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
+              <div className="w-48 relative">
+                <Dropdown
+                  className="bg-white max-w-full dark:bg-gray-950 focus-within:border-none! focus-within:outline-hidden! border-none! outline-hidden"
+                  currentValue={country}
+                  setValue={v => setCountry(v)}
+                  allValue={filteredCountries}
+                  placeholder="Select country"
+                  searchable
+                  onSearching={(e: ChangeEvent<HTMLInputElement>) =>
+                    setSearchQuery(e.target.value)
+                  }
+                  option={c => (
+                    <span className="inline-flex items-center gap-2 max-w-full text-sm font-medium">
+                      <span className="truncate capitalize">
+                        {c.name} ({c.value})
+                      </span>
+                    </span>
                   )}
-                {assistant
-                  .getPhonedeployment()
-                  ?.getInputaudio()
-                  ?.getAudiooptionsList() &&
-                  assistant
-                    .getPhonedeployment()
-                    ?.getOutputaudio()
-                    ?.getAudiooptionsList().length! > 0 && (
-                    <div className="space-y-4">
-                      <div className="flex justify-between">
-                        <div className="text-sm font-mono lowercase tracking-wider">
-                          Listen.Provider
-                        </div>
-                        <div className="text-sm font-mono lowercase mt-1">
-                          {assistant
-                            .getPhonedeployment()
-                            ?.getOutputaudio()
-                            ?.getAudioprovider()}
-                        </div>
-                      </div>
-                      {assistant
-                        .getPhonedeployment()
-                        ?.getOutputaudio()
-                        ?.getAudiooptionsList()
-                        .filter(d => d.getValue())
-                        .filter(d => d.getKey().startsWith('speak.'))
-                        .map((detail, index) => (
-                          <div key={index} className="flex justify-between">
-                            <div className="text-sm font-mono lowercase tracking-wider">
-                              {detail.getKey()}
-                            </div>
-                            <div className="text-sm font-mono lowercase">
-                              {detail.getValue()}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
+                  label={c => (
+                    <span className="inline-flex items-center gap-2 max-w-full text-sm font-medium">
+                      <span className="truncate capitalize">
+                        {c.name} ({c.value})
+                      </span>
+                    </span>
                   )}
-                <div className="flex justify-between">
-                  <div className="text-sm font-mono lowercase tracking-wider">
-                    Telephony
-                  </div>
-                  <div className="text-sm font-mono lowercase">
-                    {assistant?.getPhonedeployment()?.getPhoneprovidername()}
-                  </div>
-                </div>
+                />
               </div>
-            </InputGroup>
+              <Input
+                type="tel"
+                placeholder="Enter your phone number"
+                className="bg-white max-w-full dark:bg-gray-950 focus-within:border-none! focus-within:outline-hidden! border-none!"
+                value={phoneNumber}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  setPhoneNumber(e.target.value);
+                  setErrorMessage('');
+                }}
+              />
+            </div>
+
+            <ErrorMessage message={errorMessage} />
+
+            {callStatus === 'success' && (
+              <GreenNoticeBlock>
+                Call has been created successfully.
+              </GreenNoticeBlock>
+            )}
+
+            <div className="flex items-center justify-between">
+              {callStatus === 'success' ? (
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  Make another call
+                </button>
+              ) : (
+                <span />
+              )}
+              <IBlueBGArrowButton
+                onClick={handleSubmit}
+                isLoading={callStatus === 'calling'}
+              >
+                Start Call
+              </IBlueBGArrowButton>
+            </div>
           </div>
         </div>
-      ) : (
-        <PageLoader />
+      </div>
+
+      {/* ── Right: debugger panel ───────────────────────────────────── */}
+      <div className="shrink-0 flex flex-col overflow-hidden border border-gray-200 dark:border-gray-700 w-1/3 rounded bg-white dark:bg-gray-950">
+        <PhoneAgentDebugger
+          assistant={assistant}
+          deployment={deployment}
+          stt={stt}
+          tts={tts}
+          model={model}
+          variables={variables}
+          onChangeArgument={onChangeArgument}
+        />
+      </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Phone Agent Debugger (right panel)
+// ---------------------------------------------------------------------------
+
+const PhoneAgentDebugger: React.FC<{
+  assistant: Assistant;
+  deployment: ReturnType<Assistant['getPhonedeployment']>;
+  stt: any;
+  tts: any;
+  model: any;
+  variables: Variable[];
+  onChangeArgument: (k: string, v: string) => void;
+}> = ({
+  assistant,
+  deployment,
+  stt,
+  tts,
+  model,
+  variables,
+  onChangeArgument,
+}) => {
+  const [tab, setTab] = useState<PhoneDebugTab>('configuration');
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden text-sm">
+      {/* Tab bar */}
+      <div className="shrink-0 flex items-center border-b border-gray-200 dark:border-gray-700">
+        {(['configuration', 'arguments'] as PhoneDebugTab[]).map(t => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className={cn(
+              'px-3 py-2.5 text-sm/6 font-medium border-b-2 transition-colors',
+              tab === t
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200',
+            )}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {/* ── configuration tab ── */}
+      {tab === 'configuration' && (
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <ConfigBlock title="assistant">
+            <InfoRow label="name" value={assistant.getName()} />
+            {assistant.getDescription() && (
+              <InfoRow label="description" value={assistant.getDescription()} />
+            )}
+          </ConfigBlock>
+
+          <ConfigBlock title="telephony">
+            {deployment?.getPhoneprovidername() && (
+              <InfoRow
+                label="provider"
+                value={deployment.getPhoneprovidername()}
+              />
+            )}
+            <InfoRow
+              label="input mode"
+              value={'Text' + (deployment?.getInputaudio() ? ', Audio' : '')}
+            />
+            <InfoRow
+              label="output mode"
+              value={'Text' + (deployment?.getOutputaudio() ? ', Audio' : '')}
+            />
+          </ConfigBlock>
+
+          {stt && (
+            <ConfigBlock title="stt">
+              <InfoRow label="provider" value={stt.getAudioprovider()} />
+              {stt
+                .getAudiooptionsList()
+                .filter((d: any) => d.getValue())
+                .filter((d: any) => d.getKey().startsWith('listen.'))
+                .map((d: any) => (
+                  <InfoRow
+                    key={d.getKey()}
+                    label={d.getKey()}
+                    value={d.getValue()}
+                  />
+                ))}
+            </ConfigBlock>
+          )}
+
+          {tts && (
+            <ConfigBlock title="tts">
+              <InfoRow label="provider" value={tts.getAudioprovider()} />
+              {tts
+                .getAudiooptionsList()
+                .filter((d: any) => d.getValue())
+                .filter((d: any) => d.getKey().startsWith('speak.'))
+                .map((d: any) => (
+                  <InfoRow
+                    key={d.getKey()}
+                    label={d.getKey()}
+                    value={d.getValue()}
+                  />
+                ))}
+            </ConfigBlock>
+          )}
+
+          {model && (
+            <ConfigBlock title="llm">
+              <InfoRow label="provider" value={model.getModelprovidername()} />
+              {model.getAssistantmodeloptionsList().map((m: any) => (
+                <InfoRow
+                  key={m.getKey()}
+                  label={m.getKey()}
+                  value={m.getValue()}
+                />
+              ))}
+            </ConfigBlock>
+          )}
+        </div>
       )}
-    </>
+
+      {/* ── arguments tab ── */}
+      {tab === 'arguments' && (
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {variables.length > 0 ? (
+            <div className="[&_label]:!text-sm [&_label]:!leading-6 [&_label]:!py-2 [&_label]:!px-3 [&_textarea]:!text-sm [&_textarea]:!leading-6">
+              {variables.map((x, idx) => (
+                <InputVarForm key={idx} var={x}>
+                  {x.getType() === InputVarType.textInput && (
+                    <TextTextarea
+                      id={x.getName()}
+                      defaultValue={x.getDefaultvalue()}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                        onChangeArgument(x.getName(), e.target.value)
+                      }
+                    />
+                  )}
+                  {x.getType() === InputVarType.paragraph && (
+                    <ParagraphTextarea
+                      id={x.getName()}
+                      defaultValue={x.getDefaultvalue()}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                        onChangeArgument(x.getName(), e.target.value)
+                      }
+                    />
+                  )}
+                  {x.getType() === InputVarType.number && (
+                    <NumberTextarea
+                      id={x.getName()}
+                      defaultValue={x.getDefaultvalue()}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                        onChangeArgument(x.getName(), e.target.value)
+                      }
+                    />
+                  )}
+                  {x.getType() === InputVarType.json && (
+                    <JsonTextarea
+                      id={x.getName()}
+                      defaultValue={x.getDefaultvalue()}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                        onChangeArgument(x.getName(), e.target.value)
+                      }
+                    />
+                  )}
+                  {x.getType() === InputVarType.url && (
+                    <UrlTextarea
+                      id={x.getName()}
+                      defaultValue={x.getDefaultvalue()}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                        onChangeArgument(x.getName(), e.target.value)
+                      }
+                    />
+                  )}
+                </InputVarForm>
+              ))}
+            </div>
+          ) : (
+            <p className="p-4 text-sm/6 text-gray-400 dark:text-gray-500">
+              No arguments defined.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
   );
 };

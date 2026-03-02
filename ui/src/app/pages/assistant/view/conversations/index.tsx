@@ -156,18 +156,13 @@ export function Conversations({ currentAssistant }: ConversationProps) {
     assistantConversationListAction.criteria,
   ]);
 
-  const handleTraceClick = (assistnatId: string, conversationID: string) => {
+  const handleTraceClick = (assistantId: string, conversationID: string) => {
     const ctr = new Criteria();
-    ctr.setKey('assistantId');
+    ctr.setKey('conversationId');
     ctr.setLogic('match');
-    ctr.setValue(assistnatId);
+    ctr.setValue(conversationID);
 
-    const ctr2 = new Criteria();
-    ctr2.setKey('assistantConversationId');
-    ctr2.setLogic('match');
-    ctr2.setValue(conversationID);
-
-    setCriterias([ctr, ctr2]);
+    setCriterias([ctr]);
     setTelemetryDialogOpen(true);
   };
 
@@ -242,6 +237,7 @@ export function Conversations({ currentAssistant }: ConversationProps) {
         <ConversationTelemetryDialog
           modalOpen={isTelemetryDialogOpen}
           setModalOpen={setTelemetryDialogOpen}
+          assistantId={currentAssistant.getId()}
           criterias={criterias}
         />
       )}

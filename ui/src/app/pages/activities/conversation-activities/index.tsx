@@ -57,24 +57,16 @@ export const ListingPage: FC<{}> = () => {
     useState<AssistantConversationMessage | null>(null);
   const [showLogModal, setShowLogModal] = useState(false);
   const [criterias, setCriterias] = useState<Criteria[]>([]);
+  const [telemetryAssistantId, setTelemetryAssistantId] = useState('');
   const [isTelemetryDialogOpen, setTelemetryDialogOpen] = useState(false);
 
   const handleTraceClick = (trace: AssistantConversationMessage) => {
     const ctr = new Criteria();
-    ctr.setKey('assistantId');
+    ctr.setKey('conversationId');
     ctr.setLogic('match');
-    ctr.setValue(trace.getAssistantid());
-
-    const ctr2 = new Criteria();
-    ctr2.setKey('assistantConversationId');
-    ctr2.setLogic('match');
-    ctr2.setValue(trace.getAssistantconversationid());
-
-    const ctr3 = new Criteria();
-    ctr3.setKey('attributes.messageId');
-    ctr3.setLogic('match');
-    ctr3.setValue(trace.getMessageid());
-    setCriterias([ctr, ctr2, ctr3]);
+    ctr.setValue(trace.getAssistantconversationid());
+    setCriterias([ctr]);
+    setTelemetryAssistantId(trace.getAssistantid());
     setTelemetryDialogOpen(true);
   };
 
@@ -251,6 +243,7 @@ export const ListingPage: FC<{}> = () => {
         <ConversationTelemetryDialog
           modalOpen={isTelemetryDialogOpen}
           setModalOpen={setTelemetryDialogOpen}
+          assistantId={telemetryAssistantId}
           criterias={criterias}
         />
       )}

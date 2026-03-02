@@ -2376,9 +2376,9 @@
     uuid "^10.0.0"
     zustand "^4.5.5"
 
-"@rapidaai/react@/Users/prashant.srivastav/Documents/codes/lexatic/apis/voice-ai/sdks/react/rapidaai-react-1.1.61-v4.tgz":
-  version "1.1.61-v4"
-  resolved "/Users/prashant.srivastav/Documents/codes/lexatic/apis/voice-ai/sdks/react/rapidaai-react-1.1.61-v4.tgz#6819b8be2468db40e98893c04b57d0eaf21239eb"
+"@rapidaai/react@/Users/prashant.srivastav/Documents/codes/lexatic/apis/voice-ai/sdks/react/rapidaai-react-1.1.62-v3.tgz":
+  version "1.1.62-v3"
+  resolved "/Users/prashant.srivastav/Documents/codes/lexatic/apis/voice-ai/sdks/react/rapidaai-react-1.1.62-v3.tgz#4412c0fa83740e889b0ade1ed0bed2257b2fbde8"
   dependencies:
     "@emotion/is-prop-valid" "^1.3.1"
     "@grpc/grpc-js" "^1.13.4"
@@ -2398,9 +2398,9 @@
     ts-protoc-gen "^0.15.1-pre.a71b34e"
     typed-emitter "^2.1.0"
 
-"@rapidaai/react@file:../sdks/react/rapidaai-react-1.1.61-v3.tgz":
-  version "1.1.61-v3"
-  resolved "file:../sdks/react/rapidaai-react-1.1.61-v3.tgz#1705228253f45d54c6263d1f7326f17e142c30b8"
+"@rapidaai/react@file:../sdks/react/rapidaai-react-1.1.62-v2.tgz":
+  version "1.1.62-v2"
+  resolved "file:../sdks/react/rapidaai-react-1.1.62-v2.tgz#216322fee48afee29a9f60277cf1b657a7e5aca2"
   dependencies:
     "@emotion/is-prop-valid" "^1.3.1"
     "@grpc/grpc-js" "^1.13.4"

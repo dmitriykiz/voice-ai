@@ -1,11 +1,14 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Info, Search, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import {
+  AssistantDefinition,
   ConnectionConfig,
   Criteria,
   GetAllAssistantTelemetry,
   GetAllAssistantTelemetryRequest,
   Paginate,
+  TelemetryEvent,
+  TelemetryMetric,
 } from '@rapidaai/react';
 import { ModalProps } from '@/app/components/base/modal';
 import { connectionConfig } from '@/configs';
@@ -14,17 +17,16 @@ import { ModalBody } from '@/app/components/base/modal/modal-body';
 import { BluredWrapper } from '@/app/components/wrapper/blured-wrapper';
 import { PaginationButtonBlock } from '@/app/components/blocks/pagination-button-block';
 import { IButton } from '@/app/components/form/button';
-import { ChevronRight } from 'lucide-react';
 import { useCurrentCredential } from '@/hooks/use-credential';
-import { formatNanoToReadableMilli } from '@/utils/date';
-import { formatDateWithMillisecond, toDate } from '@/utils/date';
-import { Tooltip } from '@/app/components/base/tooltip';
-import { CodeHighlighting } from '@/app/components/code-highlighting';
-import { Timestamp } from 'google-protobuf/google/protobuf/timestamp_pb';
 import { cn } from '@/utils';
 import { TablePagination } from '@/app/components/base/tables/table-pagination';
 
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
 interface ConversationTelemetryDialogProps extends ModalProps {
+  assistantId: string;
   criterias?: Criteria[];
 }
 
@@ -44,55 +46,159 @@ interface SearchField {
 
 interface SentrySearchProps {
   className?: string;
-  updateChips: (chips: Chip[]) => void; // Callback to update chips in parent
+  updateChips: (chips: Chip[]) => void;
   existingChips: Chip[];
 }
 
-interface SpanData {
-  stageName: string;
-  spanId: string;
-  parentId: string | null;
-  start: Timestamp;
-  end: Timestamp;
-  duration: string;
-  attributes: string;
-  children: any[];
+type TelemetryRow =
+  | { kind: 'event'; ts: Date; key: string; record: TelemetryEvent }
+  | { kind: 'metric'; ts: Date; key: string; record: TelemetryMetric };
+
+// ---------------------------------------------------------------------------
+// Color maps
+// ---------------------------------------------------------------------------
+
+const EVENT_COLORS: Record<string, string> = {
+  session:   'text-gray-500 dark:text-gray-400',
+  stt:       'text-green-600 dark:text-green-400',
+  llm:       'text-blue-600 dark:text-blue-400',
+  tts:       'text-violet-600 dark:text-violet-400',
+  vad:       'text-yellow-600 dark:text-yellow-400',
+  eos:       'text-cyan-600 dark:text-cyan-400',
+  denoise:   'text-orange-600 dark:text-orange-400',
+  audio:     'text-slate-600 dark:text-slate-400',
+  tool:      'text-pink-600 dark:text-pink-400',
+  behavior:  'text-rose-600 dark:text-rose-400',
+  knowledge: 'text-teal-600 dark:text-teal-400',
+  metric:    'text-indigo-600 dark:text-indigo-400',
+};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function formatDateTime(d: Date): string {
+  const pad = (n: number, w = 2) => String(n).padStart(w, '0');
+  return (
+    `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ` +
+    `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}.${pad(d.getUTCMilliseconds(), 3)}`
+  );
 }
+
+function eventToJson(event: TelemetryEvent): object {
+  const data = Object.fromEntries(event.getDataMap().toArray() as [string, string][]);
+  return {
+    name:           event.getName(),
+    messageId:      event.getMessageid(),
+    conversationId: event.getAssistantconversationid(),
+    data,
+  };
+}
+
+function metricToJson(metric: TelemetryMetric): object {
+  return {
+    scope:          metric.getScope(),
+    contextId:      metric.getContextid(),
+    conversationId: metric.getAssistantconversationid(),
+    metrics:        metric.getMetricsList().map(m => ({ name: m.getName(), value: m.getValue() })),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// TelemetryRow
+// ---------------------------------------------------------------------------
+
+function TelemetryRowItem({
+  row,
+  isExpanded,
+  onToggle,
+}: {
+  row: TelemetryRow;
+  isExpanded: boolean;
+  onToggle: () => void;
+}) {
+  const dt = formatDateTime(row.ts);
+
+  let typeLabel: string;
+  let typeColor: string;
+  let json: object;
+
+  if (row.kind === 'event') {
+    const nameKey = row.record.getName().split('.')[0];
+    typeLabel = row.record.getName();
+    typeColor = EVENT_COLORS[nameKey] ?? 'text-gray-500 dark:text-gray-400';
+    json = eventToJson(row.record);
+  } else {
+    typeLabel = `metric·${row.record.getScope()}`;
+    typeColor = EVENT_COLORS['metric'];
+    json = metricToJson(row.record);
+  }
+
+  const jsonPreview = JSON.stringify(json);
+  const jsonFull    = JSON.stringify(json, null, 2);
+
+  return (
+    <>
+      <tr
+        className="hover:bg-gray-100 dark:hover:bg-gray-800/60 cursor-pointer border-b border-gray-100 dark:border-gray-800/60"
+        onClick={onToggle}
+      >
+        {/* date + time */}
+        <td className="pl-3 pr-2 py-1.5 whitespace-nowrap tabular-nums text-gray-400 dark:text-gray-500 text-xs">
+          {dt}
+        </td>
+        {/* event type */}
+        <td className={cn('px-2 py-1.5 whitespace-nowrap font-semibold text-xs', typeColor)}>
+          {typeLabel}
+        </td>
+        {/* json preview */}
+        <td className="px-2 pr-3 py-1.5 text-gray-500 dark:text-gray-400 text-xs max-w-0 overflow-hidden truncate">
+          {jsonPreview}
+        </td>
+      </tr>
+
+      {isExpanded && (
+        <tr className="bg-gray-50 dark:bg-gray-800/40">
+          <td className="pl-3 pr-2 py-2 align-top whitespace-nowrap tabular-nums text-gray-400 dark:text-gray-500 text-xs">
+            {dt}
+          </td>
+          <td className={cn('px-2 py-2 align-top whitespace-nowrap font-semibold text-xs', typeColor)}>
+            {typeLabel}
+          </td>
+          <td className="px-2 pr-3 py-2">
+            <pre className="text-xs text-gray-700 dark:text-gray-200 whitespace-pre-wrap break-all leading-5">
+              {jsonFull}
+            </pre>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main dialog
+// ---------------------------------------------------------------------------
 
 export function ConversationTelemetryDialog(
   props: ConversationTelemetryDialogProps,
 ) {
   const { token, authId, projectId } = useCurrentCredential();
-  const [chips, setChips] = useState<Chip[]>([]); // State for chips
-  const [timeline, setTimeline] = useState<SpanData[]>([]);
-  const [expandedSpans, setExpandedSpans] = useState<Set<string>>(new Set());
+  const [chips, setChips] = useState<Chip[]>([]);
+  const [rows, setRows] = useState<TelemetryRow[]>([]);
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [totalItem, setTotalItem] = useState(0);
-  const toggleExpand = (spanId: string) => {
-    setExpandedSpans(prev => {
-      const newExpandedSpans = new Set(prev);
-      if (newExpandedSpans.has(spanId)) {
-        newExpandedSpans.delete(spanId);
-      } else {
-        newExpandedSpans.add(spanId);
-      }
-      return newExpandedSpans;
-    });
-  };
 
   useEffect(() => {
     const initialChips = (props.criterias || []).map((criteria, index) => ({
       field: criteria.getKey(),
       value: criteria.getValue(),
-      id: `${Date.now()}-${index}`, // Ensure a unique ID using timestamp and index
+      id: `${Date.now()}-${index}`,
     }));
     setChips(initialChips);
   }, [props.criterias]);
-
-  const updateChips = (newChips: Chip[]) => {
-    setChips(newChips);
-  };
 
   useEffect(() => {
     const request = new GetAllAssistantTelemetryRequest();
@@ -101,17 +207,19 @@ export function ConversationTelemetryDialog(
     paginate.setPagesize(pageSize);
     request.setPaginate(paginate);
 
-    const criteriaList = [
-      ...chips.map(chip => {
-        const criteria = new Criteria();
-        criteria.setKey(chip.field); // Assuming chip.field maps correctly
-        criteria.setValue(String(chip.value));
-        criteria.setLogic('match'); // Default logic
-        return criteria;
-      }),
-    ];
+    const assistantDef = new AssistantDefinition();
+    assistantDef.setAssistantid(props.assistantId);
+    request.setAssistant(assistantDef);
 
+    const criteriaList = chips.map(chip => {
+      const criteria = new Criteria();
+      criteria.setKey(chip.field);
+      criteria.setValue(String(chip.value));
+      criteria.setLogic('match');
+      return criteria;
+    });
     request.setCriteriasList(criteriaList);
+
     GetAllAssistantTelemetry(
       connectionConfig,
       request,
@@ -121,192 +229,32 @@ export function ConversationTelemetryDialog(
         projectId: projectId,
       }),
     ).then(response => {
-      console.dir(response.toObject());
-      const telemetryList = response.getDataList() || [];
-      const spanMap: Record<string, any[]> = { root: [] };
-      if (response.getPaginated()?.getTotalitem())
+      if (response.getPaginated()?.getTotalitem()) {
         setTotalItem(response.getPaginated()?.getTotalitem()!);
+      }
 
-      telemetryList.forEach(telemetry => {
-        const startTime = telemetry.getStarttime();
-        const endTime = telemetry.getEndtime();
-
-        if (!startTime || !endTime) {
-          console.warn('Telemetry missing start or end time:', telemetry);
-          return;
-        }
-        const spanData: SpanData = {
-          stageName: telemetry.getStagename(),
-          spanId: telemetry.getSpanid(),
-          parentId: telemetry.getParentid() || 'root', // Default to "root" if parentId is missing
-          start: telemetry.getStarttime()!,
-          end: telemetry.getEndtime()!,
-          duration: formatNanoToReadableMilli(telemetry.getDuration(), 3),
-          attributes: JSON.stringify(
-            telemetry.getAttributesMap().toObject(),
-            undefined,
-            2,
-          ),
-          children: [],
-        };
-
-        const parentId = telemetry.getParentid() || 'root';
-        if (!spanMap[parentId]) {
-          spanMap[parentId] = []; // Create an array for orphans
-        }
-        spanMap[parentId].push(spanData);
-      });
-
-      // Add orphan spans to root if their parent IDs are completely missing
-      const allSpanIds = new Set(telemetryList.map(t => t.getSpanid()));
-      Object.keys(spanMap).forEach(parentId => {
-        if (parentId !== 'root' && !allSpanIds.has(parentId)) {
-          spanMap['root'] = [...(spanMap['root'] || []), ...spanMap[parentId]];
-          delete spanMap[parentId]; // Cleanup orphan group
+      const merged: TelemetryRow[] = [];
+      response.getDataList().forEach((r, i) => {
+        const e = r.getEvent();
+        const m = r.getMetric();
+        if (e) {
+          const ts = e.getTime()?.toDate() ?? new Date(0);
+          merged.push({ kind: 'event', ts, key: `e-${i}`, record: e });
+        } else if (m) {
+          const ts = m.getTime()?.toDate() ?? new Date(0);
+          merged.push({ kind: 'metric', ts, key: `m-${i}`, record: m });
         }
       });
 
-      const buildHierarchy = (id: string): SpanData[] => {
-        const spanList = spanMap[id] || [];
-
-        // Sort spans by their start timestamp
-        spanList.sort((a, b) => {
-          const aStart = a.start.toDate();
-          const bStart = b.start.toDate();
-          return aStart.getTime() - bStart.getTime();
-        });
-
-        return spanList.map(span => ({
-          ...span,
-          children: buildHierarchy(span.spanId),
-        }));
-      };
-
-      setTimeline(buildHierarchy('root'));
+      // sort chronologically (oldest first)
+      merged.sort((a, b) => a.ts.getTime() - b.ts.getTime());
+      setRows(merged);
+      setExpandedKey(null);
     });
-  }, [token, authId, projectId, JSON.stringify(chips), pageSize, page]);
+  }, [token, authId, projectId, props.assistantId, JSON.stringify(chips), pageSize, page]);
 
-  const getTimelinePosition = (stage: SpanData) => {
-    // Helper function to flatten spans and children into a flat array
-    const flattenSpans = (spans: SpanData[]): SpanData[] =>
-      spans.reduce(
-        (acc: SpanData[], span: SpanData) => [
-          ...acc,
-          span,
-          ...flattenSpans(span.children),
-        ],
-        [],
-      );
-
-    // Flatten all spans recursively from the timeline
-    const allSpans = flattenSpans(timeline);
-
-    // Calculate minimum and maximum times from flattened spans
-    const minTime = Math.min(...allSpans.map(s => s.start.toDate().getTime()));
-    const maxTime = Math.max(...allSpans.map(s => s.end.toDate().getTime()));
-    const totalDuration = maxTime - minTime;
-
-    // Extract the start and end times for the current stage
-    const startMs = stage.start.toDate().getTime();
-    const endMs = stage.end.toDate().getTime();
-
-    // Calculate relative position within the timeline
-    const left = ((startMs - minTime) / totalDuration) * 100;
-    const width = ((endMs - startMs) / totalDuration) * 100;
-
-    return { left, width };
-  };
-
-  const renderTimeline = (spans: SpanData[], level = 0) => {
-    return spans.map(span => {
-      const isExpanded = expandedSpans.has(span.spanId);
-      const hasChildren = span.children.length > 0;
-      const timelinePos = getTimelinePosition(span);
-
-      return (
-        <div key={span.spanId}>
-          <div
-            className={cn(
-              'grid grid-cols-9 gap-4 p-4 cursor-pointer transition-colors dark:hover:bg-gray-950/40 hover:bg-gray-100',
-            )}
-            style={{ paddingLeft: `${level * 20 + 6}px` }}
-            onClick={() => toggleExpand(span.spanId)}
-          >
-            <div className="flex items-center gap-4 col-span-1">
-              <div
-                className={cn(
-                  'flex items-center  underline',
-                  hasChildren ? 'text-blue-600' : 'opacity-0',
-                )}
-              >
-                <span className="h-6 w-6 flex items-center justify-center rounded-[2px] hover:bg-gray-300 dark:hover:bg-gray-800">
-                  <ChevronRight
-                    strokeWidth={1.5}
-                    className={cn(
-                      'h-full w-full transition-all',
-                      isExpanded && 'rotate-90',
-                    )}
-                  />
-                </span>
-              </div>
-
-              <span className="truncate font-medium text-blue-600 ">
-                {span.spanId.split('-')[0]}
-              </span>
-            </div>
-
-            <div className="flex items-center col-span-2 truncate space-x-2">
-              <span>generic</span> / {span.stageName}
-              <Tooltip
-                className="p-0"
-                content={
-                  <CodeHighlighting
-                    language="json"
-                    className="w-[700px] h-64 p-4 m-0"
-                    code={span.attributes}
-                  ></CodeHighlighting>
-                }
-              >
-                <IButton type="button" className="h-6 w-6 p-0">
-                  <Info className="w-4 h-4 opacity-60" strokeWidth={1.5} />
-                </IButton>
-              </Tooltip>
-            </div>
-            <div className="flex items-center col-span-3">
-              <div className="relative h-6 bg-blue-600/10 w-full">
-                <div
-                  className="absolute h-full bg-blue-600 opacity-80 hover:opacity-100 transition-opacity"
-                  style={{
-                    left: `${timelinePos.left}%`,
-                    width: `${timelinePos.width}%`,
-                    minWidth: '2px',
-                  }}
-                />
-              </div>
-            </div>
-            <div className="flex items-center col-span-1">
-              <span className="font-semibold text-sm">{span.duration}</span>
-            </div>
-            <div className="flex items-center col-span-1">
-              <span className="text-sm">
-                {formatDateWithMillisecond(toDate(span.start))}
-              </span>
-            </div>
-            <div className="flex items-center col-span-1">
-              <span className="text-sm">
-                {formatDateWithMillisecond(toDate(span.end))}
-              </span>
-            </div>
-          </div>
-
-          {isExpanded && (
-            <div className="bg-gray-100 dark:bg-gray-950">
-              {renderTimeline(span.children, level + 1)}
-            </div>
-          )}
-        </div>
-      );
-    });
+  const toggleRow = (key: string) => {
+    setExpandedKey(prev => (prev === key ? null : key));
   };
 
   return (
@@ -315,13 +263,14 @@ export function ConversationTelemetryDialog(
       setModalOpen={props.setModalOpen}
       className="w-full flex-1 h-[75vh]"
     >
-      <ModalBody className="px-0 flex-1 space-y-0">
+      <ModalBody className="px-0 flex-1 space-y-0 flex flex-col">
+        {/* Sticky header */}
         <div className="sticky top-2 z-10">
           <BluredWrapper className="border-t">
             <div className="flex flex-1">
               <SentrySearch
                 className="bg-light-background"
-                updateChips={updateChips}
+                updateChips={setChips}
                 existingChips={chips}
               />
             </div>
@@ -333,23 +282,47 @@ export function ConversationTelemetryDialog(
                 pageSize={pageSize}
                 onChangePageSize={setPageSize}
               />
-              <IButton
-                onClick={() => {
-                  props.setModalOpen(false);
-                }}
-              >
+              <IButton onClick={() => props.setModalOpen(false)}>
                 <X strokeWidth={1.5} className="h-4 w-4" />
               </IButton>
             </PaginationButtonBlock>
           </BluredWrapper>
         </div>
-        <div className="divide-y divide-gray-100 dark:divide-gray-800">
-          {renderTimeline(timeline)}
+
+        {/* Scrollable body */}
+        <div className="flex-1 min-h-0 overflow-y-auto py-1">
+          {rows.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500 text-sm/6 font-mono">
+              No telemetry yet…
+            </div>
+          ) : (
+            <table className="w-full table-fixed font-mono text-sm border-collapse">
+              <colgroup>
+                <col className="w-[15rem]" />  {/* date + time */}
+                <col className="w-[12rem]" />  {/* event type */}
+                <col />                        {/* json — fills rest */}
+              </colgroup>
+              <tbody>
+                {rows.map(row => (
+                  <TelemetryRowItem
+                    key={row.key}
+                    row={row}
+                    isExpanded={expandedKey === row.key}
+                    onToggle={() => toggleRow(row.key)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </ModalBody>
     </BottomModal>
   );
 }
+
+// ---------------------------------------------------------------------------
+// SentrySearch
+// ---------------------------------------------------------------------------
 
 export function SentrySearch({
   className,
@@ -370,69 +343,34 @@ export function SentrySearch({
   useEffect(() => {
     setChips(existingChips);
   }, [existingChips]);
+
   const searchFields: SearchField[] = [
-    { id: 'id', label: 'ID', type: 'string', placeholder: 'Enter UUID...' },
     {
-      id: 'stageName',
-      label: 'StageName',
-      type: 'select',
-      options: [
-        'talk.assistant.connect',
-        'talk.assistant.connect.create-conversation',
-        'talk.assistant.connect.resume-conversation',
-        'talk.assistant.listen.connect',
-        'talk.assistant.speak.connect',
-        'talk.assistant.listen.listening',
-        'talk.assistant.utterance',
-        'talk.assistant.interrupt',
-        'talk.assistant.agent.connect',
-        'talk.assistant.tool.connect',
-        'talk.assistant.tool.execute',
-        'talk.assistant.agent.text-generation',
-        'talk.assistant.speak.transcribe',
-        'talk.assistant.speak.speaking',
-        'talk.assistant.notify',
-        'talk.assistant.disconnect',
-      ],
-    },
-    {
-      id: 'assistantId',
-      label: 'AssistantId',
+      id: 'conversationId',
+      label: 'Conversation ID',
       type: 'number',
-      placeholder: 'Enter ID...',
+      placeholder: 'Enter ID…',
     },
     {
-      id: 'assistantProviderModelId',
-      label: 'AssistantProviderModelId',
-      type: 'number',
-      placeholder: 'Enter ID...',
-    },
-    {
-      id: 'assistantConversationId',
-      label: 'AssistantConversationId',
-      type: 'number',
-      placeholder: 'Enter ID...',
-    },
-    {
-      id: 'attributes.messageId',
-      label: 'MessageID',
+      id: 'name',
+      label: 'Event Name',
       type: 'string',
-      placeholder: 'Enter UUID...',
+      placeholder: 'session, stt, llm…',
+    },
+    {
+      id: 'scope',
+      label: 'Metric Scope',
+      type: 'select',
+      options: ['conversation', 'message'],
     },
   ];
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowFieldDropdown(false);
       }
-      if (
-        stageDropdownRef.current &&
-        !stageDropdownRef.current.contains(event.target as Node)
-      ) {
+      if (stageDropdownRef.current && !stageDropdownRef.current.contains(event.target as Node)) {
         setShowStageDropdown(false);
       }
     }
@@ -441,9 +379,7 @@ export function SentrySearch({
   }, []);
 
   useEffect(() => {
-    if (showValueInput && inputRef.current) {
-      inputRef.current.focus();
-    }
+    if (showValueInput && inputRef.current) inputRef.current.focus();
   }, [showValueInput]);
 
   const handleFieldSelect = (field: SearchField) => {
@@ -459,14 +395,10 @@ export function SentrySearch({
 
   const handleValueSubmit = (value: string = inputValue) => {
     if (selectedField && value.trim()) {
-      const newChip = {
-        field: selectedField.id,
-        value: value.trim(),
-        id: `${Date.now()}`,
-      };
+      const newChip = { field: selectedField.id, value: value.trim(), id: `${Date.now()}` };
       const newChips = [...chips, newChip];
       setChips(newChips);
-      updateChips(newChips); // Notify parent with updated chips
+      updateChips(newChips);
       setSelectedField(null);
       setShowValueInput(false);
       setInputValue('');
@@ -489,9 +421,9 @@ export function SentrySearch({
   };
 
   const removeChip = (chipId: string) => {
-    const filteredChips = chips.filter(chip => chip.id !== chipId);
-    setChips(filteredChips);
-    updateChips(filteredChips); // Notify parent to delete chip
+    const filtered = chips.filter(c => c.id !== chipId);
+    setChips(filtered);
+    updateChips(filtered);
   };
 
   return (
@@ -499,32 +431,27 @@ export function SentrySearch({
       <div
         onClick={() => !showValueInput && setShowFieldDropdown(true)}
         className={cn(
-          'form-input',
-          'min-h-10',
+          'form-input min-h-10',
           'dark:placeholder-gray-600 placeholder-gray-400',
           'dark:text-gray-300 text-gray-600',
-
           'flex items-center',
           'outline-solid outline-[1.5px] outline-transparent',
           'focus-within:outline-blue-600 focus:outline-blue-600 outline-offset-[-1.5px]',
           'border-b border-gray-300 dark:border-gray-700',
           'dark:focus:border-blue-600 focus:border-blue-600',
           'transition-all duration-200 ease-in-out',
-
           'bg-light-background dark:bg-gray-950',
         )}
       >
-        <Search className="w-4 h-4 text-gray-400 ml-3" />
+        <Search className="w-4 h-4 text-gray-400 ml-3 shrink-0" />
         <div className="flex-1 flex flex-wrap items-center gap-2 py-2 px-2">
           {chips.map(chip => (
             <div
               key={chip.id}
-              className="inline-flex items-center gap-2 px-2.5 py-1 rounded-[2px] text-sm border dark:border-gray-900 bg-blue-600/10 "
+              className="inline-flex items-center gap-2 px-2.5 py-1 rounded-[2px] text-sm border dark:border-gray-900 bg-blue-600/10"
               onClick={e => e.stopPropagation()}
             >
-              <span className="font-medium opacity-90 text-blue-600">
-                {chip.field}:
-              </span>
+              <span className="font-medium opacity-90 text-blue-600">{chip.field}:</span>
               <span className="text-blue-600">{chip.value}</span>
               <button
                 onClick={() => removeChip(chip.id)}
@@ -537,12 +464,10 @@ export function SentrySearch({
 
           {showValueInput && selectedField && (
             <div
-              className="inline-flex items-center gap-2 px-2.5 py-1 rounded-[2px] text-sm border "
+              className="inline-flex items-center gap-2 px-2.5 py-1 rounded-[2px] text-sm border"
               onClick={e => e.stopPropagation()}
             >
-              <span className="font-medium opacity-90">
-                {selectedField.label}:
-              </span>
+              <span className="font-medium opacity-90">{selectedField.label}:</span>
               <input
                 ref={inputRef}
                 type={selectedField.type === 'number' ? 'number' : 'text'}
@@ -550,12 +475,8 @@ export function SentrySearch({
                 onChange={e => setInputValue(e.target.value)}
                 onKeyDown={handleKeyPress}
                 onBlur={() => {
-                  if (inputValue.trim()) {
-                    handleValueSubmit();
-                  } else {
-                    setShowValueInput(false);
-                    setSelectedField(null);
-                  }
+                  if (inputValue.trim()) handleValueSubmit();
+                  else { setShowValueInput(false); setSelectedField(null); }
                 }}
                 placeholder={selectedField.placeholder}
                 className="bg-transparent outline-hidden w-48"
@@ -564,7 +485,7 @@ export function SentrySearch({
           )}
 
           {!showValueInput && chips.length === 0 && (
-            <span className="text-sm opacity-60">Click to add filters...</span>
+            <span className="text-sm opacity-60">Click to add filters…</span>
           )}
         </div>
       </div>
@@ -575,9 +496,7 @@ export function SentrySearch({
           className="absolute left-0 right-0 mt-2 bg-white dark:bg-gray-950 border divide-y dark:divide-gray-900 rounded-[2px] shadow-lg z-999"
         >
           <div className="px-3 py-2 bg-gray-100 dark:bg-gray-900">
-            <span className="text-xs font-medium text-gray-500">
-              SELECT FIELD
-            </span>
+            <span className="text-xs font-medium text-gray-500">SELECT FIELD</span>
           </div>
           {searchFields.map(field => (
             <button
@@ -585,10 +504,8 @@ export function SentrySearch({
               onClick={() => handleFieldSelect(field)}
               className="w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between group"
             >
-              <span className="font-medium  group-hover:text-blue-700">
-                {field.label}
-              </span>
-              <span className="text-xs  group-hover:text-blue-500">
+              <span className="font-medium group-hover:text-blue-700">{field.label}</span>
+              <span className="text-xs group-hover:text-blue-500">
                 {field.type === 'select' ? 'select' : field.type}
               </span>
             </button>
@@ -602,7 +519,7 @@ export function SentrySearch({
           className="absolute left-0 right-0 mt-2 bg-white dark:bg-gray-950 border divide-y dark:divide-gray-900 rounded-[2px] shadow-lg z-999"
         >
           <div className="px-3 py-2 bg-gray-100 dark:bg-gray-900">
-            <span className="text-xs font-medium">SELECT STAGE</span>
+            <span className="text-xs font-medium">SELECT VALUE</span>
           </div>
           {(selectedField.options || []).map(option => (
             <button
