@@ -25,16 +25,13 @@ import (
 type resembleTTS struct {
 	*resembleOption
 
-	// context management
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 
-	// mutex for thread-safe access
 	mu         sync.Mutex
 	contextId  string
 	connection *websocket.Conn
 
-	// TTS latency tracking
 	ttsStartedAt  time.Time
 	ttsMetricSent bool
 
@@ -65,7 +62,9 @@ func NewResembleTextToSpeech(
 	}, nil
 }
 
-// Initialize implements internal_transformer.TextToSpeechTransformer.
+// Initialize opens a fresh WebSocket connection to Resemble and starts the
+// read goroutine. Called at session start and after each interruption so the
+// connection is warm before the first text delta arrives.
 func (rt *resembleTTS) Initialize() error {
 	start := time.Now()
 	headers := http.Header{}
@@ -81,7 +80,7 @@ func (rt *resembleTTS) Initialize() error {
 	rt.mu.Unlock()
 
 	rt.logger.Debugf("resemble-tts: connection established")
-	go rt.textToSpeechCallback(conn, rt.ctx)
+	go rt.readLoop(conn)
 	rt.onPacket(internal_type.ConversationEventPacket{
 		Name: "tts",
 		Data: map[string]string{
@@ -94,23 +93,52 @@ func (rt *resembleTTS) Initialize() error {
 	return nil
 }
 
-// Name implements internal_transformer.TextToSpeechTransformer.
 func (*resembleTTS) Name() string {
 	return "resemble-text-to-speech"
 }
 
-func (rt *resembleTTS) textToSpeechCallback(conn *websocket.Conn, ctx context.Context) {
+// handleFlushComplete is called when Resemble signals audio_end. It emits
+// TextToSpeechEndPacket — correctly ordered after the last audio chunk — and
+// closes the per-turn connection.
+func (rt *resembleTTS) handleFlushComplete(conn *websocket.Conn) {
+	rt.mu.Lock()
+	contextId := rt.contextId
+	rt.connection = nil // mark before Close so readLoop error handler sees intentional
+	rt.mu.Unlock()
+
+	rt.onPacket(
+		internal_type.TextToSpeechEndPacket{ContextID: contextId},
+		internal_type.ConversationEventPacket{
+			Name: "tts",
+			Data: map[string]string{"type": "completed"},
+			Time: time.Now(),
+		},
+	)
+	conn.Close()
+}
+
+// readLoop owns a single WebSocket connection for the duration of one TTS turn.
+// It exits when the connection closes — intentionally (interrupt / audio_end)
+// or unexpectedly (network drop).
+func (rt *resembleTTS) readLoop(conn *websocket.Conn) {
 	for {
 		select {
-		case <-ctx.Done():
-			rt.logger.Infof("resemble-tts: context cancelled, stopping response listener")
+		case <-rt.ctx.Done():
 			return
 		default:
 		}
 
 		_, audioChunk, err := conn.ReadMessage()
 		if err != nil {
-			rt.logger.Errorf("resemble-tts: error reading from Resemble WebSocket: %v", err)
+			rt.mu.Lock()
+			intentional := rt.connection == nil // set to nil before conn.Close() on intentional paths
+			if !intentional {
+				rt.connection = nil // unintentional drop: next delta will reconnect
+			}
+			rt.mu.Unlock()
+			if !intentional {
+				rt.logger.Errorf("resemble-tts: connection lost: %v", err)
+			}
 			return
 		}
 
@@ -120,7 +148,6 @@ func (rt *resembleTTS) textToSpeechCallback(conn *websocket.Conn, ctx context.Co
 			continue
 		}
 
-		// Handle different message types
 		messageType, ok := audioData["type"].(string)
 		if !ok {
 			rt.logger.Errorf("resemble-tts: invalid message type format")
@@ -129,33 +156,19 @@ func (rt *resembleTTS) textToSpeechCallback(conn *websocket.Conn, ctx context.Co
 
 		switch messageType {
 		case "audio_end":
-			rt.logger.Infof("resemble-tts: received audio_end event")
-			rt.mu.Lock()
-			contextId := rt.contextId
-			rt.mu.Unlock()
-			rt.onPacket(
-				internal_type.TextToSpeechEndPacket{ContextID: contextId},
-				internal_type.ConversationEventPacket{
-					Name: "tts",
-					Data: map[string]string{"type": "completed"},
-					Time: time.Now(),
-				},
-			)
+			rt.handleFlushComplete(conn)
 			return
-
 		case "audio":
 			payload, ok := audioData["audio_content"].(string)
 			if !ok {
 				rt.logger.Errorf("resemble-tts: invalid audio_content format")
 				continue
 			}
-
 			rawAudioData, err := base64.StdEncoding.DecodeString(payload)
 			if err != nil {
 				rt.logger.Errorf("resemble-tts: error decoding base64 string: %v", err)
 				continue
 			}
-
 			rt.mu.Lock()
 			contextId := rt.contextId
 			startedAt := rt.ttsStartedAt
@@ -174,16 +187,14 @@ func (rt *resembleTTS) textToSpeechCallback(conn *websocket.Conn, ctx context.Co
 				})
 			}
 			rt.onPacket(internal_type.TextToSpeechAudioPacket{ContextID: contextId, AudioChunk: rawAudioData})
-
 		default:
-			rt.logger.Debugf("resemble-tts: received unknown message type: %s", messageType)
+			rt.logger.Debugf("resemble-tts: unhandled message type: %s", messageType)
 		}
 	}
 }
 
 func (rt *resembleTTS) Transform(ctx context.Context, in internal_type.LLMPacket) error {
 	rt.mu.Lock()
-	currentCtx := rt.contextId
 	if in.ContextId() != rt.contextId {
 		rt.contextId = in.ContextId()
 		rt.ttsStartedAt = time.Time{}
@@ -192,29 +203,49 @@ func (rt *resembleTTS) Transform(ctx context.Context, in internal_type.LLMPacket
 	connection := rt.connection
 	rt.mu.Unlock()
 
-	if rt.connection == nil {
-		return fmt.Errorf("resemble-tts: connection is not initialized")
-	}
-
 	switch input := in.(type) {
 	case internal_type.InterruptionPacket:
-		if currentCtx != "" {
-			rt.mu.Lock()
-			rt.ttsStartedAt = time.Time{}
-			rt.ttsMetricSent = false
-			rt.mu.Unlock()
-			rt.onPacket(internal_type.ConversationEventPacket{
-				Name: "tts",
-				Data: map[string]string{"type": "interrupted"},
-				Time: time.Now(),
-			})
+		rt.mu.Lock()
+		rt.contextId = ""
+		rt.ttsStartedAt = time.Time{}
+		rt.ttsMetricSent = false
+		conn := rt.connection
+		rt.connection = nil
+		rt.mu.Unlock()
+		if conn != nil {
+			conn.Close()
+		}
+		rt.onPacket(internal_type.ConversationEventPacket{
+			Name: "tts",
+			Data: map[string]string{"type": "interrupted"},
+			Time: time.Now(),
+		})
+		if err := rt.Initialize(); err != nil {
+			rt.logger.Errorf("resemble-tts: reconnect after interrupt failed: %v", err)
 		}
 		return nil
+
 	case internal_type.LLMResponseDeltaPacket:
-		rt.mu.Lock()
-		if rt.ttsStartedAt.IsZero() {
-			rt.ttsStartedAt = time.Now()
+		// Fallback reconnect: handles Initialize() failure or an unintentional drop.
+		if connection == nil {
+			if err := rt.Initialize(); err != nil {
+				return fmt.Errorf("resemble-tts: failed to connect: %w", err)
+			}
+			rt.mu.Lock()
+			connection = rt.connection
+			if rt.ttsStartedAt.IsZero() {
+				rt.ttsStartedAt = time.Now()
+			}
+			rt.mu.Unlock()
+		} else {
+			rt.mu.Lock()
+			if rt.ttsStartedAt.IsZero() {
+				rt.ttsStartedAt = time.Now()
+			}
+			rt.mu.Unlock()
 		}
+		rt.mu.Lock()
+		currentCtx := rt.contextId
 		rt.mu.Unlock()
 		if err := connection.WriteJSON(rt.GetTextToSpeechRequest(currentCtx, input.Text)); err != nil {
 			rt.logger.Errorf("resemble-tts: error while writing request to websocket: %v", err)
@@ -229,8 +260,11 @@ func (rt *resembleTTS) Transform(ctx context.Context, in internal_type.LLMPacket
 			Time: time.Now(),
 		})
 		return nil
+
 	case internal_type.LLMResponseDonePacket:
+		// TextToSpeechEndPacket is emitted by handleFlushComplete once audio_end received.
 		return nil
+
 	default:
 		return fmt.Errorf("resemble-tts: unsupported input type %T", in)
 	}
@@ -238,14 +272,13 @@ func (rt *resembleTTS) Transform(ctx context.Context, in internal_type.LLMPacket
 
 func (rt *resembleTTS) Close(ctx context.Context) error {
 	rt.ctxCancel()
-
 	rt.mu.Lock()
 	defer rt.mu.Unlock()
 
 	if rt.connection != nil {
-		rt.connection.Close()
-		rt.connection = nil
+		conn := rt.connection
+		rt.connection = nil // mark before Close so readLoop sees intentional
+		conn.Close()
 	}
-
 	return nil
 }

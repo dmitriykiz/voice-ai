@@ -10,9 +10,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -60,6 +58,9 @@ func NewNeuPhonicTextToSpeech(ctx context.Context, logger commons.Logger, creden
 	}, nil
 }
 
+// Initialize opens a fresh WebSocket connection to Neuphonic and starts the
+// read goroutine. Called at session start and after each interruption so the
+// connection is warm before the first text delta arrives.
 func (ct *neuphonicTTS) Initialize() error {
 	start := time.Now()
 	header := http.Header{}
@@ -72,10 +73,9 @@ func (ct *neuphonicTTS) Initialize() error {
 
 	ct.mu.Lock()
 	ct.connection = conn
-	defer ct.mu.Unlock()
+	ct.mu.Unlock()
 
-	go ct.textToSpeechCallback(conn, ct.ctx)
-	go ct.keepalive(conn, ct.ctx)
+	go ct.readLoop(conn)
 	ct.onPacket(internal_type.ConversationEventPacket{
 		Name: "tts",
 		Data: map[string]string{
@@ -92,72 +92,62 @@ func (*neuphonicTTS) Name() string {
 	return "neuphonic-text-to-speech"
 }
 
-func (rt *neuphonicTTS) keepalive(conn *websocket.Conn, ctx context.Context) {
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
+// readLoop owns a single WebSocket connection for the duration of one TTS turn.
+// It exits when the connection closes — intentionally (interrupt / done) or
+// unexpectedly (network drop). Neuphonic has no server-side completion ACK so
+// the turn ends when Transform receives LLMResponseDonePacket.
+func (rt *neuphonicTTS) readLoop(conn *websocket.Conn) {
 	for {
 		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			rt.mu.Lock()
-			if err := conn.WriteJSON(map[string]interface{}{
-				"text": "",
-			}); err != nil {
-				rt.logger.Errorf("neuphonic-tts: keepalive write error: %v", err)
-			}
-			rt.mu.Unlock()
-		}
-	}
-}
-
-func (rt *neuphonicTTS) textToSpeechCallback(conn *websocket.Conn, ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			rt.logger.Infof("neuphonic-tts: context cancelled, stopping response listener")
+		case <-rt.ctx.Done():
 			return
 		default:
-			_, audioChunk, err := conn.ReadMessage()
-			if err != nil {
-				if errors.Is(err, io.EOF) || websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-					rt.logger.Infof("neuphonic-tts: websocket closed gracefully")
-					return
-				}
-				rt.logger.Errorf("neuphonic-tts: websocket read error: %v", err)
-				return
-			}
-			var audioData neuphonic_internal.NeuPhonicTextToSpeechResponse
-			if err := json.Unmarshal(audioChunk, &audioData); err != nil {
-				rt.logger.Errorf("neuphonic-tts: error parsing audio chunk: %v", err)
-				continue
-			}
+		}
 
-			if audioData.Data.Audio != "" {
-				if rawAudioData, err := base64.StdEncoding.DecodeString(audioData.Data.Audio); err == nil {
-					rt.mu.Lock()
-					startedAt := rt.ttsStartedAt
-					metricSent := rt.ttsMetricSent
-					ctxId := rt.contextId
-					if !metricSent && !startedAt.IsZero() {
-						rt.ttsMetricSent = true
-					}
-					rt.mu.Unlock()
-					if ctxId != "" {
-						if !metricSent && !startedAt.IsZero() {
-							rt.onPacket(internal_type.MessageMetricPacket{
-								ContextID: ctxId,
-								Metrics: []*protos.Metric{{
-									Name:  "tts_latency_ms",
-									Value: fmt.Sprintf("%d", time.Since(startedAt).Milliseconds()),
-								}},
-							})
-						}
-						rt.onPacket(internal_type.TextToSpeechAudioPacket{ContextID: ctxId, AudioChunk: rawAudioData})
-					}
-				} else {
-					rt.logger.Errorf("neuphonic-tts: error decoding base64 audio: %v", err)
+		_, audioChunk, err := conn.ReadMessage()
+		if err != nil {
+			rt.mu.Lock()
+			intentional := rt.connection == nil // set to nil before conn.Close() on intentional paths
+			if !intentional {
+				rt.connection = nil // unintentional drop: next delta will reconnect
+			}
+			rt.mu.Unlock()
+			if !intentional {
+				rt.logger.Errorf("neuphonic-tts: connection lost: %v", err)
+			}
+			return
+		}
+
+		var audioData neuphonic_internal.NeuPhonicTextToSpeechResponse
+		if err := json.Unmarshal(audioChunk, &audioData); err != nil {
+			rt.logger.Errorf("neuphonic-tts: error parsing audio chunk: %v", err)
+			continue
+		}
+
+		if audioData.Data.Audio != "" {
+			if rawAudioData, err := base64.StdEncoding.DecodeString(audioData.Data.Audio); err == nil {
+				rt.mu.Lock()
+				startedAt := rt.ttsStartedAt
+				metricSent := rt.ttsMetricSent
+				ctxId := rt.contextId
+				if !metricSent && !startedAt.IsZero() {
+					rt.ttsMetricSent = true
 				}
+				rt.mu.Unlock()
+				if ctxId != "" {
+					if !metricSent && !startedAt.IsZero() {
+						rt.onPacket(internal_type.MessageMetricPacket{
+							ContextID: ctxId,
+							Metrics: []*protos.Metric{{
+								Name:  "tts_latency_ms",
+								Value: fmt.Sprintf("%d", time.Since(startedAt).Milliseconds()),
+							}},
+						})
+					}
+					rt.onPacket(internal_type.TextToSpeechAudioPacket{ContextID: ctxId, AudioChunk: rawAudioData})
+				}
+			} else {
+				rt.logger.Errorf("neuphonic-tts: error decoding base64 audio: %v", err)
 			}
 		}
 	}
@@ -165,43 +155,60 @@ func (rt *neuphonicTTS) textToSpeechCallback(conn *websocket.Conn, ctx context.C
 
 func (t *neuphonicTTS) Transform(ctx context.Context, in internal_type.LLMPacket) error {
 	t.mu.Lock()
-	cnn := t.connection
-	currentCtx := t.contextId
 	if in.ContextId() != t.contextId {
 		t.contextId = in.ContextId()
 		t.ttsStartedAt = time.Time{}
 		t.ttsMetricSent = false
 	}
+	connection := t.connection
 	t.mu.Unlock()
-
-	if cnn == nil {
-		return fmt.Errorf("neuphonic-tts: websocket connection is not initialized")
-	}
 
 	switch input := in.(type) {
 	case internal_type.InterruptionPacket:
-		if currentCtx != "" {
-			t.mu.Lock()
-			t.ttsStartedAt = time.Time{}
-			t.ttsMetricSent = false
-			t.mu.Unlock()
-			t.onPacket(internal_type.ConversationEventPacket{
-				Name: "tts",
-				Data: map[string]string{"type": "interrupted"},
-				Time: time.Now(),
-			})
+		t.mu.Lock()
+		t.contextId = ""
+		t.ttsStartedAt = time.Time{}
+		t.ttsMetricSent = false
+		conn := t.connection
+		t.connection = nil
+		t.mu.Unlock()
+		if conn != nil {
+			conn.Close()
+		}
+		t.onPacket(internal_type.ConversationEventPacket{
+			Name: "tts",
+			Data: map[string]string{"type": "interrupted"},
+			Time: time.Now(),
+		})
+		if err := t.Initialize(); err != nil {
+			t.logger.Errorf("neuphonic-tts: reconnect after interrupt failed: %v", err)
 		}
 		return nil
+
 	case internal_type.LLMResponseDeltaPacket:
-		t.mu.Lock()
-		if t.ttsStartedAt.IsZero() {
-			t.ttsStartedAt = time.Now()
+		// Fallback reconnect: handles Initialize() failure or an unintentional drop.
+		if connection == nil {
+			if err := t.Initialize(); err != nil {
+				return fmt.Errorf("neuphonic-tts: failed to connect: %w", err)
+			}
+			t.mu.Lock()
+			connection = t.connection
+			if t.ttsStartedAt.IsZero() {
+				t.ttsStartedAt = time.Now()
+			}
+			t.mu.Unlock()
+		} else {
+			t.mu.Lock()
+			if t.ttsStartedAt.IsZero() {
+				t.ttsStartedAt = time.Now()
+			}
+			t.mu.Unlock()
 		}
-		t.mu.Unlock()
-		if err := cnn.WriteJSON(map[string]interface{}{
+		if err := connection.WriteJSON(map[string]interface{}{
 			"text": input.Text + " <STOP>",
 		}); err != nil {
 			t.logger.Errorf("neuphonic-tts: unable to write json for text to speech: %v", err)
+			return err
 		}
 		t.onPacket(internal_type.ConversationEventPacket{
 			Name: "tts",
@@ -211,30 +218,38 @@ func (t *neuphonicTTS) Transform(ctx context.Context, in internal_type.LLMPacket
 			},
 			Time: time.Now(),
 		})
+		return nil
+
 	case internal_type.LLMResponseDonePacket:
-		if err := cnn.WriteJSON(map[string]interface{}{
+		// Interrupted before done arrived — nothing to flush.
+		if connection == nil {
+			return nil
+		}
+		// Neuphonic has no server-side completion ACK, so we emit TextToSpeechEndPacket
+		// here and close the per-turn connection ourselves.
+		if err := connection.WriteJSON(map[string]interface{}{
 			"text": "<STOP>",
 		}); err != nil {
 			t.logger.Errorf("neuphonic-tts: unable to send stop signal: %v", err)
 		}
 		t.mu.Lock()
 		ctxId := t.contextId
+		t.connection = nil // mark before Close so readLoop sees intentional
 		t.mu.Unlock()
-		if ctxId != "" {
-			t.onPacket(
-				internal_type.TextToSpeechEndPacket{ContextID: ctxId},
-				internal_type.ConversationEventPacket{
-					Name: "tts",
-					Data: map[string]string{"type": "completed"},
-					Time: time.Now(),
-				},
-			)
-		}
+		connection.Close()
+		t.onPacket(
+			internal_type.TextToSpeechEndPacket{ContextID: ctxId},
+			internal_type.ConversationEventPacket{
+				Name: "tts",
+				Data: map[string]string{"type": "completed"},
+				Time: time.Now(),
+			},
+		)
 		return nil
+
 	default:
 		return fmt.Errorf("neuphonic-tts: unsupported input type %T", in)
 	}
-	return nil
 }
 
 func (t *neuphonicTTS) Close(ctx context.Context) error {
@@ -243,8 +258,9 @@ func (t *neuphonicTTS) Close(ctx context.Context) error {
 	defer t.mu.Unlock()
 
 	if t.connection != nil {
-		t.connection.Close()
-		t.connection = nil
+		conn := t.connection
+		t.connection = nil // mark before Close so readLoop sees intentional
+		conn.Close()
 	}
 	return nil
 }

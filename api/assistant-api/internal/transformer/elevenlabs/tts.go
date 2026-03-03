@@ -10,9 +10,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -28,21 +26,17 @@ import (
 
 type elevenlabsTTS struct {
 	*elevenLabsOption
-	// context management
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 
-	// mutex
-	mu        sync.Mutex
-	contextId string
-
-	// TTS latency tracking
+	mu            sync.Mutex
+	connection    *websocket.Conn
+	contextId     string
 	ttsStartedAt  time.Time
 	ttsMetricSent bool
 
-	logger     commons.Logger
-	connection *websocket.Conn
-	onPacket   func(pkt ...internal_type.Packet) error
+	logger   commons.Logger
+	onPacket func(pkt ...internal_type.Packet) error
 }
 
 func NewElevenlabsTextToSpeech(ctx context.Context, logger commons.Logger, credential *protos.VaultCredential,
@@ -50,7 +44,7 @@ func NewElevenlabsTextToSpeech(ctx context.Context, logger commons.Logger, crede
 	opts utils.Option) (internal_type.TextToSpeechTransformer, error) {
 	eleOpts, err := NewElevenLabsOption(logger, credential, opts)
 	if err != nil {
-		logger.Errorf("elevenlabs-tts: intializing elevenlabs failed %+v", err)
+		logger.Errorf("elevenlabs-tts: initializing elevenlabs failed %+v", err)
 		return nil, err
 	}
 	ctx2, contextCancel := context.WithCancel(ctx)
@@ -63,22 +57,28 @@ func NewElevenlabsTextToSpeech(ctx context.Context, logger commons.Logger, crede
 	}, nil
 }
 
-// Initialize implements internal_transformer.OutputAudioTransformer.
+func (*elevenlabsTTS) Name() string {
+	return "elevenlabs-text-to-speech"
+}
+
+// Initialize opens a fresh WebSocket connection to ElevenLabs and starts the
+// read goroutine. Called at session start and after each interruption so the
+// connection is warm before the first text delta arrives.
 func (ct *elevenlabsTTS) Initialize() error {
 	start := time.Now()
 	header := http.Header{}
 	header.Set("xi-api-key", ct.GetKey())
 	conn, resp, err := websocket.DefaultDialer.Dial(ct.GetTextToSpeechConnectionString(), header)
 	if err != nil {
-		ct.logger.Errorf("elevenlab-tts: error while elevenlabs %s with response %v", err, resp)
+		ct.logger.Errorf("elevenlabs-tts: dial failed %s with response %v", err, resp)
 		return err
 	}
 
 	ct.mu.Lock()
 	ct.connection = conn
-	defer ct.mu.Unlock()
+	ct.mu.Unlock()
 
-	go ct.textToSpeechCallback(conn, ct.ctx)
+	go ct.readLoop(conn)
 	ct.onPacket(internal_type.ConversationEventPacket{
 		Name: "tts",
 		Data: map[string]string{
@@ -91,43 +91,48 @@ func (ct *elevenlabsTTS) Initialize() error {
 	return nil
 }
 
-// Name implements internal_transformer.OutputAudioTransformer.
-func (*elevenlabsTTS) Name() string {
-	return "elevenlabs-text-to-speech"
-}
-
-func (elt *elevenlabsTTS) textToSpeechCallback(conn *websocket.Conn, ctx context.Context) {
+// readLoop owns a single WebSocket connection for the duration of one TTS turn.
+// It exits when the connection closes — intentionally (interrupt / flush complete)
+// or unexpectedly (network drop).
+func (elt *elevenlabsTTS) readLoop(conn *websocket.Conn) {
 	for {
 		select {
-		case <-ctx.Done():
-			elt.logger.Infof("elevenlabs-tts: context cancelled, stopping response listener")
+		case <-elt.ctx.Done():
 			return
 		default:
-			_, audioChunk, err := conn.ReadMessage()
-			if err != nil {
-				if errors.Is(err, io.EOF) || websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-					elt.logger.Infof("elevenlabs-tts: websocket closed gracefully")
-					return
-				}
-				elt.logger.Errorf("elevenlabs-tts: websocket read error: %v", err)
-				return
-			}
-			var audioData elevenlabs_internal.ElevenlabTextToSpeechResponse
-			if err := json.Unmarshal(audioChunk, &audioData); err != nil {
-				elt.logger.Errorf("elevenlab-tts: Error parsing audio chunk: %v", err)
-				continue
-			}
+		}
 
+		_, audioChunk, err := conn.ReadMessage()
+		if err != nil {
+			elt.mu.Lock()
+			intentional := elt.connection == nil // set to nil before conn.Close() on intentional paths
+			if !intentional {
+				elt.connection = nil // unintentional drop: next delta will reconnect
+			}
+			elt.mu.Unlock()
+			if !intentional {
+				elt.logger.Errorf("elevenlabs-tts: connection lost: %v", err)
+			}
+			return
+		}
+
+		var audioData elevenlabs_internal.ElevenlabTextToSpeechResponse
+		if err := json.Unmarshal(audioChunk, &audioData); err != nil {
+			elt.logger.Errorf("elevenlabs-tts: error parsing audio chunk: %v", err)
+			continue
+		}
+
+		if audioData.Audio != "" {
 			if rawAudioData, err := base64.StdEncoding.DecodeString(audioData.Audio); err == nil {
-				if audioData.ContextId != nil {
-					elt.mu.Lock()
-					startedAt := elt.ttsStartedAt
-					metricSent := elt.ttsMetricSent
-					ctxId := *audioData.ContextId
-					if !metricSent && !startedAt.IsZero() {
-						elt.ttsMetricSent = true
-					}
-					elt.mu.Unlock()
+				elt.mu.Lock()
+				ctxId := elt.contextId
+				startedAt := elt.ttsStartedAt
+				metricSent := elt.ttsMetricSent
+				if !metricSent && !startedAt.IsZero() {
+					elt.ttsMetricSent = true
+				}
+				elt.mu.Unlock()
+				if ctxId != "" {
 					if !metricSent && !startedAt.IsZero() {
 						elt.onPacket(internal_type.MessageMetricPacket{
 							ContextID: ctxId,
@@ -139,79 +144,127 @@ func (elt *elevenlabsTTS) textToSpeechCallback(conn *websocket.Conn, ctx context
 					}
 					elt.onPacket(internal_type.TextToSpeechAudioPacket{ContextID: ctxId, AudioChunk: rawAudioData})
 				}
-			}
-
-			if audioData.IsFinal != nil && *audioData.IsFinal {
-				if audioData.ContextId != nil {
-					elt.onPacket(
-						internal_type.TextToSpeechEndPacket{ContextID: *audioData.ContextId},
-						internal_type.ConversationEventPacket{
-							Name: "tts",
-							Data: map[string]string{"type": "completed"},
-							Time: time.Now(),
-						},
-					)
-				}
+			} else {
+				elt.logger.Errorf("elevenlabs-tts: base64 decode failed: %v", err)
 			}
 		}
-	}
 
+		if audioData.IsFinal != nil && *audioData.IsFinal {
+			elt.handleFlushComplete(conn)
+			return
+		}
+	}
+}
+
+// handleFlushComplete is called when ElevenLabs signals isFinal. It emits
+// TextToSpeechEndPacket — correctly ordered after the last audio chunk — and
+// closes the per-turn connection.
+func (elt *elevenlabsTTS) handleFlushComplete(conn *websocket.Conn) {
+	elt.mu.Lock()
+	ctxId := elt.contextId
+	elt.connection = nil // mark before Close so readLoop error handler sees intentional
+	elt.mu.Unlock()
+
+	elt.onPacket(
+		internal_type.TextToSpeechEndPacket{ContextID: ctxId},
+		internal_type.ConversationEventPacket{
+			Name: "tts",
+			Data: map[string]string{"type": "completed"},
+			Time: time.Now(),
+		},
+	)
+	conn.Close()
 }
 
 func (t *elevenlabsTTS) Transform(ctx context.Context, in internal_type.LLMPacket) error {
 	t.mu.Lock()
-	cnn := t.connection
-	currentCtx := t.contextId
 	if in.ContextId() != t.contextId {
 		t.contextId = in.ContextId()
 		t.ttsStartedAt = time.Time{}
 		t.ttsMetricSent = false
 	}
+	connection := t.connection
 	t.mu.Unlock()
-
-	if cnn == nil {
-		return fmt.Errorf("elevenlabs-tts: websocket connection is not initialized")
-	}
 
 	switch input := in.(type) {
 	case internal_type.InterruptionPacket:
-		if currentCtx != "" {
-			t.mu.Lock()
-			t.ttsStartedAt = time.Time{}
-			t.ttsMetricSent = false
-			t.mu.Unlock()
-			t.onPacket(internal_type.ConversationEventPacket{
-				Name: "tts",
-				Data: map[string]string{"type": "interrupted"},
-				Time: time.Now(),
-			})
-		}
-		return nil
-	case internal_type.LLMResponseDeltaPacket:
 		t.mu.Lock()
-		if t.ttsStartedAt.IsZero() {
-			t.ttsStartedAt = time.Now()
-		}
+		t.contextId = ""
+		t.ttsStartedAt = time.Time{}
+		t.ttsMetricSent = false
+		conn := t.connection
+		t.connection = nil
 		t.mu.Unlock()
-		if err := cnn.WriteJSON(map[string]interface{}{
-			"text":       input.Text,
-			"context_id": t.contextId,
-			"flush":      true,
-		}); err != nil {
-			t.logger.Errorf("elevenlab-tts: unable to write json for text to speech: %v", err)
+		if conn != nil {
+			conn.Close()
 		}
 		t.onPacket(internal_type.ConversationEventPacket{
 			Name: "tts",
-			Data: map[string]string{
-				"type": "speaking",
-				"text": input.Text,
-			},
+			Data: map[string]string{"type": "interrupted"},
 			Time: time.Now(),
 		})
-	case internal_type.LLMResponseDonePacket:
+		if err := t.Initialize(); err != nil {
+			t.logger.Errorf("elevenlabs-tts: reconnect after interrupt failed: %v", err)
+		}
 		return nil
+
+	case internal_type.LLMResponseDeltaPacket:
+		// Fallback reconnect: handles Initialize() failure or an unintentional drop.
+		if connection == nil {
+			if err := t.Initialize(); err != nil {
+				return fmt.Errorf("elevenlabs-tts: failed to connect: %w", err)
+			}
+			t.mu.Lock()
+			connection = t.connection
+			if t.ttsStartedAt.IsZero() {
+				t.ttsStartedAt = time.Now()
+			}
+			t.mu.Unlock()
+		} else {
+			t.mu.Lock()
+			if t.ttsStartedAt.IsZero() {
+				t.ttsStartedAt = time.Now()
+			}
+			t.mu.Unlock()
+		}
+		t.mu.Lock()
+		ctxId := t.contextId
+		t.mu.Unlock()
+		if err := connection.WriteJSON(map[string]interface{}{
+			"text":       input.Text,
+			"context_id": ctxId,
+			"flush":      true,
+		}); err != nil {
+			t.logger.Errorf("elevenlabs-tts: write failed: %v", err)
+			return err
+		}
+		t.onPacket(internal_type.ConversationEventPacket{
+			Name: "tts",
+			Data: map[string]string{"type": "speaking", "text": input.Text},
+			Time: time.Now(),
+		})
+
+	case internal_type.LLMResponseDonePacket:
+		// Interrupted before done arrived — nothing to flush.
+		if connection == nil {
+			return nil
+		}
+		t.mu.Lock()
+		ctxId := t.contextId
+		t.mu.Unlock()
+		// Signal end of text stream; ElevenLabs will respond with isFinal:true.
+		if err := connection.WriteJSON(map[string]interface{}{
+			"text":       " ",
+			"context_id": ctxId,
+			"flush":      true,
+		}); err != nil {
+			t.logger.Errorf("elevenlabs-tts: flush signal failed: %v", err)
+			return err
+		}
+		// TextToSpeechEndPacket is emitted by handleFlushComplete once isFinal received.
+
 	default:
-		return fmt.Errorf("elevenlab-tts: unsupported input type %T", in)
+		return fmt.Errorf("elevenlabs-tts: unsupported input type %T", in)
 	}
 	return nil
 }
@@ -222,8 +275,9 @@ func (t *elevenlabsTTS) Close(ctx context.Context) error {
 	defer t.mu.Unlock()
 
 	if t.connection != nil {
-		t.connection.Close()
-		t.connection = nil
+		conn := t.connection
+		t.connection = nil // mark before Close so readLoop sees intentional
+		conn.Close()
 	}
 	return nil
 }

@@ -20,8 +20,6 @@ import (
 const (
 	TEXT_TO_SPEECH_URL = "wss://api.sarvam.ai/text-to-speech/ws"
 	SPEECH_TO_TEXT_URL = "wss://api.sarvam.ai/speech-to-text/ws"
-	MODEL              = "bulbul:v2"
-	VOICE              = "anushka"
 )
 
 type sarvamOption struct {
@@ -32,15 +30,19 @@ type sarvamOption struct {
 }
 
 func NewSarvamOption(logger commons.Logger, vaultCredential *protos.VaultCredential, option utils.Option) (*sarvamOption, error) {
-	cx, ok := vaultCredential.GetValue().AsMap()["key"]
+	raw, ok := vaultCredential.GetValue().AsMap()["key"]
 	if !ok {
-		return nil, fmt.Errorf("sarvam: illegal vault config")
+		return nil, fmt.Errorf("sarvam: missing 'key' in vault credential")
+	}
+	key, ok := raw.(string)
+	if !ok {
+		return nil, fmt.Errorf("sarvam: vault 'key' must be a string, got %T", raw)
 	}
 
 	return &sarvamOption{
 		logger:    logger,
 		modelOpts: option,
-		key:       cx.(string),
+		key:       key,
 		encoder:   base64.StdEncoding,
 	}, nil
 }
@@ -51,10 +53,10 @@ func (ro *sarvamOption) GetKey() string {
 
 func (ro *sarvamOption) textToSpeechUrl() string {
 	params := url.Values{}
+	params.Set("send_completion_event", "true") // required: triggers "event" response after flush
 	if model, err := ro.modelOpts.GetString("speak.model"); err == nil {
-		params.Add("model", model)
+		params.Set("model", model)
 	}
-	// wss://api.sarvam.ai/text-to-speech/ws?model=bulbul:v2&send_completion_event=true
 	return fmt.Sprintf("%s?%s", TEXT_TO_SPEECH_URL, params.Encode())
 }
 

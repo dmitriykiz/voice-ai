@@ -17,6 +17,20 @@ import (
 	"github.com/rapidaai/pkg/utils"
 )
 
+// Compiled once at package init; Normalize() is called for every LLM delta token.
+var (
+	reHeadings   = regexp.MustCompile(`(?m)^#{1,6}\s*`)
+	reEmphasis   = regexp.MustCompile(`\*{1,2}([^*]+?)\*{1,2}|_{1,2}([^_]+?)_{1,2}`)
+	reInlineCode = regexp.MustCompile("`([^`]+)`")
+	reCodeBlock  = regexp.MustCompile("(?s)```[^`]*```")
+	reBlockquote = regexp.MustCompile(`(?m)^>\s?`)
+	reLink       = regexp.MustCompile(`\[(.*?)\]\(.*?\)`)
+	reImage      = regexp.MustCompile(`!\[(.*?)\]\(.*?\)`)
+	reHRule      = regexp.MustCompile(`(?m)^(-{3,}|\*{3,}|_{3,})$`)
+	reLeftover   = regexp.MustCompile(`[*_]+`)
+	reWhitespace = regexp.MustCompile(`\s+`)
+)
+
 // =============================================================================
 // Sarvam Text Normalizer
 // =============================================================================
@@ -64,18 +78,16 @@ func (n *sarvamNormalizer) Normalize(ctx context.Context, text string) string {
 		return text
 	}
 
-	// Clean markdown first
 	text = n.removeMarkdown(text)
 
-	// Apply normalizer pipeline
 	for _, normalizer := range n.normalizers {
 		text = normalizer.Normalize(text)
 	}
 
-	// NO XML escaping - Sarvam uses plain text only
-	// NO SSML breaks - Sarvam doesn't support SSML
+	// NO XML escaping — Sarvam uses plain text only
+	// NO SSML breaks — Sarvam doesn't support SSML
 
-	return n.normalizeWhitespace(text)
+	return strings.TrimSpace(reWhitespace.ReplaceAllString(text, " "))
 }
 
 // =============================================================================
@@ -83,38 +95,14 @@ func (n *sarvamNormalizer) Normalize(ctx context.Context, text string) string {
 // =============================================================================
 
 func (n *sarvamNormalizer) removeMarkdown(input string) string {
-	re := regexp.MustCompile(`(?m)^#{1,6}\s*`)
-	output := re.ReplaceAllString(input, "")
-
-	re = regexp.MustCompile(`\*{1,2}([^*]+?)\*{1,2}|_{1,2}([^_]+?)_{1,2}`)
-	output = re.ReplaceAllString(output, "$1$2")
-
-	re = regexp.MustCompile("`([^`]+)`")
-	output = re.ReplaceAllString(output, "$1")
-
-	re = regexp.MustCompile("(?s)```[^`]*```")
-	output = re.ReplaceAllString(output, "")
-
-	re = regexp.MustCompile(`(?m)^>\s?`)
-	output = re.ReplaceAllString(output, "")
-
-	re = regexp.MustCompile(`\[(.*?)\]\(.*?\)`)
-	output = re.ReplaceAllString(output, "$1")
-
-	re = regexp.MustCompile(`!\[(.*?)\]\(.*?\)`)
-	output = re.ReplaceAllString(output, "$1")
-
-	re = regexp.MustCompile(`(?m)^(-{3,}|\*{3,}|_{3,})$`)
-	output = re.ReplaceAllString(output, "")
-
-	re = regexp.MustCompile(`[*_]+`)
-	output = re.ReplaceAllString(output, "")
-
+	output := reHeadings.ReplaceAllString(input, "")
+	output = reEmphasis.ReplaceAllString(output, "$1$2")
+	output = reInlineCode.ReplaceAllString(output, "$1")
+	output = reCodeBlock.ReplaceAllString(output, "")
+	output = reBlockquote.ReplaceAllString(output, "")
+	output = reImage.ReplaceAllString(output, "$1")
+	output = reLink.ReplaceAllString(output, "$1")
+	output = reHRule.ReplaceAllString(output, "")
+	output = reLeftover.ReplaceAllString(output, "")
 	return output
-}
-
-func (n *sarvamNormalizer) normalizeWhitespace(text string) string {
-	re := regexp.MustCompile(`\s+`)
-	result := re.ReplaceAllString(text, " ")
-	return strings.TrimSpace(result)
 }

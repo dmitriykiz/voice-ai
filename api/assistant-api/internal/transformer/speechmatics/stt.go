@@ -9,9 +9,7 @@ package internal_transformer_speechmatics
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -93,7 +91,7 @@ func (st *speechmaticsSTT) Initialize() error {
 		return err
 	}
 
-	go st.speechToTextCallback(conn, st.ctx)
+	go st.readLoop(conn)
 	st.onPacket(internal_type.ConversationEventPacket{
 		Name: "stt",
 		Data: map[string]string{
@@ -106,88 +104,95 @@ func (st *speechmaticsSTT) Initialize() error {
 	return nil
 }
 
-func (st *speechmaticsSTT) speechToTextCallback(conn *websocket.Conn, ctx context.Context) {
+// readLoop owns the WebSocket connection for the lifetime of the STT session.
+// It exits when the connection closes — intentionally (Close) or unexpectedly (drop).
+func (st *speechmaticsSTT) readLoop(conn *websocket.Conn) {
 	for {
 		select {
-		case <-ctx.Done():
-			st.logger.Infof("speechmatics-stt: context cancelled, stopping listener")
+		case <-st.ctx.Done():
 			return
 		default:
-			_, msg, err := conn.ReadMessage()
-			if err != nil {
-				if errors.Is(err, io.EOF) || websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-					st.logger.Infof("speechmatics-stt: websocket closed gracefully")
-					return
-				}
-				st.logger.Errorf("speechmatics-stt: websocket read error: %v", err)
-				return
-			}
+		}
 
-			var response speechmatics_internal.SpeechmaticsSTTResponse
-			if err := json.Unmarshal(msg, &response); err != nil {
-				st.logger.Errorf("speechmatics-stt: error parsing response: %v", err)
-				continue
-			}
-
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
 			st.mu.Lock()
-			ctxId := st.contextId
-			st.mu.Unlock()
-
-			switch response.Message {
-			case "AddPartialTranscript":
-				transcript := response.Metadata.Transcript
-				if transcript != "" && ctxId != "" {
-					st.onPacket(
-						internal_type.InterruptionPacket{ContextID: ctxId, Source: "word"},
-						internal_type.SpeechToTextPacket{
-							ContextID: ctxId,
-							Script:    transcript,
-							Interim:   true,
-						},
-						internal_type.ConversationEventPacket{
-							Name: "stt",
-							Data: map[string]string{"type": "interim"},
-							Time: time.Now(),
-						},
-					)
-				}
-			case "AddTranscript":
-				transcript := response.Metadata.Transcript
-				if transcript != "" && ctxId != "" {
-					startedNano := st.startedAtNano.Load()
-					if startedNano > 0 {
-						st.onPacket(internal_type.MessageMetricPacket{
-							ContextID: ctxId,
-							Metrics: []*protos.Metric{{
-								Name:  "stt_latency_ms",
-								Value: fmt.Sprintf("%d", (time.Now().UnixNano()-startedNano)/int64(time.Millisecond)),
-							}},
-						})
-						st.startedAtNano.Store(0)
-					}
-
-					st.onPacket(
-						internal_type.InterruptionPacket{ContextID: ctxId, Source: "word"},
-						internal_type.SpeechToTextPacket{
-							ContextID: ctxId,
-							Script:    transcript,
-							Interim:   false,
-						},
-						internal_type.ConversationEventPacket{
-							Name: "stt",
-							Data: map[string]string{"type": "completed"},
-							Time: time.Now(),
-						},
-					)
-				}
-			case "Error":
-				st.logger.Errorf("speechmatics-stt: server error: %s", string(msg))
-				st.onPacket(internal_type.ConversationEventPacket{
-					Name: "stt",
-					Data: map[string]string{"type": "error"},
-					Time: time.Now(),
-				})
+			intentional := st.connection == nil // set to nil before conn.Close() on intentional paths
+			if !intentional {
+				st.connection = nil // unintentional drop
 			}
+			st.mu.Unlock()
+			if !intentional {
+				st.logger.Errorf("speechmatics-stt: connection lost: %v", err)
+			}
+			return
+		}
+
+		var response speechmatics_internal.SpeechmaticsSTTResponse
+		if err := json.Unmarshal(msg, &response); err != nil {
+			st.logger.Errorf("speechmatics-stt: error parsing response: %v", err)
+			continue
+		}
+
+		st.mu.Lock()
+		ctxId := st.contextId
+		st.mu.Unlock()
+
+		switch response.Message {
+		case "AddPartialTranscript":
+			transcript := response.Metadata.Transcript
+			if transcript != "" && ctxId != "" {
+				st.onPacket(
+					internal_type.InterruptionPacket{ContextID: ctxId, Source: "word"},
+					internal_type.SpeechToTextPacket{
+						ContextID: ctxId,
+						Script:    transcript,
+						Interim:   true,
+					},
+					internal_type.ConversationEventPacket{
+						Name: "stt",
+						Data: map[string]string{"type": "interim"},
+						Time: time.Now(),
+					},
+				)
+			}
+		case "AddTranscript":
+			transcript := response.Metadata.Transcript
+			if transcript != "" && ctxId != "" {
+				startedNano := st.startedAtNano.Load()
+				if startedNano > 0 {
+					st.onPacket(internal_type.MessageMetricPacket{
+						ContextID: ctxId,
+						Metrics: []*protos.Metric{{
+							Name:  "stt_latency_ms",
+							Value: fmt.Sprintf("%d", (time.Now().UnixNano()-startedNano)/int64(time.Millisecond)),
+						}},
+					})
+					st.startedAtNano.Store(0)
+				}
+				st.onPacket(
+					internal_type.InterruptionPacket{ContextID: ctxId, Source: "word"},
+					internal_type.SpeechToTextPacket{
+						ContextID: ctxId,
+						Script:    transcript,
+						Interim:   false,
+					},
+					internal_type.ConversationEventPacket{
+						Name: "stt",
+						Data: map[string]string{"type": "completed"},
+						Time: time.Now(),
+					},
+				)
+			}
+		case "Error":
+			st.logger.Errorf("speechmatics-stt: server error: %s", string(msg))
+			st.onPacket(internal_type.ConversationEventPacket{
+				Name: "stt",
+				Data: map[string]string{"type": "error"},
+				Time: time.Now(),
+			})
+		default:
+			st.logger.Debugf("speechmatics-stt: unhandled message type: %s", response.Message)
 		}
 	}
 }
@@ -217,8 +222,9 @@ func (st *speechmaticsSTT) Close(ctx context.Context) error {
 	defer st.mu.Unlock()
 
 	if st.connection != nil {
-		st.connection.Close()
-		st.connection = nil
+		conn := st.connection
+		st.connection = nil // mark before Close so readLoop sees intentional
+		conn.Close()
 	}
 	return nil
 }

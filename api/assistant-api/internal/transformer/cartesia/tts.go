@@ -24,14 +24,12 @@ import (
 
 type cartesiaTTS struct {
 	*cartesiaOption
-	mu sync.Mutex
-	// context management
+	mu        sync.Mutex
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 
 	contextId string
 
-	// TTS latency tracking
 	ttsStartedAt  time.Time
 	ttsMetricSent bool
 
@@ -59,18 +57,22 @@ func NewCartesiaTextToSpeech(ctx context.Context, logger commons.Logger, credent
 	}, nil
 }
 
+// Initialize opens a fresh WebSocket connection to Cartesia and starts the
+// read goroutine. Called at session start and after each interruption so the
+// connection is warm before the first text delta arrives.
 func (ct *cartesiaTTS) Initialize() error {
 	start := time.Now()
 	conn, _, err := websocket.DefaultDialer.Dial(ct.GetTextToSpeechConnectionString(), nil)
 	if err != nil {
-		ct.logger.Errorf("cartesia-stt: unable to dial %v", err)
+		ct.logger.Errorf("cartesia-tts: unable to dial %v", err)
 		return err
 	}
+
 	ct.mu.Lock()
 	ct.connection = conn
 	ct.mu.Unlock()
 
-	go ct.textToSpeechCallback(ct.connection, ct.ctx)
+	go ct.readLoop(conn)
 	ct.onPacket(internal_type.ConversationEventPacket{
 		Name: "tts",
 		Data: map[string]string{
@@ -83,109 +85,155 @@ func (ct *cartesiaTTS) Initialize() error {
 	return nil
 }
 
-func (cst *cartesiaTTS) textToSpeechCallback(conn *websocket.Conn, ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			cst.logger.Infof("cartesia-tts: context cancelled, stopping response listener")
-			return
-		default:
-			_, msg, err := conn.ReadMessage()
-			if err != nil {
-				return
-			}
-			var payload cartesia_internal.TextToSpeechOuput
-			if err := json.Unmarshal(msg, &payload); err != nil {
-				cst.logger.Errorf("cartesia-tts: invalid json from cartesia error : %v", err)
-				continue
-			}
-			if payload.Done {
-				_ = cst.onPacket(
-					internal_type.TextToSpeechEndPacket{ContextID: payload.ContextID},
-					internal_type.ConversationEventPacket{
-						Name: "tts",
-						Data: map[string]string{"type": "completed"},
-						Time: time.Now(),
-					},
-				)
-				continue
-			}
-			if payload.Data == "" {
-				continue
-			}
-			decoded, err := base64.StdEncoding.DecodeString(payload.Data)
-			if err != nil {
-				cst.logger.Error("cartesia-tts: failed to decode audio payload error: %v", err)
-				continue
-			}
-			cst.mu.Lock()
-			startedAt := cst.ttsStartedAt
-			metricSent := cst.ttsMetricSent
-			ctxId := payload.ContextID
-			if !metricSent && !startedAt.IsZero() {
-				cst.ttsMetricSent = true
-			}
-			cst.mu.Unlock()
-			if !metricSent && !startedAt.IsZero() {
-				_ = cst.onPacket(internal_type.MessageMetricPacket{
-					ContextID: ctxId,
-					Metrics: []*protos.Metric{{
-						Name:  "tts_latency_ms",
-						Value: fmt.Sprintf("%d", time.Since(startedAt).Milliseconds()),
-					}},
-				})
-			}
-			_ = cst.onPacket(internal_type.TextToSpeechAudioPacket{ContextID: ctxId, AudioChunk: decoded})
-		}
-	}
-}
-
 // Name returns the name of this transformer.
 func (*cartesiaTTS) Name() string {
 	return "cartesia-text-to-speech"
 }
 
+// handleFlushComplete is called when Cartesia signals done. It emits
+// TextToSpeechEndPacket — correctly ordered after the last audio chunk — and
+// closes the per-turn connection.
+func (cst *cartesiaTTS) handleFlushComplete(conn *websocket.Conn) {
+	cst.mu.Lock()
+	ctxId := cst.contextId
+	cst.connection = nil // mark before Close so readLoop error handler sees intentional
+	cst.mu.Unlock()
+
+	cst.onPacket(
+		internal_type.TextToSpeechEndPacket{ContextID: ctxId},
+		internal_type.ConversationEventPacket{
+			Name: "tts",
+			Data: map[string]string{"type": "completed"},
+			Time: time.Now(),
+		},
+	)
+	conn.Close()
+}
+
+// readLoop owns a single WebSocket connection for the duration of one TTS turn.
+// It exits when the connection closes — intentionally (interrupt / flush complete)
+// or unexpectedly (network drop).
+func (cst *cartesiaTTS) readLoop(conn *websocket.Conn) {
+	for {
+		select {
+		case <-cst.ctx.Done():
+			return
+		default:
+		}
+
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			cst.mu.Lock()
+			intentional := cst.connection == nil // set to nil before conn.Close() on intentional paths
+			if !intentional {
+				cst.connection = nil // unintentional drop: next delta will reconnect
+			}
+			cst.mu.Unlock()
+			if !intentional {
+				cst.logger.Errorf("cartesia-tts: connection lost: %v", err)
+			}
+			return
+		}
+
+		var payload cartesia_internal.TextToSpeechOuput
+		if err := json.Unmarshal(msg, &payload); err != nil {
+			cst.logger.Errorf("cartesia-tts: invalid json from cartesia error : %v", err)
+			continue
+		}
+
+		if payload.Done {
+			cst.handleFlushComplete(conn)
+			return
+		}
+
+		if payload.Data == "" {
+			continue
+		}
+
+		decoded, err := base64.StdEncoding.DecodeString(payload.Data)
+		if err != nil {
+			cst.logger.Errorf("cartesia-tts: failed to decode audio payload error: %v", err)
+			continue
+		}
+
+		cst.mu.Lock()
+		startedAt := cst.ttsStartedAt
+		metricSent := cst.ttsMetricSent
+		ctxId := cst.contextId
+		if !metricSent && !startedAt.IsZero() {
+			cst.ttsMetricSent = true
+		}
+		cst.mu.Unlock()
+
+		if !metricSent && !startedAt.IsZero() {
+			_ = cst.onPacket(internal_type.MessageMetricPacket{
+				ContextID: ctxId,
+				Metrics: []*protos.Metric{{
+					Name:  "tts_latency_ms",
+					Value: fmt.Sprintf("%d", time.Since(startedAt).Milliseconds()),
+				}},
+			})
+		}
+		_ = cst.onPacket(internal_type.TextToSpeechAudioPacket{ContextID: ctxId, AudioChunk: decoded})
+	}
+}
+
 func (ct *cartesiaTTS) Transform(ctx context.Context, in internal_type.LLMPacket) error {
 	ct.mu.Lock()
-	conn := ct.connection
-	currentCtx := ct.contextId
 	if in.ContextId() != ct.contextId {
 		ct.contextId = in.ContextId()
 		ct.ttsStartedAt = time.Time{}
 		ct.ttsMetricSent = false
 	}
+	connection := ct.connection
 	ct.mu.Unlock()
-
-	if conn == nil {
-		return fmt.Errorf("cartesia-tts: websocket connection is not initialized")
-	}
 
 	switch input := in.(type) {
 	case internal_type.InterruptionPacket:
-		if currentCtx != "" {
-			_ = conn.WriteJSON(map[string]interface{}{
-				"context_id": currentCtx,
-				"cancel":     true,
-			})
-			ct.mu.Lock()
-			ct.ttsStartedAt = time.Time{}
-			ct.ttsMetricSent = false
-			ct.mu.Unlock()
-			ct.onPacket(internal_type.ConversationEventPacket{
-				Name: "tts",
-				Data: map[string]string{"type": "interrupted"},
-				Time: time.Now(),
-			})
+		ct.mu.Lock()
+		ct.contextId = ""
+		ct.ttsStartedAt = time.Time{}
+		ct.ttsMetricSent = false
+		conn := ct.connection
+		ct.connection = nil
+		ct.mu.Unlock()
+		if conn != nil {
+			conn.Close()
+		}
+		ct.onPacket(internal_type.ConversationEventPacket{
+			Name: "tts",
+			Data: map[string]string{"type": "interrupted"},
+			Time: time.Now(),
+		})
+		if err := ct.Initialize(); err != nil {
+			ct.logger.Errorf("cartesia-tts: reconnect after interrupt failed: %v", err)
 		}
 		return nil
+
 	case internal_type.LLMResponseDeltaPacket:
-		ct.mu.Lock()
-		if ct.ttsStartedAt.IsZero() {
-			ct.ttsStartedAt = time.Now()
+		// Fallback reconnect: handles Initialize() failure or an unintentional drop.
+		if connection == nil {
+			if err := ct.Initialize(); err != nil {
+				return fmt.Errorf("cartesia-tts: failed to connect: %w", err)
+			}
+			ct.mu.Lock()
+			connection = ct.connection
+			if ct.ttsStartedAt.IsZero() {
+				ct.ttsStartedAt = time.Now()
+			}
+			ct.mu.Unlock()
+		} else {
+			ct.mu.Lock()
+			if ct.ttsStartedAt.IsZero() {
+				ct.ttsStartedAt = time.Now()
+			}
+			ct.mu.Unlock()
 		}
+		ct.mu.Lock()
+		ctxId := ct.contextId
 		ct.mu.Unlock()
-		message := ct.GetTextToSpeechInput(input.Text, map[string]interface{}{"continue": true, "context_id": ct.contextId, "max_buffer_delay_ms": "0ms"})
-		if err := conn.WriteJSON(message); err != nil {
+		message := ct.GetTextToSpeechInput(input.Text, map[string]interface{}{"continue": true, "context_id": ctxId, "max_buffer_delay_ms": "0ms"})
+		if err := connection.WriteJSON(message); err != nil {
 			return err
 		}
 		ct.onPacket(internal_type.ConversationEventPacket{
@@ -196,26 +244,37 @@ func (ct *cartesiaTTS) Transform(ctx context.Context, in internal_type.LLMPacket
 			},
 			Time: time.Now(),
 		})
+
 	case internal_type.LLMResponseDonePacket:
-		message := ct.GetTextToSpeechInput("", map[string]interface{}{"continue": false, "flush": true, "context_id": ct.contextId})
-		if err := conn.WriteJSON(message); err != nil {
+		// Interrupted before done arrived — nothing to flush.
+		if connection == nil {
+			return nil
+		}
+		ct.mu.Lock()
+		ctxId := ct.contextId
+		ct.mu.Unlock()
+		// Signal end of text stream; Cartesia will respond with done:true.
+		message := ct.GetTextToSpeechInput("", map[string]interface{}{"continue": false, "flush": true, "context_id": ctxId})
+		if err := connection.WriteJSON(message); err != nil {
 			return err
 		}
+		// TextToSpeechEndPacket is emitted by handleFlushComplete once done received.
+
 	default:
 		return fmt.Errorf("cartesia-tts: unsupported input type %T", in)
 	}
 	return nil
-
 }
 
 func (ct *cartesiaTTS) Close(ctx context.Context) error {
 	ct.ctxCancel()
-
 	ct.mu.Lock()
 	defer ct.mu.Unlock()
 
 	if ct.connection != nil {
-		_ = ct.connection.Close()
+		conn := ct.connection
+		ct.connection = nil // mark before Close so readLoop sees intentional
+		_ = conn.Close()
 	}
 	return nil
 }

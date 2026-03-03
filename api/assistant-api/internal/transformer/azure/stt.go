@@ -171,9 +171,11 @@ func (s *azureSpeechToText) OnRecognizing(event speech.SpeechRecognitionEventArg
 		return
 	}
 
+	s.mu.Lock()
 	if s.startedAt.IsZero() {
 		s.startedAt = time.Now()
 	}
+	s.mu.Unlock()
 
 	language := result.PrimaryLanguage.Language
 	if language == "" {
@@ -249,10 +251,12 @@ func (s *azureSpeechToText) OnRecognized(event speech.SpeechRecognitionEventArgs
 
 	now := time.Now()
 	var latencyMs int64
+	s.mu.Lock()
 	if !s.startedAt.IsZero() {
 		latencyMs = now.Sub(s.startedAt).Milliseconds()
 		s.startedAt = time.Time{}
 	}
+	s.mu.Unlock()
 
 	confStr := fmt.Sprintf("%.4f", confidence)
 	s.onPacket(

@@ -118,7 +118,7 @@ const (
 	// duration in milliseconds before flushing to InputCh.
 	// 60 ms provides ~2 Silero VAD windows (512 samples each at 16kHz),
 	// improving detection stability with minimal added latency.
-	DefaultInputDurationMs = 60
+	DefaultInputDurationMs = 80
 )
 
 // ============================================================================

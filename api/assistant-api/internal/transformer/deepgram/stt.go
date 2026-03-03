@@ -83,7 +83,7 @@ func (dg *deepgramSTT) Initialize() error {
 
 	dg.mu.Lock()
 	dg.client = dgClient
-	defer dg.mu.Unlock()
+	dg.mu.Unlock()
 
 	dg.onPacket(internal_type.ConversationEventPacket{
 		Name: "stt",

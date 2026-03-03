@@ -18,6 +18,20 @@ import (
 	"github.com/rapidaai/pkg/utils"
 )
 
+// Compiled once at package init; Normalize() is called for every LLM delta token.
+var (
+	rimeReHeadings   = regexp.MustCompile(`(?m)^#{1,6}\s*`)
+	rimeReEmphasis   = regexp.MustCompile(`\*{1,2}([^*]+?)\*{1,2}|_{1,2}([^_]+?)_{1,2}`)
+	rimeReInlineCode = regexp.MustCompile("`([^`]+)`")
+	rimeReCodeBlock  = regexp.MustCompile("(?s)```[^`]*```")
+	rimeReBlockquote = regexp.MustCompile(`(?m)^>\s?`)
+	rimeReLink       = regexp.MustCompile(`\[(.*?)\]\(.*?\)`)
+	rimeReImage      = regexp.MustCompile(`!\[(.*?)\]\(.*?\)`)
+	rimeReHRule      = regexp.MustCompile(`(?m)^(-{3,}|\*{3,}|_{3,})$`)
+	rimeReLeftover   = regexp.MustCompile(`[*_]+`)
+	rimeReWhitespace = regexp.MustCompile(`\s+`)
+)
+
 // rimeNormalizer handles Rime TTS text preprocessing.
 // Rime does NOT support SSML. Custom pauses use <ms> syntax (e.g., <500> for 500ms pause).
 type rimeNormalizer struct {
@@ -27,6 +41,7 @@ type rimeNormalizer struct {
 
 	normalizers []internal_normalizers.Normalizer
 
+	// conjunctionPattern is instance-level: compiled from user-configured boundaries.
 	conjunctionPattern *regexp.Regexp
 }
 
@@ -42,13 +57,11 @@ func NewRimeNormalizer(logger commons.Logger, opts utils.Option) internal_type.T
 	var conjunctionPattern *regexp.Regexp
 	if conjunctionBoundaries, err := opts.GetString("speaker.conjunction.boundaries"); err == nil && conjunctionBoundaries != "" {
 		cfg.Conjunctions = strings.Split(conjunctionBoundaries, commons.SEPARATOR)
-
 		escaped := make([]string, len(cfg.Conjunctions))
 		for i, c := range cfg.Conjunctions {
 			escaped[i] = regexp.QuoteMeta(strings.TrimSpace(c))
 		}
-		pattern := `(` + strings.Join(escaped, "|") + `)`
-		conjunctionPattern = regexp.MustCompile(pattern)
+		conjunctionPattern = regexp.MustCompile(`(` + strings.Join(escaped, "|") + `)`)
 	}
 
 	if conjunctionBreak, err := opts.GetUint64("speaker.conjunction.break"); err == nil {
@@ -83,56 +96,34 @@ func (n *rimeNormalizer) Normalize(ctx context.Context, text string) string {
 		text = normalizer.Normalize(text)
 	}
 
-	// Insert breaks after conjunction boundaries using Rime's <ms> pause syntax
 	if n.conjunctionPattern != nil && n.config.PauseDurationMs > 0 {
 		text = n.insertConjunctionBreaks(text)
 	}
 
-	return n.normalizeWhitespace(text)
+	return strings.TrimSpace(rimeReWhitespace.ReplaceAllString(text, " "))
 }
 
+// =============================================================================
+// Private Helpers
+// =============================================================================
+
 func (n *rimeNormalizer) removeMarkdown(input string) string {
-	re := regexp.MustCompile(`(?m)^#{1,6}\s*`)
-	output := re.ReplaceAllString(input, "")
-
-	re = regexp.MustCompile(`\*{1,2}([^*]+?)\*{1,2}|_{1,2}([^_]+?)_{1,2}`)
-	output = re.ReplaceAllString(output, "$1$2")
-
-	re = regexp.MustCompile("`([^`]+)`")
-	output = re.ReplaceAllString(output, "$1")
-
-	re = regexp.MustCompile("(?s)```[^`]*```")
-	output = re.ReplaceAllString(output, "")
-
-	re = regexp.MustCompile(`(?m)^>\s?`)
-	output = re.ReplaceAllString(output, "")
-
-	re = regexp.MustCompile(`\[(.*?)\]\(.*?\)`)
-	output = re.ReplaceAllString(output, "$1")
-
-	re = regexp.MustCompile(`!\[(.*?)\]\(.*?\)`)
-	output = re.ReplaceAllString(output, "$1")
-
-	re = regexp.MustCompile(`(?m)^(-{3,}|\*{3,}|_{3,})$`)
-	output = re.ReplaceAllString(output, "")
-
-	re = regexp.MustCompile(`[*_]+`)
-	output = re.ReplaceAllString(output, "")
-
+	output := rimeReHeadings.ReplaceAllString(input, "")
+	output = rimeReEmphasis.ReplaceAllString(output, "$1$2")
+	output = rimeReInlineCode.ReplaceAllString(output, "$1")
+	output = rimeReCodeBlock.ReplaceAllString(output, "")
+	output = rimeReBlockquote.ReplaceAllString(output, "")
+	output = rimeReImage.ReplaceAllString(output, "$1")
+	output = rimeReLink.ReplaceAllString(output, "$1")
+	output = rimeReHRule.ReplaceAllString(output, "")
+	output = rimeReLeftover.ReplaceAllString(output, "")
 	return output
 }
 
 // insertConjunctionBreaks adds pauses after conjunctions using Rime's <ms> syntax.
 func (n *rimeNormalizer) insertConjunctionBreaks(text string) string {
 	pauseTag := fmt.Sprintf(" <%d> ", n.config.PauseDurationMs)
-
 	return n.conjunctionPattern.ReplaceAllStringFunc(text, func(match string) string {
 		return match + pauseTag
 	})
-}
-
-func (n *rimeNormalizer) normalizeWhitespace(text string) string {
-	re := regexp.MustCompile(`\s+`)
-	result := re.ReplaceAllString(text, " ")
-	return strings.TrimSpace(result)
 }

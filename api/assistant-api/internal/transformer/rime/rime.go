@@ -29,12 +29,16 @@ type rimeOption struct {
 
 func NewRimeOption(logger commons.Logger, vaultCredential *protos.VaultCredential,
 	opts utils.Option) (*rimeOption, error) {
-	cx, ok := vaultCredential.GetValue().AsMap()["key"]
+	raw, ok := vaultCredential.GetValue().AsMap()["key"]
 	if !ok {
-		return nil, fmt.Errorf("rime: illegal vault config")
+		return nil, fmt.Errorf("rime: missing 'key' in vault credential")
+	}
+	key, ok := raw.(string)
+	if !ok {
+		return nil, fmt.Errorf("rime: vault 'key' must be a string, got %T", raw)
 	}
 	return &rimeOption{
-		key:     cx.(string),
+		key:     key,
 		mdlOpts: opts,
 		logger:  logger,
 	}, nil

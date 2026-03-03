@@ -47,7 +47,7 @@ func NewAzureTextToSpeech(ctx context.Context, logger commons.Logger, credential
 
 	azureOption, err := NewAzureOption(logger, credential, opts)
 	if err != nil {
-		logger.Errorf("azure-tts: Unable to initilize azure option", err)
+		logger.Errorf("azure-tts: unable to initialize azure option: %v", err)
 		return nil, err
 	}
 	ct, ctxCancel := context.WithCancel(ctx)
@@ -91,13 +91,13 @@ func (azure *azureTextToSpeech) Initialize() (err error) {
 	start := time.Now()
 	stream, err := audio.CreatePullAudioOutputStream()
 	if err != nil {
-		azure.logger.Errorf("azure-tts: failed to create audio stream:", err)
+		azure.logger.Errorf("azure-tts: failed to create audio stream: %v", err)
 		return fmt.Errorf("azure-tts: failed to create audio stream: %w", err)
 	}
 	audioConfig, err := audio.NewAudioConfigFromStreamOutput(stream)
 	if err != nil {
 		stream.Close()
-		azure.logger.Errorf("azure-tts: failed to create audio config:", err)
+		azure.logger.Errorf("azure-tts: failed to create audio config: %v", err)
 		return fmt.Errorf("azure-tts: failed to create audio config: %w", err)
 	}
 
@@ -105,7 +105,7 @@ func (azure *azureTextToSpeech) Initialize() (err error) {
 	if err != nil {
 		stream.Close()
 		audioConfig.Close()
-		azure.logger.Errorf("azure-tts: failed to get speech configuration:", err)
+		azure.logger.Errorf("azure-tts: failed to get speech configuration: %v", err)
 		return fmt.Errorf("azure-tts: failed to get speech configuration: %w", err)
 	}
 	// Close speechConfig after creating synthesizer as it's no longer needed
@@ -115,7 +115,7 @@ func (azure *azureTextToSpeech) Initialize() (err error) {
 	if err != nil {
 		stream.Close()
 		audioConfig.Close()
-		azure.logger.Errorf("azure-tts: failed to initialize speech synthesizer:", err)
+		azure.logger.Errorf("azure-tts: failed to initialize speech synthesizer: %v", err)
 		return fmt.Errorf("azure-tts: failed to initialize speech synthesizer: %w", err)
 	}
 
@@ -144,13 +144,6 @@ func (azure *azureTextToSpeech) Initialize() (err error) {
 func (azure *azureTextToSpeech) Transform(ctx context.Context, in internal_type.LLMPacket) error {
 	azure.mu.Lock()
 	cl := azure.client
-	azure.mu.Unlock()
-
-	if cl == nil {
-		return fmt.Errorf("azure-tts: client not initialized")
-	}
-
-	azure.mu.Lock()
 	currentCtx := azure.contextId
 	if in.ContextId() != azure.contextId {
 		azure.contextId = in.ContextId()
@@ -158,6 +151,10 @@ func (azure *azureTextToSpeech) Transform(ctx context.Context, in internal_type.
 		azure.ttsMetricSent = false
 	}
 	azure.mu.Unlock()
+
+	if cl == nil {
+		return fmt.Errorf("azure-tts: client not initialized")
+	}
 
 	switch input := in.(type) {
 	case internal_type.InterruptionPacket:

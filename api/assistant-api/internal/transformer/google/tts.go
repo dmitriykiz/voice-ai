@@ -109,9 +109,7 @@ func (google *googleTextToSpeech) Initialize() error {
 		return fmt.Errorf("failed to send config request: %w", err)
 	}
 
-	// Launch callback goroutine for processing streaming responses.
-	// Pass the current context ID to the callback
-	go google.textToSpeechCallback(stream, google.ctx, currentContextId)
+	go google.recvLoop(stream, currentContextId)
 	google.logger.Debugf("google-tts: connection established")
 	google.onPacket(internal_type.ConversationEventPacket{
 		Name: "tts",
@@ -193,87 +191,82 @@ func (google *googleTextToSpeech) Transform(ctx context.Context, in internal_typ
 	}
 }
 
-// textToSpeechCallback processes streaming responses asynchronously.
-func (g *googleTextToSpeech) textToSpeechCallback(streamClient texttospeechpb.TextToSpeech_StreamingSynthesizeClient, ctx context.Context, initialContextId string) {
+// recvLoop reads audio from the gRPC stream for the lifetime of the synthesis session.
+// It exits when the stream ends (EOF, cancellation, or error).
+func (g *googleTextToSpeech) recvLoop(streamClient texttospeechpb.TextToSpeech_StreamingSynthesizeClient, initialContextId string) {
 	for {
 		select {
-		case <-ctx.Done():
-			g.logger.Infof("google-tts: context cancelled, stopping response listener")
+		case <-g.ctx.Done():
 			return
 		default:
-			// Receive audio content from the stream.
-			resp, err := streamClient.Recv()
-			if err != nil {
-				if err == io.EOF {
-					g.logger.Infof("google-tts: stream ended (EOF)")
-					g.mu.Lock()
-					effectiveCtx := g.contextId
-					if effectiveCtx == "" {
-						effectiveCtx = initialContextId
-					}
-					g.mu.Unlock()
-					g.onPacket(
-						internal_type.TextToSpeechEndPacket{ContextID: effectiveCtx},
-						internal_type.ConversationEventPacket{
-							Name: "tts",
-							Data: map[string]string{"type": "completed"},
-							Time: time.Now(),
-						},
-					)
-					return
+		}
+
+		resp, err := streamClient.Recv()
+		if err != nil {
+			if err == io.EOF {
+				g.mu.Lock()
+				effectiveCtx := g.contextId
+				if effectiveCtx == "" {
+					effectiveCtx = initialContextId
 				}
-				if strings.Contains(err.Error(), "Stream aborted due to long duration elapsed without input sent") {
-					g.logger.Debugf("google-tts: stream aborted due to timeout, reinitializing")
-					go g.Initialize()
-					return
-				}
-				g.logger.Errorf("google-tts: error receiving from stream: %v", err)
+				g.mu.Unlock()
+				g.onPacket(
+					internal_type.TextToSpeechEndPacket{ContextID: effectiveCtx},
+					internal_type.ConversationEventPacket{
+						Name: "tts",
+						Data: map[string]string{"type": "completed"},
+						Time: time.Now(),
+					},
+				)
 				return
 			}
-
-			if resp == nil {
-				continue
-			}
-
-			// Check if stream has been replaced due to interruption
-			g.mu.Lock()
-			currentContextId := g.contextId
-			currentStreamClient := g.streamClient
-			g.mu.Unlock()
-
-			// If Initialize() was called (due to interruption) and replaced the stream,
-			// exit this callback - a new callback is handling the new stream
-			if currentStreamClient != streamClient {
-				g.logger.Debugf("google-tts: interrupted, stream replaced - stopping old callback")
+			if strings.Contains(err.Error(), "Stream aborted due to long duration elapsed without input sent") {
+				g.logger.Debugf("google-tts: stream aborted due to timeout, reinitializing")
+				go g.Initialize()
 				return
 			}
+			g.logger.Errorf("google-tts: error receiving from stream: %v", err)
+			return
+		}
 
-			// Use current context ID (allows context to update without interruption)
-			effectiveContextId := currentContextId
-			if effectiveContextId == "" {
-				effectiveContextId = initialContextId
-			}
+		if resp == nil {
+			continue
+		}
 
-			audioContent := resp.GetAudioContent()
-			g.mu.Lock()
-			startedAt := g.ttsStartedAt
-			metricSent := g.ttsMetricSent
-			if !metricSent && !startedAt.IsZero() {
-				g.ttsMetricSent = true
-			}
-			g.mu.Unlock()
-			if !metricSent && !startedAt.IsZero() {
-				g.onPacket(internal_type.MessageMetricPacket{
-					ContextID: effectiveContextId,
-					Metrics: []*protos.Metric{{
-						Name:  "tts_latency_ms",
-						Value: fmt.Sprintf("%d", time.Since(startedAt).Milliseconds()),
-					}},
-				})
-			}
-			if err := g.onPacket(internal_type.TextToSpeechAudioPacket{ContextID: effectiveContextId, AudioChunk: audioContent}); err != nil {
-				g.logger.Errorf("google-tts: failed to send packet: %v", err)
-			}
+		g.mu.Lock()
+		currentContextId := g.contextId
+		currentStreamClient := g.streamClient
+		g.mu.Unlock()
+
+		if currentStreamClient != streamClient {
+			g.logger.Debugf("google-tts: interrupted, stream replaced - stopping old callback")
+			return
+		}
+
+		effectiveContextId := currentContextId
+		if effectiveContextId == "" {
+			effectiveContextId = initialContextId
+		}
+
+		audioContent := resp.GetAudioContent()
+		g.mu.Lock()
+		startedAt := g.ttsStartedAt
+		metricSent := g.ttsMetricSent
+		if !metricSent && !startedAt.IsZero() {
+			g.ttsMetricSent = true
+		}
+		g.mu.Unlock()
+		if !metricSent && !startedAt.IsZero() {
+			g.onPacket(internal_type.MessageMetricPacket{
+				ContextID: effectiveContextId,
+				Metrics: []*protos.Metric{{
+					Name:  "tts_latency_ms",
+					Value: fmt.Sprintf("%d", time.Since(startedAt).Milliseconds()),
+				}},
+			})
+		}
+		if err := g.onPacket(internal_type.TextToSpeechAudioPacket{ContextID: effectiveContextId, AudioChunk: audioContent}); err != nil {
+			g.logger.Errorf("google-tts: failed to send packet: %v", err)
 		}
 	}
 }

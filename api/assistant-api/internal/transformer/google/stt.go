@@ -95,116 +95,114 @@ func (google *googleSpeechToText) Transform(c context.Context, in internal_type.
 	})
 }
 
-// speechToTextCallback processes streaming responses with context awareness.
-func (g *googleSpeechToText) speechToTextCallback(stram speechpb.Speech_StreamingRecognizeClient, ctx context.Context) {
+// recvLoop reads responses from the gRPC stream for the lifetime of the STT session.
+// It exits when the stream ends (EOF, cancellation, or error).
+func (g *googleSpeechToText) recvLoop(stream speechpb.Speech_StreamingRecognizeClient) {
 	for {
 		select {
-		case <-ctx.Done():
-			g.logger.Infof("google-stt: context cancelled, stopping response listener")
+		case <-g.ctx.Done():
 			return
 		default:
-			resp, err := stram.Recv()
-			if err != nil {
-				if err == io.EOF {
-					g.logger.Infof("google-stt: stream ended (EOF)")
-					return
-				}
-				g.logger.Errorf("google-stt: recv error: %v", err)
-				g.onPacket(internal_type.ConversationEventPacket{
-					Name: "stt",
-					Data: map[string]string{"type": "error", "error": err.Error()},
-					Time: time.Now(),
-				})
-				return
-			}
-			if resp == nil {
-				g.logger.Warnf("google-stt: received nil response")
-				return
-			}
+		}
 
-			for _, result := range resp.Results {
-				if len(result.Alternatives) == 0 {
+		resp, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				return
+			}
+			g.logger.Errorf("google-stt: recv error: %v", err)
+			g.onPacket(internal_type.ConversationEventPacket{
+				Name: "stt",
+				Data: map[string]string{"type": "error", "error": err.Error()},
+				Time: time.Now(),
+			})
+			return
+		}
+		if resp == nil {
+			continue
+		}
+
+		for _, result := range resp.Results {
+			if len(result.Alternatives) == 0 {
+				continue
+			}
+			alt := result.Alternatives[0]
+			if len(alt.GetTranscript()) == 0 {
+				continue
+			}
+			confStr := fmt.Sprintf("%.4f", float64(alt.GetConfidence()))
+			transcript := alt.GetTranscript()
+
+			if v, err := g.mdlOpts.GetFloat64("listen.threshold"); err == nil {
+				if alt.GetConfidence() < float32(v) {
+					g.onPacket(
+						internal_type.ConversationEventPacket{
+							Name: "stt",
+							Data: map[string]string{
+								"type":       "low_confidence",
+								"script":     transcript,
+								"confidence": confStr,
+								"threshold":  fmt.Sprintf("%.4f", v),
+							},
+							Time: time.Now(),
+						},
+					)
 					continue
 				}
-				alt := result.Alternatives[0]
-				if g.onPacket != nil && len(alt.GetTranscript()) > 0 {
-					confStr := fmt.Sprintf("%.4f", float64(alt.GetConfidence()))
-					transcript := alt.GetTranscript()
-
-					if v, err := g.mdlOpts.GetFloat64("listen.threshold"); err == nil {
-						if alt.GetConfidence() < float32(v) {
-							// confidence below threshold, emit event and skip stt processing
-							g.onPacket(
-								internal_type.ConversationEventPacket{
-									Name: "stt",
-									Data: map[string]string{
-										"type":       "low_confidence",
-										"script":     transcript,
-										"confidence": confStr,
-										"threshold":  fmt.Sprintf("%.4f", v),
-									},
-									Time: time.Now(),
-								},
-							)
-							continue
-						}
-					}
-					if result.GetIsFinal() {
-						now := time.Now()
-						var latencyMs int64
-						g.mu.Lock()
-						if !g.startedAt.IsZero() {
-							latencyMs = now.Sub(g.startedAt).Milliseconds()
-							g.startedAt = time.Time{}
-						}
-						g.mu.Unlock()
-						g.onPacket(
-							internal_type.InterruptionPacket{Source: internal_type.InterruptionSourceWord},
-							internal_type.SpeechToTextPacket{
-								Script:     transcript,
-								Confidence: float64(alt.GetConfidence()),
-								Language:   result.GetLanguageCode(),
-								Interim:    false,
-							},
-							internal_type.ConversationEventPacket{
-								Name: "stt",
-								Data: map[string]string{
-									"type":       "completed",
-									"script":     transcript,
-									"confidence": confStr,
-									"language":   result.GetLanguageCode(),
-									"word_count": fmt.Sprintf("%d", len(strings.Fields(transcript))),
-									"char_count": fmt.Sprintf("%d", len(transcript)),
-								},
-								Time: now,
-							},
-							internal_type.MessageMetricPacket{
-								Metrics: []*protos.Metric{{Name: "stt_latency_ms", Value: fmt.Sprintf("%d", latencyMs)}},
-							},
-						)
-					} else {
-						g.onPacket(
-							internal_type.InterruptionPacket{Source: internal_type.InterruptionSourceWord},
-							internal_type.SpeechToTextPacket{
-								Script:     transcript,
-								Confidence: float64(alt.GetConfidence()),
-								Language:   result.GetLanguageCode(),
-								Interim:    true,
-							},
-							internal_type.ConversationEventPacket{
-								Name: "stt",
-								Data: map[string]string{
-									"type":       "interim",
-									"script":     transcript,
-									"confidence": confStr,
-								},
-								Time: time.Now(),
-							},
-						)
-					}
-				}
 			}
-
+			if result.GetIsFinal() {
+				now := time.Now()
+				var latencyMs int64
+				g.mu.Lock()
+				if !g.startedAt.IsZero() {
+					latencyMs = now.Sub(g.startedAt).Milliseconds()
+					g.startedAt = time.Time{}
+				}
+				g.mu.Unlock()
+				g.onPacket(
+					internal_type.InterruptionPacket{Source: internal_type.InterruptionSourceWord},
+					internal_type.SpeechToTextPacket{
+						Script:     transcript,
+						Confidence: float64(alt.GetConfidence()),
+						Language:   result.GetLanguageCode(),
+						Interim:    false,
+					},
+					internal_type.ConversationEventPacket{
+						Name: "stt",
+						Data: map[string]string{
+							"type":       "completed",
+							"script":     transcript,
+							"confidence": confStr,
+							"language":   result.GetLanguageCode(),
+							"word_count": fmt.Sprintf("%d", len(strings.Fields(transcript))),
+							"char_count": fmt.Sprintf("%d", len(transcript)),
+						},
+						Time: now,
+					},
+					internal_type.MessageMetricPacket{
+						Metrics: []*protos.Metric{{Name: "stt_latency_ms", Value: fmt.Sprintf("%d", latencyMs)}},
+					},
+				)
+			} else {
+				g.onPacket(
+					internal_type.InterruptionPacket{Source: internal_type.InterruptionSourceWord},
+					internal_type.SpeechToTextPacket{
+						Script:     transcript,
+						Confidence: float64(alt.GetConfidence()),
+						Language:   result.GetLanguageCode(),
+						Interim:    true,
+					},
+					internal_type.ConversationEventPacket{
+						Name: "stt",
+						Data: map[string]string{
+							"type":       "interim",
+							"script":     transcript,
+							"confidence": confStr,
+						},
+						Time: time.Now(),
+					},
+				)
+			}
 		}
 	}
 }
@@ -217,15 +215,14 @@ func (google *googleSpeechToText) Initialize() error {
 		return err
 	}
 
+	google.mu.Lock()
 	if google.stream != nil {
 		_ = google.stream.CloseSend()
 	}
-
-	google.mu.Lock()
 	google.stream = stream
-	defer google.mu.Unlock()
+	google.mu.Unlock()
 
-	if err := google.stream.Send(&speechpb.StreamingRecognizeRequest{
+	if err := stream.Send(&speechpb.StreamingRecognizeRequest{
 		Recognizer: google.GetRecognizer(),
 		StreamingRequest: &speechpb.StreamingRecognizeRequest_StreamingConfig{
 			StreamingConfig: google.SpeechToTextOptions(),
@@ -234,10 +231,9 @@ func (google *googleSpeechToText) Initialize() error {
 		google.logger.Errorf("google-stt: error creating google-stt stream: %v", err)
 		return err
 	}
-	// Launch callback listener
-	go google.speechToTextCallback(stream, google.ctx)
-	google.logger.Debugf("google-stt: connection established")
 
+	go google.recvLoop(stream)
+	google.logger.Debugf("google-stt: connection established")
 	google.onPacket(internal_type.ConversationEventPacket{
 		Name: "stt",
 		Data: map[string]string{

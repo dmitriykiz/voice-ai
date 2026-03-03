@@ -36,7 +36,7 @@ func TestNewSarvamOption_MissingKey(t *testing.T) {
 	opt, err := NewSarvamOption(newTestLogger(), cred, utils.Option{})
 	assert.Error(t, err)
 	assert.Nil(t, opt)
-	assert.Contains(t, err.Error(), "illegal vault config")
+	assert.Contains(t, err.Error(), "missing 'key'")
 }
 
 func TestNewSarvamOption_EmptyVault(t *testing.T) {
@@ -155,7 +155,7 @@ func TestTextToSpeechUrl_Default(t *testing.T) {
 	url := opt.textToSpeechUrl()
 
 	assert.Contains(t, url, TEXT_TO_SPEECH_URL)
-	// No model param when not set
+	assert.Contains(t, url, "send_completion_event=true") // required for handleFlushComplete
 	assert.NotContains(t, url, "model=")
 }
 
@@ -168,6 +168,7 @@ func TestTextToSpeechUrl_WithModel(t *testing.T) {
 	url := opt.textToSpeechUrl()
 
 	assert.Contains(t, url, TEXT_TO_SPEECH_URL)
+	assert.Contains(t, url, "send_completion_event=true")
 	assert.Contains(t, url, "model=bulbul")
 }
 
