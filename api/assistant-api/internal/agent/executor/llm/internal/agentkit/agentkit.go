@@ -3,6 +3,40 @@
 //
 // Licensed under GPL-2.0 with Rapida Additional Terms.
 // See LICENSE.md or contact sales@rapida.ai for commercial usage.
+
+// Package internal_agentkit implements the AgentKit assistant executor.
+//
+// AgentKit is a gRPC-based protocol that allows external agents to participate
+// in Rapida voice conversations. Unlike the model executor (which manages LLM
+// calls, history, and tool execution internally), the agentkit executor acts as
+// a transparent bridge: the external agent owns the conversation loop, tool
+// orchestration, and state management.
+//
+// # Lifecycle
+//
+//  1. Initialize — dials the external agent's gRPC endpoint, starts a
+//     bidirectional Talk stream, sends ConversationInitialization as the first
+//     message, and spawns a listener goroutine.
+//  2. Execute (called per user turn) — forwards UserTextPacket to the agent.
+//     StaticPacket is a no-op (external agent manages its own history).
+//  3. Close — sends CloseSend on the stream, tears down the gRPC connection,
+//     and waits for the listener goroutine to exit (with a 5 s timeout).
+//
+// # ConversationEvent contract
+//
+// The executor emits ConversationEventPacket at every critical point so the
+// debugger, analytics, and webhook pipelines have full visibility. Events use
+// Name="llm" for agent-level events and Name="tool" for tool observability:
+//
+//	Initialize  → {type: "agentkit_initialized", provider, url, init_ms}
+//	Execute     → {type: "executing",   script, input_char_count}
+//	Init ack    → {type: "initialization_ack", conversation_id}
+//	Interruption→ {type: "interruption", source}
+//	Text done   → {type: "completed",   text, response_char_count}
+//	Tool call   → {type: "tool_call",   tool_id, name}          (Name="tool")
+//	Tool result → {type: "tool_result",  tool_id, name, success} (Name="tool")
+//	Agent error → {type: "error",       error, code}
+//	Directive   → (forwarded as-is, no extra event)
 package internal_agentkit
 
 import (
@@ -38,6 +72,7 @@ type agentkitExecutor struct {
 	connection *grpc.ClientConn
 	talker     grpc.BidiStreamingClient[protos.TalkInput, protos.TalkOutput]
 	mu         sync.RWMutex
+	done       chan struct{} // closed when the listener goroutine exits
 }
 
 // NewAgentKitAssistantExecutor creates a new AgentKit-based assistant executor.
@@ -52,8 +87,11 @@ func (e *agentkitExecutor) Name() string {
 	return "agentkit"
 }
 
-// Initialize establishes the gRPC connection and starts the listener.
+// Initialize establishes the gRPC connection and starts the listener goroutine.
+//
+// Emits ConversationEventPacket: {type: "agentkit_initialized"}.
 func (e *agentkitExecutor) Initialize(ctx context.Context, comm internal_type.Communication, cfg *protos.ConversationInitialization) error {
+	start := time.Now()
 	provider := comm.Assistant().AssistantProviderAgentkit
 	if provider == nil {
 		return fmt.Errorf("agentkit provider is not enabled")
@@ -64,17 +102,28 @@ func (e *agentkitExecutor) Initialize(ctx context.Context, comm internal_type.Co
 		return err
 	}
 
-	// Start listener - stops on context cancel or server close
+	// Start listener goroutine — stops on context cancel or server close
+	e.done = make(chan struct{})
 	utils.Go(ctx, func() {
-		if err := e.listen(ctx, comm.OnPacket); err != nil && ctx.Err() == nil {
-			comm.OnPacket(ctx, internal_type.DirectivePacket{Directive: protos.ConversationDirective_END_CONVERSATION, Arguments: map[string]interface{}{"reason": err.Error()}})
-		}
+		defer close(e.done)
+		e.listen(ctx, comm)
 	})
 
 	// Send initialization as the first message (mirrors the WebTalk flow)
 	if err := e.sendInitialization(provider.AssistantId, provider.Id, comm.Conversation().Id, cfg); err != nil {
 		return fmt.Errorf("failed to send initialization: %w", err)
 	}
+
+	comm.OnPacket(ctx, internal_type.ConversationEventPacket{
+		Name: "llm",
+		Data: map[string]string{
+			"type":     "agentkit_initialized",
+			"provider": "agentkit",
+			"url":      provider.Url,
+			"init_ms":  fmt.Sprintf("%d", time.Since(start).Milliseconds()),
+		},
+		Time: time.Now(),
+	})
 	return nil
 }
 
@@ -140,7 +189,7 @@ func (e *agentkitExecutor) buildTLSCredentials(certPEM string) (credentials.Tran
 	}), nil
 }
 
-// send writes a message to the gRPC stream.
+// send writes a message to the gRPC stream (thread-safe).
 func (e *agentkitExecutor) send(req *protos.TalkInput) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -172,89 +221,189 @@ func (e *agentkitExecutor) sendInitialization(assistantId uint64, assistantProvi
 	})
 }
 
-// listen reads messages until context is cancelled or connection closes.
-func (e *agentkitExecutor) listen(ctx context.Context, onPacket func(ctx context.Context, packet ...internal_type.Packet) error) error {
+// listen reads messages from the stream until context is cancelled or connection closes.
+// It guards the talker reference with mu.RLock to avoid racing with Close().
+func (e *agentkitExecutor) listen(ctx context.Context, comm internal_type.Communication) {
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 		default:
 		}
-		resp, err := e.talker.Recv()
-		if err != nil {
-			e.logger.Debugf("Listener received error: %v", err)
-			code := status.Code(err)
-			switch {
-			case errors.Is(err, io.EOF):
-				// Server gracefully closed
-				onPacket(ctx, internal_type.DirectivePacket{Directive: protos.ConversationDirective_END_CONVERSATION, Arguments: map[string]interface{}{"reason": "server closed connection"}})
-			case code == codes.Canceled:
-				// RPC canceled (client or server)
-				onPacket(ctx, internal_type.DirectivePacket{Directive: protos.ConversationDirective_END_CONVERSATION, Arguments: map[string]interface{}{"reason": "connection canceled"}})
-			case code == codes.Unavailable:
-				// Server went down
-				onPacket(ctx, internal_type.DirectivePacket{Directive: protos.ConversationDirective_END_CONVERSATION, Arguments: map[string]interface{}{"reason": "server unavailable"}})
-			default:
-				// Other errors
-				onPacket(ctx, internal_type.DirectivePacket{Directive: protos.ConversationDirective_END_CONVERSATION, Arguments: map[string]interface{}{"reason": err.Error()}})
-			}
-			return nil
+
+		e.mu.RLock()
+		talker := e.talker
+		e.mu.RUnlock()
+
+		if talker == nil {
+			return
 		}
-		e.handleResponse(ctx, resp, onPacket)
+
+		resp, err := talker.Recv()
+		if err != nil {
+			reason := e.streamErrorReason(err)
+			comm.OnPacket(ctx, internal_type.DirectivePacket{
+				Directive: protos.ConversationDirective_END_CONVERSATION,
+				Arguments: map[string]interface{}{"reason": reason},
+			})
+			return
+		}
+		e.handleResponse(ctx, resp, comm)
 	}
 }
 
-// handleResponse processes a single response from the server.
-func (e *agentkitExecutor) handleResponse(ctx context.Context, resp *protos.TalkOutput, onPacket func(ctx context.Context, packet ...internal_type.Packet) error) {
+// streamErrorReason maps a stream error to a human-readable reason string.
+func (e *agentkitExecutor) streamErrorReason(err error) string {
+	e.logger.Debugf("Listener received error: %v", err)
+	switch {
+	case errors.Is(err, io.EOF):
+		return "server closed connection"
+	case status.Code(err) == codes.Canceled:
+		return "connection canceled"
+	case status.Code(err) == codes.Unavailable:
+		return "server unavailable"
+	default:
+		return err.Error()
+	}
+}
+
+// handleResponse processes a single response from the external agent.
+//
+// It emits the appropriate Packet(s) for each message type and pairs them with
+// ConversationEventPacket where relevant for observability.
+func (e *agentkitExecutor) handleResponse(ctx context.Context, resp *protos.TalkOutput, comm internal_type.Communication) {
 	switch data := resp.GetData().(type) {
 	case *protos.TalkOutput_Initialization:
-		// External agent acknowledged ConversationInitialization (mirrors WebTalk ack flow).
+		// External agent acknowledged ConversationInitialization.
+		// Emits: ConversationEventPacket {type: "initialization_ack"}
 		e.logger.Debugf("AgentKit initialization acknowledged, conversationId=%d", data.Initialization.GetAssistantConversationId())
+		comm.OnPacket(ctx, internal_type.ConversationEventPacket{
+			Name: "llm",
+			Data: map[string]string{
+				"type":            "initialization_ack",
+				"conversation_id": fmt.Sprintf("%d", data.Initialization.GetAssistantConversationId()),
+			},
+			Time: time.Now(),
+		})
 
 	case *protos.TalkOutput_Interruption:
-		onPacket(ctx, internal_type.InterruptionPacket{ContextID: data.Interruption.Id, Source: internal_type.InterruptionSourceWord})
+		// Emits: InterruptionPacket + ConversationEventPacket {type: "interruption"}
+		comm.OnPacket(ctx,
+			internal_type.InterruptionPacket{ContextID: data.Interruption.Id, Source: internal_type.InterruptionSourceWord},
+			internal_type.ConversationEventPacket{
+				ContextID: data.Interruption.Id,
+				Name:      "llm",
+				Data:      map[string]string{"type": "interruption", "source": "word"},
+				Time:      time.Now(),
+			},
+		)
 
 	case *protos.TalkOutput_Assistant:
 		switch msg := data.Assistant.GetMessage().(type) {
 		case *protos.ConversationAssistantMessage_Text:
 			if data.Assistant.GetCompleted() {
-				onPacket(ctx, internal_type.LLMResponseDonePacket{
-					ContextID: data.Assistant.GetId(),
-					Text:      msg.Text,
-				})
+				// Emits: LLMResponseDonePacket + ConversationEventPacket {type: "completed"}
+				comm.OnPacket(ctx,
+					internal_type.LLMResponseDonePacket{
+						ContextID: data.Assistant.GetId(),
+						Text:      msg.Text,
+					},
+					internal_type.ConversationEventPacket{
+						ContextID: data.Assistant.GetId(),
+						Name:      "llm",
+						Data: map[string]string{
+							"type":                "completed",
+							"text":                msg.Text,
+							"response_char_count": fmt.Sprintf("%d", len(msg.Text)),
+						},
+						Time: time.Now(),
+					},
+				)
 				return
 			}
-			onPacket(ctx, internal_type.LLMResponseDeltaPacket{ContextID: data.Assistant.GetId(), Text: msg.Text})
+			// Streaming delta — no ConversationEventPacket (too noisy, matches model pattern)
+			comm.OnPacket(ctx, internal_type.LLMResponseDeltaPacket{ContextID: data.Assistant.GetId(), Text: msg.Text})
 		case *protos.ConversationAssistantMessage_Audio:
 			e.logger.Debugf("Received audio message (not implemented)")
 		}
 
 	case *protos.TalkOutput_Tool:
-		// External agent notifying Rapida of an in-progress tool call (observability only).
+		// External agent notifying Rapida of an in-progress tool call.
+		// Emits: ConversationEventPacket {type: "tool_call"} (Name="tool")
 		e.logger.Debugf("AgentKit tool call: id=%s toolId=%s name=%s", data.Tool.GetId(), data.Tool.GetToolId(), data.Tool.GetName())
+		comm.OnPacket(ctx, internal_type.ConversationEventPacket{
+			ContextID: data.Tool.GetId(),
+			Name:      "tool",
+			Data: map[string]string{
+				"type":    "tool_call",
+				"tool_id": data.Tool.GetToolId(),
+				"name":    data.Tool.GetName(),
+			},
+			Time: time.Now(),
+		})
 
 	case *protos.TalkOutput_ToolResult:
-		// External agent notifying Rapida of a completed tool result (observability only).
+		// External agent notifying Rapida of a completed tool result.
+		// Emits: ConversationEventPacket {type: "tool_result"} (Name="tool")
 		e.logger.Debugf("AgentKit tool result: id=%s toolId=%s name=%s success=%v", data.ToolResult.GetId(), data.ToolResult.GetToolId(), data.ToolResult.GetName(), data.ToolResult.GetSuccess())
+		comm.OnPacket(ctx, internal_type.ConversationEventPacket{
+			ContextID: data.ToolResult.GetId(),
+			Name:      "tool",
+			Data: map[string]string{
+				"type":    "tool_result",
+				"tool_id": data.ToolResult.GetToolId(),
+				"name":    data.ToolResult.GetName(),
+				"success": fmt.Sprintf("%v", data.ToolResult.GetSuccess()),
+			},
+			Time: time.Now(),
+		})
 
 	case *protos.TalkOutput_Error:
-		// External agent sent an error — end the conversation.
-		e.logger.Errorf("AgentKit agent error: code=%d message=%s", data.Error.GetErrorCode(), data.Error.GetErrorMessage())
-		onPacket(ctx, internal_type.DirectivePacket{
-			Directive: protos.ConversationDirective_END_CONVERSATION,
-			Arguments: map[string]interface{}{"reason": data.Error.GetErrorMessage()},
-		})
+		// External agent sent an error — emit error packets then end conversation.
+		// Emits: LLMErrorPacket + ConversationEventPacket {type: "error"} + DirectivePacket
+		errMsg := data.Error.GetErrorMessage()
+		e.logger.Errorf("AgentKit agent error: code=%d message=%s", data.Error.GetErrorCode(), errMsg)
+		comm.OnPacket(ctx,
+			internal_type.LLMErrorPacket{
+				Error: fmt.Errorf("agentkit error %d: %s", data.Error.GetErrorCode(), errMsg),
+			},
+			internal_type.ConversationEventPacket{
+				Name: "llm",
+				Data: map[string]string{
+					"type":  "error",
+					"error": errMsg,
+					"code":  fmt.Sprintf("%d", data.Error.GetErrorCode()),
+				},
+				Time: time.Now(),
+			},
+			internal_type.DirectivePacket{
+				Directive: protos.ConversationDirective_END_CONVERSATION,
+				Arguments: map[string]interface{}{"reason": errMsg},
+			},
+		)
 
 	case *protos.TalkOutput_Directive:
 		args, _ := utils.AnyMapToInterfaceMap(data.Directive.GetArgs())
-		onPacket(ctx, internal_type.DirectivePacket{ContextID: data.Directive.GetId(), Directive: data.Directive.GetType(), Arguments: args})
+		comm.OnPacket(ctx, internal_type.DirectivePacket{ContextID: data.Directive.GetId(), Directive: data.Directive.GetType(), Arguments: args})
 	}
 }
 
 // Execute sends a packet to the AgentKit server.
+//
+// Emits ConversationEventPacket: {type: "executing"} for UserTextPacket.
 func (e *agentkitExecutor) Execute(ctx context.Context, comm internal_type.Communication, packet internal_type.Packet) error {
 	switch p := packet.(type) {
 	case internal_type.UserTextPacket:
+		comm.OnPacket(ctx, internal_type.ConversationEventPacket{
+			ContextID: p.ContextID,
+			Name:      "llm",
+			Data: map[string]string{
+				"type":             "executing",
+				"script":           p.Text,
+				"input_char_count": fmt.Sprintf("%d", len(p.Text)),
+			},
+			Time: time.Now(),
+		})
 		return e.send(&protos.TalkInput{
 			Request: &protos.TalkInput_Message{
 				Message: &protos.ConversationUserMessage{
@@ -268,6 +417,7 @@ func (e *agentkitExecutor) Execute(ctx context.Context, comm internal_type.Commu
 			},
 		})
 	case internal_type.StaticPacket:
+		// No-op: external agent manages its own history
 		return nil
 
 	default:
@@ -275,10 +425,10 @@ func (e *agentkitExecutor) Execute(ctx context.Context, comm internal_type.Commu
 	}
 }
 
-// Close terminates the gRPC connection.
+// Close terminates the gRPC connection and waits for the listener goroutine to
+// exit (up to 5 s). Safe to call concurrently with listen().
 func (e *agentkitExecutor) Close(ctx context.Context) error {
 	e.mu.Lock()
-	defer e.mu.Unlock()
 	if e.talker != nil {
 		e.talker.CloseSend()
 		e.talker = nil
@@ -286,6 +436,17 @@ func (e *agentkitExecutor) Close(ctx context.Context) error {
 	if e.connection != nil {
 		e.connection.Close()
 		e.connection = nil
+	}
+	done := e.done
+	e.mu.Unlock()
+
+	// Wait for listener goroutine to exit
+	if done != nil {
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			e.logger.Errorf("Timed out waiting for listener goroutine to exit")
+		}
 	}
 	return nil
 }

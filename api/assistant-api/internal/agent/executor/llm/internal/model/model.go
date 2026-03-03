@@ -3,6 +3,43 @@
 //
 // Licensed under GPL-2.0 with Rapida Additional Terms.
 // See LICENSE.md or contact sales@rapida.ai for commercial usage.
+
+// Package internal_model implements the model-based assistant executor.
+//
+// The model executor manages the full LLM conversation loop internally: it
+// maintains conversation history, builds chat requests with system prompts,
+// streams responses via a persistent bidirectional gRPC connection to the
+// integration-api, and orchestrates tool calls when the LLM requests them.
+//
+// # Lifecycle
+//
+//  1. Initialize — fetches provider credentials and initializes tools in
+//     parallel, opens a persistent StreamChat bidi stream, and spawns a
+//     listener goroutine.
+//  2. Execute (called per user turn) — snapshots history, builds a chat
+//     request, appends the user message to history, and sends atomically
+//     under a single lock acquisition.
+//  3. Close — tears down the stream, clears history, and waits for the
+//     listener goroutine to exit (with a 5 s timeout).
+//
+// # Concurrency
+//
+// A single sync.RWMutex (mu) guards both the history slice and the gRPC
+// stream. Write paths (chat, handleResponse, executeToolCalls, handleStaticPacket,
+// Close) acquire mu.Lock; read paths (snapshotHistory, chatWithHistory, listen
+// for stream ref) acquire mu.RLock. The sendLocked helper allows callers that
+// already hold mu to send without double-locking.
+//
+// # ConversationEvent contract
+//
+// The executor emits ConversationEventPacket at every critical point so the
+// debugger, analytics, and webhook pipelines have full visibility:
+//
+//	Initialize      → {type: "llm_initialized", provider, init_ms, ...model options}
+//	Execute (user)  → {type: "executing",  script, input_char_count, history_count}
+//	Response error  → {type: "error",      error}
+//	Response done   → {type: "completed",  text, response_char_count, finish_reason}
+//	Tool call error → LLMErrorPacket (no separate event — error is on the follow-up send)
 package internal_model
 
 import (
@@ -35,6 +72,7 @@ type modelAssistantExecutor struct {
 	history            []*protos.Message
 	stream             grpc.BidiStreamingClient[protos.ChatRequest, protos.ChatResponse]
 	mu                 sync.RWMutex
+	done               chan struct{}
 }
 
 func NewModelAssistantExecutor(logger commons.Logger) internal_agent_executor.AssistantExecutor {
@@ -44,7 +82,6 @@ func NewModelAssistantExecutor(logger commons.Logger) internal_agent_executor.As
 		toolExecutor: internal_agent_tool.NewToolExecutor(logger),
 		history:      make([]*protos.Message, 0),
 	}
-
 }
 
 func (executor *modelAssistantExecutor) Name() string {
@@ -55,7 +92,6 @@ func (executor *modelAssistantExecutor) Initialize(ctx context.Context, communic
 	start := time.Now()
 	g, gCtx := errgroup.WithContext(ctx)
 	var providerCredential *protos.VaultCredential
-	var conversationLogs []*protos.Message
 
 	// Goroutine to fetch provider credentials
 	g.Go(func() error {
@@ -90,7 +126,6 @@ func (executor *modelAssistantExecutor) Initialize(ctx context.Context, communic
 
 	// Assign after goroutines complete to avoid race conditions
 	executor.providerCredential = providerCredential
-	executor.history = append(executor.history, conversationLogs...)
 
 	// Open bidirectional stream for persistent connection
 	stream, err := communication.IntegrationCaller().StreamChat(
@@ -105,14 +140,10 @@ func (executor *modelAssistantExecutor) Initialize(ctx context.Context, communic
 	executor.stream = stream
 
 	// Start listener goroutine - handles server responses and connection close
+	executor.done = make(chan struct{})
 	utils.Go(ctx, func() {
-		if err := executor.listen(ctx, communication); err != nil && ctx.Err() == nil {
-			executor.logger.Errorf("Stream listener error: %v", err)
-			communication.OnPacket(ctx, internal_type.DirectivePacket{
-				Directive: protos.ConversationDirective_END_CONVERSATION,
-				Arguments: map[string]interface{}{"reason": err.Error()},
-			})
-		}
+		defer close(executor.done)
+		executor.listen(ctx, communication)
 	})
 
 	llmData := communication.Assistant().AssistantProviderModel.GetOptions().ToStringMap()
@@ -134,10 +165,14 @@ func (executor *modelAssistantExecutor) chat(
 	in *protos.Message,
 	histories ...*protos.Message,
 ) error {
-	// Build and send the chat request over persistent stream
-	request := executor.buildChatRequest(communication, contextID, in, histories...)
+	// Build request from the caller-provided snapshot (no lock needed)
+	request := executor.buildChatRequest(communication, contextID, append(histories, in)...)
+	// Atomically append to history and send — single lock acquisition
+	executor.mu.Lock()
 	executor.history = append(executor.history, in)
-	if err := executor.send(request); err != nil {
+	err := executor.sendLocked(request)
+	executor.mu.Unlock()
+	if err != nil {
 		executor.logger.Errorf("error sending chat request: %v", err)
 		return fmt.Errorf("failed to send chat request: %w", err)
 	}
@@ -152,38 +187,21 @@ func (executor *modelAssistantExecutor) chatWithHistory(
 	communication internal_type.Communication,
 	contextID string,
 ) error {
-	assistant := communication.Assistant()
-	template := assistant.AssistantProviderModel.Template.GetTextChatCompleteTemplate()
-	messages := executor.inputBuilder.Message(
-		template.Prompt,
-		utils.MergeMaps(executor.inputBuilder.PromptArguments(template.Variables), communication.GetArgs()),
-	)
-	request := executor.inputBuilder.Chat(
-		contextID,
-		&protos.Credential{
-			Id:    executor.providerCredential.GetId(),
-			Value: executor.providerCredential.GetValue(),
-		},
-		executor.inputBuilder.Options(utils.MergeMaps(assistant.AssistantProviderModel.GetOptions(), communication.GetOptions()), nil),
-		executor.toolExecutor.GetFunctionDefinitions(),
-		map[string]string{
-			"assistant_id":                fmt.Sprintf("%d", assistant.Id),
-			"message_id":                  contextID,
-			"assistant_provider_model_id": fmt.Sprintf("%d", assistant.AssistantProviderModel.Id),
-		},
-		append(messages, executor.history...)...,
-	)
-	if err := executor.send(request); err != nil {
+	// Hold lock through build+send: avoids a snapshot allocation and guarantees
+	// the request reflects the exact history that was current at send time.
+	executor.mu.Lock()
+	request := executor.buildChatRequest(communication, contextID, executor.history...)
+	err := executor.sendLocked(request)
+	executor.mu.Unlock()
+	if err != nil {
 		executor.logger.Errorf("error sending chat request: %v", err)
 		return fmt.Errorf("failed to send chat request: %w", err)
 	}
 	return nil
 }
 
-// send writes a message to the gRPC stream (thread-safe).
-func (executor *modelAssistantExecutor) send(req *protos.ChatRequest) error {
-	executor.mu.Lock()
-	defer executor.mu.Unlock()
+// sendLocked writes to the gRPC stream. Caller MUST hold mu.
+func (executor *modelAssistantExecutor) sendLocked(req *protos.ChatRequest) error {
 	if executor.stream == nil {
 		return fmt.Errorf("stream not connected")
 	}
@@ -191,11 +209,11 @@ func (executor *modelAssistantExecutor) send(req *protos.ChatRequest) error {
 }
 
 // listen reads messages from the stream until context is cancelled or connection closes.
-func (executor *modelAssistantExecutor) listen(ctx context.Context, communication internal_type.Communication) error {
+func (executor *modelAssistantExecutor) listen(ctx context.Context, communication internal_type.Communication) {
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 		default:
 		}
 
@@ -204,42 +222,34 @@ func (executor *modelAssistantExecutor) listen(ctx context.Context, communicatio
 		executor.mu.RUnlock()
 
 		if stream == nil {
-			return nil
+			return
 		}
 
 		resp, err := stream.Recv()
 		if err != nil {
-			executor.logger.Debugf("Listener received error: %v", err)
-			code := status.Code(err)
-			switch {
-			case errors.Is(err, io.EOF):
-				// Server gracefully closed
-				communication.OnPacket(ctx, internal_type.DirectivePacket{
-					Directive: protos.ConversationDirective_END_CONVERSATION,
-					Arguments: map[string]interface{}{"reason": "server closed connection"},
-				})
-			case code == codes.Canceled:
-				// RPC canceled (client or server)
-				communication.OnPacket(ctx, internal_type.DirectivePacket{
-					Directive: protos.ConversationDirective_END_CONVERSATION,
-					Arguments: map[string]interface{}{"reason": "connection canceled"},
-				})
-			case code == codes.Unavailable:
-				// Server went down
-				communication.OnPacket(ctx, internal_type.DirectivePacket{
-					Directive: protos.ConversationDirective_END_CONVERSATION,
-					Arguments: map[string]interface{}{"reason": "server unavailable"},
-				})
-			default:
-				// Other errors
-				communication.OnPacket(ctx, internal_type.DirectivePacket{
-					Directive: protos.ConversationDirective_END_CONVERSATION,
-					Arguments: map[string]interface{}{"reason": err.Error()},
-				})
-			}
-			return nil
+			reason := executor.streamErrorReason(err)
+			communication.OnPacket(ctx, internal_type.DirectivePacket{
+				Directive: protos.ConversationDirective_END_CONVERSATION,
+				Arguments: map[string]interface{}{"reason": reason},
+			})
+			return
 		}
 		executor.handleResponse(ctx, communication, resp)
+	}
+}
+
+// streamErrorReason maps a stream error to a human-readable reason string.
+func (executor *modelAssistantExecutor) streamErrorReason(err error) string {
+	executor.logger.Debugf("Listener received error: %v", err)
+	switch {
+	case errors.Is(err, io.EOF):
+		return "server closed connection"
+	case status.Code(err) == codes.Canceled:
+		return "connection canceled"
+	case status.Code(err) == codes.Unavailable:
+		return "server unavailable"
+	default:
+		return err.Error()
 	}
 }
 
@@ -264,7 +274,6 @@ func (executor *modelAssistantExecutor) handleResponse(ctx context.Context, comm
 		)
 		return
 	}
-	//
 	if output == nil {
 		return
 	}
@@ -281,7 +290,9 @@ func (executor *modelAssistantExecutor) handleResponse(ctx context.Context, comm
 		// causing OpenAI to reject with: "An assistant message with 'tool_calls' must
 		// be followed by tool messages responding to each 'tool_call_id'."
 		if !hasToolCalls {
+			executor.mu.Lock()
 			executor.history = append(executor.history, output)
+			executor.mu.Unlock()
 		}
 
 		communication.OnPacket(ctx,
@@ -307,7 +318,13 @@ func (executor *modelAssistantExecutor) handleResponse(ctx context.Context, comm
 		)
 
 		if hasToolCalls {
-			executor.executeToolCalls(ctx, communication, resp.GetRequestId(), output, executor.history)
+			if err := executor.executeToolCalls(ctx, communication, resp.GetRequestId(), output); err != nil {
+				executor.logger.Errorf("tool call follow-up failed: %v", err)
+				communication.OnPacket(ctx, internal_type.LLMErrorPacket{
+					ContextID: resp.GetRequestId(),
+					Error:     fmt.Errorf("tool call follow-up failed: %w", err),
+				})
+			}
 		}
 		return
 	}
@@ -319,11 +336,12 @@ func (executor *modelAssistantExecutor) handleResponse(ctx context.Context, comm
 	}
 }
 
-// buildChatRequest constructs the chat request with all necessary parameters
-func (executor *modelAssistantExecutor) buildChatRequest(communication internal_type.Communication, contextID string, in *protos.Message, histories ...*protos.Message) *protos.ChatRequest {
+// buildChatRequest constructs the chat request with all necessary parameters.
+// The caller provides the complete conversation messages (system prompt is prepended automatically).
+func (executor *modelAssistantExecutor) buildChatRequest(communication internal_type.Communication, contextID string, messages ...*protos.Message) *protos.ChatRequest {
 	assistant := communication.Assistant()
 	template := assistant.AssistantProviderModel.Template.GetTextChatCompleteTemplate()
-	messages := executor.inputBuilder.Message(
+	systemMessages := executor.inputBuilder.Message(
 		template.Prompt,
 		utils.MergeMaps(executor.inputBuilder.PromptArguments(template.Variables), communication.GetArgs()),
 	)
@@ -340,7 +358,7 @@ func (executor *modelAssistantExecutor) buildChatRequest(communication internal_
 			"message_id":                  contextID,
 			"assistant_provider_model_id": fmt.Sprintf("%d", assistant.AssistantProviderModel.Id),
 		},
-		append(append(messages, histories...), in)...,
+		append(systemMessages, messages...)...,
 	)
 }
 
@@ -349,33 +367,18 @@ func (executor *modelAssistantExecutor) buildChatRequest(communication internal_
 // the assistant message and tool result atomically to prevent a race where a
 // concurrent user message could see the assistant message with tool_calls but
 // without the corresponding tool results (which causes OpenAI 400 errors).
-func (executor *modelAssistantExecutor) executeToolCalls(ctx context.Context, communication internal_type.Communication, contextID string, output *protos.Message, histories []*protos.Message,
+func (executor *modelAssistantExecutor) executeToolCalls(ctx context.Context, communication internal_type.Communication, contextID string, output *protos.Message,
 ) error {
 	toolExecution := executor.toolExecutor.ExecuteAll(ctx, contextID, output.GetAssistant().GetToolCalls(), communication)
 	// Atomically append both the assistant message (with tool_calls) and the tool
 	// result to history, so any concurrent reader always sees them as a pair.
+	executor.mu.Lock()
 	executor.history = append(executor.history, output, toolExecution)
+	executor.mu.Unlock()
 	// Build the follow-up request using the full history (which now includes
-	// output + toolExecution). We pass nil as 'in' since both messages are
-	// already in history.
+	// output + toolExecution). chatWithHistory reads history under lock.
 	return executor.chatWithHistory(ctx, communication, contextID)
 }
-
-// recordLLMInteraction appends messages to history and persists to storage
-// func (executor *modelAssistantExecutor) recordLLMInteraction(communication internal_type.Communication, contextID string, in, out *protos.Message, metrics []*protos.Metric,
-// ) {
-// 	if in != nil {
-// 		executor.history = append(executor.history, in)
-// 	}
-// 	if out != nil {
-// 		executor.history = append(executor.history, out)
-// 	}
-
-// 	// Persist to storage asynchronously
-// 	utils.Go(context.Background(), func() {
-// 		communication.CreateConversationMessageLog(contextID, in, out, metrics)
-// 	})
-// }
 
 // Execute processes incoming packets when user triggers a message
 func (executor *modelAssistantExecutor) Execute(ctx context.Context, communication internal_type.Communication, pctk internal_type.Packet) error {
@@ -392,6 +395,7 @@ func (executor *modelAssistantExecutor) Execute(ctx context.Context, communicati
 // handleUserTextPacket processes user text input
 func (executor *modelAssistantExecutor) handleUserTextPacket(ctx context.Context, communication internal_type.Communication, packet internal_type.UserTextPacket,
 ) error {
+	snapshot := executor.snapshotHistory()
 	communication.OnPacket(ctx, internal_type.ConversationEventPacket{
 		ContextID: packet.ContextID,
 		Name:      "llm",
@@ -399,27 +403,37 @@ func (executor *modelAssistantExecutor) handleUserTextPacket(ctx context.Context
 			"type":             "executing",
 			"script":           packet.Text,
 			"input_char_count": fmt.Sprintf("%d", len(packet.Text)),
-			"history_count":    fmt.Sprintf("%d", len(executor.history)),
+			"history_count":    fmt.Sprintf("%d", len(snapshot)),
 		},
 		Time: time.Now(),
 	})
-	return executor.chat(ctx, communication, packet.ContextID, &protos.Message{Role: "user", Message: &protos.Message_User{User: &protos.UserMessage{Content: packet.Text}}}, executor.history...)
+	return executor.chat(ctx, communication, packet.ContextID, &protos.Message{Role: "user", Message: &protos.Message_User{User: &protos.UserMessage{Content: packet.Text}}}, snapshot...)
 }
 
 // handleStaticPacket appends static assistant response to history
 func (executor *modelAssistantExecutor) handleStaticPacket(packet internal_type.StaticPacket) error {
+	executor.mu.Lock()
 	executor.history = append(executor.history, &protos.Message{
 		Role: "assistant",
 		Message: &protos.Message_Assistant{Assistant: &protos.AssistantMessage{
 			Contents: []string{packet.Text},
 		}},
 	})
+	executor.mu.Unlock()
 	return nil
+}
+
+// snapshotHistory returns a point-in-time copy of the conversation history.
+func (executor *modelAssistantExecutor) snapshotHistory() []*protos.Message {
+	executor.mu.RLock()
+	snapshot := make([]*protos.Message, len(executor.history))
+	copy(snapshot, executor.history)
+	executor.mu.RUnlock()
+	return snapshot
 }
 
 func (executor *modelAssistantExecutor) Close(ctx context.Context) error {
 	executor.mu.Lock()
-	defer executor.mu.Unlock()
 
 	// Close the stream
 	if executor.stream != nil {
@@ -429,5 +443,16 @@ func (executor *modelAssistantExecutor) Close(ctx context.Context) error {
 
 	// Clear history
 	executor.history = make([]*protos.Message, 0)
+	done := executor.done
+	executor.mu.Unlock()
+
+	// Wait for listener goroutine to exit
+	if done != nil {
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			executor.logger.Errorf("Timed out waiting for listener goroutine to exit")
+		}
+	}
 	return nil
 }
