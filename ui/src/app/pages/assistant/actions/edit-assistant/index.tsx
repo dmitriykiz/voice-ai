@@ -28,6 +28,7 @@ import { useParams } from 'react-router-dom';
 import { UpdateAssistantDetail } from '@rapidaai/react';
 import { connectionConfig } from '@/configs';
 import { ErrorMessage } from '@/app/components/form/error-message';
+import { SectionDivider } from '@/app/components/blocks/section-divider';
 
 export function EditAssistantPage() {
   const { assistantId } = useParams();
@@ -87,16 +88,16 @@ export const EditAssistant: FC<{ assistantId: string }> = ({ assistantId }) => {
             toast.error(error.getHumanmessage());
             return;
           }
-          toast.error('Unable to delete assistant. please try again later.');
-          return;
+          toast.error('Unable to load assistant. Please try again later.');
         }
       })
-      .catch(err => {
+      .catch(() => {
         hideLoader();
       });
   }, [assistantId]);
 
   const onUpdateAssistantDetail = () => {
+    setErrorMessage('');
     showLoader('block');
     const afterUpdateAssistant = (
       err: ServiceError | null,
@@ -116,8 +117,7 @@ export const EditAssistant: FC<{ assistantId: string }> = ({ assistantId }) => {
           setErrorMessage(error.getHumanmessage());
           return;
         }
-        setErrorMessage('Unable to update assistant. please try again later.');
-        return;
+        setErrorMessage('Unable to update assistant. Please try again later.');
       }
     };
     UpdateAssistantDetail(
@@ -142,16 +142,16 @@ export const EditAssistant: FC<{ assistantId: string }> = ({ assistantId }) => {
         car: GetAssistantResponse | null,
       ) => {
         if (car?.getSuccess()) {
-          toast.error('The assistant has been deleted successfully.');
+          toast.success('The assistant has been deleted successfully.');
           goToAssistantListing();
         } else {
+          hideLoader();
           const error = car?.getError();
           if (error) {
             toast.error(error.getHumanmessage());
             return;
           }
-          toast.error('Unable to delete assistant. please try again later.');
-          return;
+          toast.error('Unable to delete assistant. Please try again later.');
         }
       };
 
@@ -171,95 +171,99 @@ export const EditAssistant: FC<{ assistantId: string }> = ({ assistantId }) => {
         <PageTitleBlock>General Settings</PageTitleBlock>
       </PageHeaderBlock>
 
-      <div className="overflow-auto flex flex-col flex-1 bg-white dark:bg-gray-900">
-        {/* Assistant Identity */}
-        <div className="p-5 border-b border-gray-200 dark:border-gray-800">
-          <div className="max-w-2xl mb-4 space-y-1">
-            <h2 className="text-sm font-semibold">Assistant Identity</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Your assistant's unique identifier. This cannot be changed.
-            </p>
-          </div>
-          <FieldSet className="max-w-md">
-            <FormLabel>Assistant ID</FormLabel>
-            <CopyInput
-              name="id"
-              disabled
-              value={assistantId}
-              className="bg-white dark:bg-gray-900 border-dashed"
-              placeholder="eg: your emotion detector"
-            />
-          </FieldSet>
-        </div>
+      <div className="overflow-auto flex flex-col flex-1">
+        <div className="px-8 pt-8 pb-12 flex flex-col gap-10 max-w-2xl">
 
-        {/* General Information */}
-        <div className="p-5 border-b border-gray-200 dark:border-gray-800 space-y-5">
-          <div className="max-w-2xl space-y-1">
-            <h2 className="text-sm font-semibold">General Information</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Update your assistant's display name and purpose description.
-            </p>
+          {/* ── Identity ───────────────────────────────────────────── */}
+          <div className="flex flex-col gap-6">
+            <SectionDivider label="Identity" />
+            <FieldSet>
+              <FormLabel>Assistant ID</FormLabel>
+              <CopyInput
+                name="id"
+                disabled
+                value={assistantId}
+                className="border-dashed"
+                placeholder="eg: your-assistant-id"
+              />
+              <InputHelper>
+                Your assistant's unique identifier. This cannot be changed.
+              </InputHelper>
+            </FieldSet>
           </div>
-          <FieldSet>
-            <FormLabel>Name</FormLabel>
-            <Input
-              name="usecase"
-              className="max-w-md"
-              onChange={e => {
-                setName(e.target.value);
-              }}
-              value={name}
-              placeholder="eg: your emotion detector"
-            />
-          </FieldSet>
-          <FieldSet className="col-span-2">
-            <FormLabel>Description</FormLabel>
-            <Textarea
-              row={5}
-              className="max-w-xl"
-              value={description}
-              placeholder={"What's the purpose of the assistant?"}
-              onChange={t => setDescription(t.target.value)}
-            />
-          </FieldSet>
-          <ErrorMessage message={errorMessage} />
-          <IBlueBGButton
-            type="button"
-            isLoading={loading}
-            onClick={onUpdateAssistantDetail}
-            className="px-4"
-          >
-            Update Assistant
-          </IBlueBGButton>
-        </div>
 
-        {/* Danger Zone */}
-        <div className="p-5">
-          <div className="max-w-2xl border border-red-200 dark:border-red-900/50 overflow-hidden">
-            <div className="px-4 py-3 bg-red-50 dark:bg-red-950/20 border-b border-red-200 dark:border-red-900/50">
-              <h2 className="text-sm font-semibold text-red-700 dark:text-red-400 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" strokeWidth={1.5} />
-                Danger Zone
-              </h2>
-            </div>
-            <div className="p-4 flex flex-row items-start justify-between gap-6">
-              <div className="space-y-1.5">
-                <p className="text-sm font-semibold">Delete this assistant</p>
-                <InputHelper>
-                  Once you delete an assistant, there is no going back. Active
-                  connections will be terminated immediately, and the data will
-                  be permanently deleted after the rolling period.
-                </InputHelper>
-              </div>
-              <IRedBGButton
-                className="shrink-0"
+          {/* ── General Information ────────────────────────────────── */}
+          <div className="flex flex-col gap-6">
+            <SectionDivider label="General Information" />
+            <FieldSet>
+              <FormLabel>Name</FormLabel>
+              <Input
+                name="usecase"
+                onChange={e => setName(e.target.value)}
+                value={name}
+                placeholder="e.g. Customer support bot"
+              />
+              <InputHelper>
+                The display name shown across the platform for this assistant.
+              </InputHelper>
+            </FieldSet>
+            <FieldSet>
+              <FormLabel>Description</FormLabel>
+              <Textarea
+                row={4}
+                value={description}
+                placeholder="What's the purpose of this assistant?"
+                onChange={t => setDescription(t.target.value)}
+              />
+              <InputHelper>
+                Describe what this assistant does and its intended use case.
+              </InputHelper>
+            </FieldSet>
+            {errorMessage && <ErrorMessage message={errorMessage} />}
+            <div>
+              <IBlueBGButton
+                type="button"
                 isLoading={loading}
-                onClick={Deletion.showDialog}
+                onClick={onUpdateAssistantDetail}
               >
-                Delete assistant
-              </IRedBGButton>
+                Save changes
+              </IBlueBGButton>
             </div>
           </div>
+
+          {/* ── Danger Zone ────────────────────────────────────────── */}
+          <div className="flex flex-col gap-6">
+            <SectionDivider label="Danger Zone" />
+            <div className="flex rounded-none border-0">
+              {/* Left accent bar — 3px red */}
+              <div className="w-[3px] flex-shrink-0 bg-red-600" />
+              {/* Notification body */}
+              <div className="flex-1 flex items-start justify-between gap-6 px-4 py-4 bg-red-50 dark:bg-red-950/20">
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                    <AlertTriangle
+                      className="w-4 h-4 text-red-600 flex-shrink-0"
+                      strokeWidth={1.5}
+                    />
+                    Delete this assistant
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                    Once deleted, all active connections will be terminated
+                    immediately and data will be permanently removed after the
+                    rolling retention period. This action cannot be undone.
+                  </p>
+                </div>
+                <IRedBGButton
+                  className="shrink-0"
+                  isLoading={loading}
+                  onClick={Deletion.showDialog}
+                >
+                  Delete assistant
+                </IRedBGButton>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>

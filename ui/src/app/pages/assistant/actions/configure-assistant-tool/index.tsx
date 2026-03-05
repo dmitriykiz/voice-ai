@@ -6,7 +6,7 @@ import { useParams } from 'react-router-dom';
 import { useGlobalNavigation } from '@/hooks/use-global-navigator';
 import { ActionableEmptyMessage } from '@/app/components/container/message/actionable-empty-message';
 import { SelectToolCard } from '@/app/components/base/cards/tool-card';
-import { ExternalLink, Info, Plus, RotateCw } from 'lucide-react';
+import { Plus, RotateCw } from 'lucide-react';
 import { PageTitleBlock } from '@/app/components/blocks/page-title-block';
 import { PageHeaderBlock } from '@/app/components/blocks/page-header-block';
 import { CreateTool } from '@/app/pages/assistant/actions/configure-assistant-tool/create-assistant-tool';
@@ -15,7 +15,7 @@ import { useAssistantToolPageStore } from '@/app/pages/assistant/actions/store/u
 import { useCurrentCredential } from '@/hooks/use-credential';
 import { UpdateTool } from '@/app/pages/assistant/actions/configure-assistant-tool/update-assistant-tool';
 import { useConfirmDialog } from '@/app/pages/assistant/actions/hooks/use-confirmation';
-import { YellowNoticeBlock } from '@/app/components/container/message/notice-block';
+import { DocNoticeBlock } from '@/app/components/container/message/notice-block/doc-notice-block';
 
 export function ConfigureAssistantToolPage() {
   const { assistantId } = useParams();
@@ -105,6 +105,10 @@ const ConfigureAssistantTool: FC<{ assistantId: string }> = ({
       <PageHeaderBlock>
         <PageTitleBlock>Configure Tools and MCPs</PageTitleBlock>
         <div className="flex items-stretch border-l border-gray-200 dark:border-gray-800">
+          <IButton type="button" onClick={() => get()}>
+            <RotateCw className="w-4 h-4" strokeWidth={1.5} />
+          </IButton>
+          <div className="w-px self-stretch bg-gray-200 dark:bg-gray-800 shrink-0" />
           <IBlueButton
             onClick={() => {
               navigator.goToCreateAssistantTool(assistantId);
@@ -113,31 +117,15 @@ const ConfigureAssistantTool: FC<{ assistantId: string }> = ({
             Add another tool
             <Plus className="w-4 h-4 ml-1.5" />
           </IBlueButton>
-          <div className="w-px self-stretch bg-gray-200 dark:bg-gray-800 shrink-0" />
-          <IButton type="button" onClick={() => get()}>
-            <RotateCw className="w-4 h-4" strokeWidth={1.5} />
-          </IButton>
         </div>
       </PageHeaderBlock>
-      <YellowNoticeBlock className="flex items-center">
-        <Info className="shrink-0 w-4 h-4" />
-        <div className="ms-3 text-sm font-medium">
-          Rapida Assistant enables you to call various tools and MCPs to enhance
-          your assistant's capabilities.
-        </div>
-        <a
-          target="_blank"
-          href="https://doc.rapida.ai/assistants/tools/"
-          className="h-7 flex items-center font-medium hover:underline ml-auto text-yellow-600"
-          rel="noreferrer"
-        >
-          Read documentation
-          <ExternalLink className="shrink-0 w-4 h-4 ml-1.5" strokeWidth={1.5} />
-        </a>
-      </YellowNoticeBlock>
+      <DocNoticeBlock docUrl="https://doc.rapida.ai/assistants/tools/">
+        Rapida Assistant enables you to call various tools and MCPs to enhance
+        your assistant's capabilities.
+      </DocNoticeBlock>
       <div className="overflow-auto flex flex-col flex-1">
         {axtion.tools.length > 0 ? (
-          <section className="grid content-start grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-gray-200 dark:bg-gray-800 grow shrink-0 m-4">
+          <section className="grid content-start grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-[2px] grow shrink-0 m-4">
             {axtion.tools.map((itm, idx) => (
               <SelectToolCard
                 className="col-span-1"

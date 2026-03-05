@@ -1,5 +1,4 @@
 import { KnowledgeDocumentSegment } from '@rapidaai/react';
-import { PageHeading } from '@/app/components/heading/page-heading';
 import { TablePagination } from '@/app/components/base/tables/table-pagination';
 import { BluredWrapper } from '@/app/components/wrapper/blured-wrapper';
 import { useRapidaStore } from '@/hooks';
@@ -15,6 +14,7 @@ import { useCurrentCredential } from '@/hooks/use-credential';
 import { EditKnowledgeDocumentSegmentDialog } from '@/app/components/base/modal/edit-knowledge-document-segment-modal';
 import { DeleteKnowledgeDocumentSegmentDialog } from '@/app/components/base/modal/delete-knowledge-document-segment-modal';
 import { ActionableEmptyMessage } from '@/app/components/container/message/actionable-empty-message';
+
 export const DocumentSegments: FC<{
   currentKnowledge: Knowledge;
   onAddKnowledgeDocument: () => void;
@@ -22,14 +22,16 @@ export const DocumentSegments: FC<{
   const { authId, token, projectId } = useCurrentCredential();
   const knowledgeDocumentActions = useKnowledgeDocumentSegmentPageStore();
   const { showLoader, hideLoader } = useRapidaStore();
+
   const onError = useCallback((err: string) => {
     hideLoader();
     toast.error(err);
   }, []);
+
   const onSuccess = useCallback((data: KnowledgeDocumentSegment[]) => {
-    console.dir(data);
     hideLoader();
   }, []);
+
   const getKnowledgeDocumentSegments = useCallback(
     (id, projectId, token, userId) => {
       showLoader();
@@ -44,6 +46,7 @@ export const DocumentSegments: FC<{
     },
     [],
   );
+
   useEffect(() => {
     getKnowledgeDocumentSegments(
       ck.currentKnowledge.getId(),
@@ -69,7 +72,6 @@ export const DocumentSegments: FC<{
       knowledgeDocumentActions.knowledgeDocumentSegments.length > 0 ? (
         <>
           <BluredWrapper className="p-0">
-            <PageHeading className="flex items-center space-x-2"></PageHeading>
             <TablePagination
               currentPage={knowledgeDocumentActions.page}
               onChangeCurrentPage={knowledgeDocumentActions.setPage}
@@ -78,54 +80,57 @@ export const DocumentSegments: FC<{
               onChangePageSize={knowledgeDocumentActions.setPageSize}
             />
           </BluredWrapper>
-          <div className="grid content-start grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 grow shrink-0 px-4 py-4">
+
+          <div className="grid content-start grid-cols-1 gap-px sm:grid-cols-2 md:grid-cols-3 grow shrink-0 px-4 py-4 bg-gray-200 dark:bg-gray-800">
             {knowledgeDocumentActions.knowledgeDocumentSegments.map(
-              (segment, index) => {
-                return (
-                  <div
-                    key={index}
-                    className={cn(
-                      'flex flex-col h-full p-6',
-                      'space-y-6',
-                      'shrink-0',
-                      'shadow-sm hover:shadow-lg',
-                      'bg-white dark:bg-gray-950/20 rounded-[2px] border border-gray-200 dark:border-gray-800 col-span-1',
-                    )}
-                  >
-                    <div className="flex justify-between">
-                      <div>ID: {segment.getDocumentId().substring(0, 12)}</div>
-                      <div className="flex">
-                        <EditButton
-                          onClick={() => setEditingSegment(segment)}
-                        />
-                        <DeleteButton
-                          onClick={() => setDeletingSegment(segment)}
-                        />
-                      </div>
+              (segment, index) => (
+                <div
+                  key={index}
+                  className="flex flex-col h-full p-6 gap-6 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors duration-100"
+                >
+                  {/* Segment header */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
+                      {segment.getDocumentId().substring(0, 12)}
+                    </span>
+                    <div className="flex">
+                      <EditButton onClick={() => setEditingSegment(segment)} />
+                      <DeleteButton
+                        onClick={() => setDeletingSegment(segment)}
+                      />
                     </div>
-                    {/* line-clamp-5 */}
-                    <div className={cn('text-base')}>
-                      {parseMarkdown(segment.getText())}
-                    </div>
-                    <div className="space-y-3 text-sm">
+                  </div>
+
+                  {/* Segment text */}
+                  <div className="text-sm text-gray-900 dark:text-gray-100 leading-[20px] flex-1">
+                    {parseMarkdown(segment.getText())}
+                  </div>
+
+                  {/* Entity tags */}
+                  {Object.entries(
+                    segment.getEntities()?.toObject() || {},
+                  ).some(
+                    ([, values]) => Array.isArray(values) && values.length > 0,
+                  ) && (
+                    <div className="flex flex-col gap-3 text-sm border-t border-gray-100 dark:border-gray-800 pt-4">
                       {Object.entries(
                         segment.getEntities()?.toObject() || {},
                       ).map(
                         ([key, values]) =>
                           Array.isArray(values) &&
                           values.length > 0 && (
-                            <div key={key} className="space-y-3">
-                              <div className="font-semibold uppercase tracking-wider">
+                            <div key={key} className="flex flex-col gap-2">
+                              <span className="text-[10px] font-semibold tracking-[0.12em] uppercase text-gray-400 dark:text-gray-600">
                                 {key
                                   .replace('List', '')
                                   .replace(/([A-Z])/g, ' $1')
                                   .trim()}
-                              </div>
+                              </span>
                               <div className="flex flex-wrap gap-1">
-                                {values.map((value, index) => (
+                                {values.map((value, i) => (
                                   <span
-                                    key={index}
-                                    className="px-4 py-1.5  border"
+                                    key={i}
+                                    className="inline-flex items-center h-6 px-3 text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
                                   >
                                     {value}
                                   </span>
@@ -135,11 +140,12 @@ export const DocumentSegments: FC<{
                           ),
                       )}
                     </div>
-                  </div>
-                );
-              },
+                  )}
+                </div>
+              ),
             )}
           </div>
+
           {editingSegment && (
             <EditKnowledgeDocumentSegmentDialog
               segment={editingSegment}
@@ -173,9 +179,9 @@ export const DocumentSegments: FC<{
       ) : (
         <div className="flex flex-col h-full flex-1 items-center justify-center">
           <ActionableEmptyMessage
-            title="No Documents"
-            subtitle="There are no document segments in knowledge to display"
-            action="Add New Document"
+            title="No segments"
+            subtitle="There are no document segments in this knowledge base."
+            action="Add new document"
             onActionClick={() => ck.onAddKnowledgeDocument()}
           />
         </div>

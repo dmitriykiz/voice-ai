@@ -34,21 +34,9 @@ import { FieldSet } from '@/app/components/form/fieldset';
 import { FormLabel } from '@/app/components/form-label';
 import { Textarea } from '@/app/components/form/textarea';
 import { connectionConfig } from '@/configs';
-import { YellowNoticeBlock } from '@/app/components/container/message/notice-block';
-import { ExternalLink, Info } from 'lucide-react';
+import { DocNoticeBlock } from '@/app/components/container/message/notice-block/doc-notice-block';
 import { InputHelper } from '@/app/components/input-helper';
-
-/** Section divider — matches the one in create-endpoint */
-function SectionDivider({ label }: { label: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="text-[10px] font-semibold tracking-[0.12em] uppercase text-gray-500 dark:text-gray-400 whitespace-nowrap">
-        {label}
-      </span>
-      <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
-    </div>
-  );
-}
+import { SectionDivider } from '@/app/components/blocks/section-divider';
 
 export const CreateNewVersionEndpointPage: FC = () => {
   /**
@@ -303,22 +291,10 @@ export const CreateNewVersionEndpointPage: FC = () => {
             code: 'choose-model',
             body: (
               <>
-                <YellowNoticeBlock className="flex items-center gap-3 px-8 py-3">
-                  <Info className="shrink-0 w-4 h-4" strokeWidth={1.5} />
-                  <p className="text-sm flex-1">
-                    New versions of the endpoint will not be deployed
-                    automatically. You must promote them manually.
-                  </p>
-                  <a
-                    target="_blank"
-                    href="https://doc.rapida.ai/endpoint/create-new-version"
-                    className="ml-auto flex items-center gap-1.5 text-sm font-medium text-yellow-700 hover:underline whitespace-nowrap"
-                    rel="noreferrer"
-                  >
-                    Read docs
-                    <ExternalLink className="shrink-0 w-3.5 h-3.5" strokeWidth={1.5} />
-                  </a>
-                </YellowNoticeBlock>
+                <DocNoticeBlock docUrl="https://doc.rapida.ai/endpoint/create-new-version" linkText="Read docs">
+                  New versions of the endpoint will not be deployed
+                  automatically. You must promote them manually.
+                </DocNoticeBlock>
                 <div className="px-8 pt-6 pb-8 max-w-4xl flex flex-col gap-8">
                   {/* Model configuration section */}
                   <div className="flex flex-col gap-6">

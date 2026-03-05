@@ -7,7 +7,7 @@ import { useRapidaStore } from '@/hooks';
 import { TablePagination } from '@/app/components/base/tables/table-pagination';
 import { SearchIconInput } from '@/app/components/form/input/IconInput';
 import { Metadata } from '@rapidaai/react';
-import { CustomLink } from '@/app/components/custom-link';
+import { EntityLink } from '@/app/components/base/tables/link-cell';
 import { BluredWrapper } from '@/app/components/wrapper/blured-wrapper';
 import { useActivityLogPage } from '@/hooks/use-activity-log-page-store';
 import { formatNanoToReadableMilli, toDateString } from '@/utils/date';
@@ -15,13 +15,15 @@ import { getMetadataValue } from '@/utils/metadata';
 import { Spinner } from '@/app/components/loader/spinner';
 import { ScrollableResizableTable } from '@/app/components/data-table';
 import { IButton, ILinkBorderButton } from '@/app/components/form/button';
+import { IconActionButton } from '@/app/components/form/button/icon-action-button';
 import { ExternalLink, Eye, RotateCw } from 'lucide-react';
 import { TableCell } from '@/app/components/base/tables/table-cell';
 import { TableRow } from '@/app/components/base/tables/table-row';
 import { StatusIndicator } from '@/app/components/indicators/status';
 import { LLMLogDialog } from '@/app/components/base/modal/llm-log-modal';
 import { HttpStatusSpanIndicator } from '@/app/components/indicators/http-status';
-import { PageTitleBlock } from '@/app/components/blocks/page-title-block';
+import { ActionCell } from '@/app/components/base/tables/action-cell';
+import { PageTitleWithCount } from '@/app/components/blocks/page-title-with-count';
 import { YellowNoticeBlock } from '@/app/components/container/message/notice-block';
 import { ProviderPill } from '@/app/components/pill/provider-model-pill';
 import { PaginationButtonBlock } from '@/app/components/blocks/pagination-button-block';
@@ -124,12 +126,9 @@ export function ListingPage() {
 
       <Helmet title="LLM Logs" />
       <PageHeaderBlock>
-        <div className="flex items-center gap-3">
-          <PageTitleBlock>LLM Logs</PageTitleBlock>
-          <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
-            {`${activities.length}/${totalCount}`}
-          </span>
-        </div>
+        <PageTitleWithCount count={activities.length} total={totalCount}>
+          LLM Logs
+        </PageTitleWithCount>
       </PageHeaderBlock>
 
       <BluredWrapper className="sticky top-0 z-11">
@@ -217,47 +216,34 @@ export function ListingPage() {
                   <DateCell date={at.getCreateddate()} />
                 )}
 
-                <TableCell>
-                  <div className="flex border border-gray-200 dark:border-gray-800 w-fit">
-                    <IButton
-                      className="rounded-none"
-                      onClick={event => {
-                        event.stopPropagation();
-                        setCurrentActivityId(at.getId());
-                        setShowLogModal(true);
-                      }}
-                    >
-                      <TooltipPlus
-                        className="bg-white dark:bg-gray-950 border-[0.5px] rounded-[2px] px-0 py-0"
-                        popupContent={
-                          <div className="px-3 py-2 text-sm text-gray-600 dark:text-gray-500">
-                            View detail
-                          </div>
-                        }
-                      >
-                        <Eye strokeWidth={1.5} className="h-4 w-4" />
-                      </TooltipPlus>
-                    </IButton>
-                    <span className="w-px self-stretch bg-gray-200 dark:bg-gray-800 shrink-0" />
-                    <ILinkBorderButton
-                      className="rounded-none border-0"
-                      href={
-                        getActivityLink(at.getExternalauditmetadatasList()).link
+                <ActionCell>
+                  <IconActionButton
+                    tooltip="View detail"
+                    icon={<Eye strokeWidth={1.5} className="h-4 w-4" />}
+                    onClick={event => {
+                      event.stopPropagation();
+                      setCurrentActivityId(at.getId());
+                      setShowLogModal(true);
+                    }}
+                  />
+                  <ILinkBorderButton
+                    className="rounded-none border-0"
+                    href={
+                      getActivityLink(at.getExternalauditmetadatasList()).link
+                    }
+                  >
+                    <TooltipPlus
+                      className="bg-white dark:bg-gray-950 border-[0.5px] rounded-[2px] px-0 py-0"
+                      popupContent={
+                        <div className="px-3 py-2 text-sm text-gray-600 dark:text-gray-500">
+                          View conversation
+                        </div>
                       }
                     >
-                      <TooltipPlus
-                        className="bg-white dark:bg-gray-950 border-[0.5px] rounded-[2px] px-0 py-0"
-                        popupContent={
-                          <div className="px-3 py-2 text-sm text-gray-600 dark:text-gray-500">
-                            View conversation
-                          </div>
-                        }
-                      >
-                        <ExternalLink strokeWidth={1.5} className="h-4 w-4" />
-                      </TooltipPlus>
-                    </ILinkBorderButton>
-                  </div>
-                </TableCell>
+                      <ExternalLink strokeWidth={1.5} className="h-4 w-4" />
+                    </TooltipPlus>
+                  </ILinkBorderButton>
+                </ActionCell>
                 {visibleColumn('Status') && (
                   <TableCell>
                     <StatusIndicator state={at.getStatus()} />
@@ -308,15 +294,7 @@ function ActivitySource(props: { metadatas: Metadata[] }) {
     setActivityLink(link);
   }, [props.metadatas]);
 
-  return (
-    <CustomLink
-      to={activityLink}
-      className="font-normal dark:text-blue-500 text-blue-600 hover:underline cursor-pointer text-left flex items-center space-x-1"
-    >
-      <span>{activitySource}</span>
-      <ExternalLink className="w-3 h-3" />
-    </CustomLink>
-  );
+  return <EntityLink to={activityLink}>{activitySource}</EntityLink>;
 }
 
 function getActivityLink(metadatas: Metadata[]): {

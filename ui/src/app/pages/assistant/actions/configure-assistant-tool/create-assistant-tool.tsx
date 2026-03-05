@@ -7,7 +7,6 @@ import {
   ICancelButton,
 } from '@/app/components/form/button';
 import { useCurrentCredential } from '@/hooks/use-credential';
-import { PageActionButtonBlock } from '@/app/components/blocks/page-action-button-block';
 import {
   BuildinTool,
   BuildinToolConfig,
@@ -15,12 +14,12 @@ import {
   GetDefaultToolDefintion,
   ValidateToolDefaultOptions,
 } from '@/app/components/tools';
+import { ToolDefinitionForm } from '@/app/components/tools/common';
 import { CreateAssistantTool } from '@rapidaai/react';
 import toast from 'react-hot-toast/headless';
 import { useRapidaStore } from '@/hooks';
 import { connectionConfig } from '@/configs';
-import { PageHeaderBlock } from '@/app/components/blocks/page-header-block';
-import { PageTitleBlock } from '@/app/components/blocks/page-title-block';
+import { TabForm } from '@/app/components/form/tab-form';
 
 export const CreateTool: FC<{ assistantId: string }> = ({ assistantId }) => {
   const navigator = useGlobalNavigation();
@@ -28,13 +27,14 @@ export const CreateTool: FC<{ assistantId: string }> = ({ assistantId }) => {
   const { showDialog, ConfirmDialogComponent } = useConfirmDialog({});
   const { loading, showLoader, hideLoader } = useRapidaStore();
 
-  /**
-   * buildin tools
-   */
+  const [activeTab, setActiveTab] = useState('action');
+  const [errorMessage, setErrorMessage] = useState('');
+
   const defaultToolCode =
     CONFIG.workspace.features?.knowledge !== false
       ? 'knowledge_retrieval'
       : 'endpoint';
+
   const [buildinToolConfig, setBuildinToolConfig] = useState<BuildinToolConfig>(
     {
       code: defaultToolCode,
@@ -51,6 +51,7 @@ export const CreateTool: FC<{ assistantId: string }> = ({ assistantId }) => {
   );
 
   const onChangeBuildinToolConfig = (code: string) => {
+    setActiveTab('action');
     setBuildinToolConfig({
       code: code,
       parameters: GetDefaultToolConfigIfInvalid(code, []),
@@ -64,32 +65,10 @@ export const CreateTool: FC<{ assistantId: string }> = ({ assistantId }) => {
     );
   };
 
-  const [errorMessage, setErrorMessage] = useState('');
-  const validateForm = () => {
-    if (!toolDefinition.name) {
-      setErrorMessage('Please provide a valid name for tool.');
-      return false;
-    }
-    if (!/^[a-zA-Z0-9_]+$/.test(toolDefinition.name)) {
-      setErrorMessage(
-        'Please provide valid name, should only contain letters, numbers, and underscores.',
-      );
-      return false;
-    }
+  const isMCP = buildinToolConfig.code === 'mcp';
 
-    if (!toolDefinition.parameters) {
-      setErrorMessage('Please provide valid parameters for the tool.');
-      return false;
-    }
-
-    try {
-      JSON.parse(toolDefinition.parameters);
-    } catch (error) {
-      setErrorMessage(
-        'Please provide a valid parameters, must be a valid JSON.',
-      );
-      return false;
-    }
+  const validateAction = (): boolean => {
+    setErrorMessage('');
     const err = ValidateToolDefaultOptions(
       buildinToolConfig.code,
       buildinToolConfig.parameters,
@@ -98,14 +77,36 @@ export const CreateTool: FC<{ assistantId: string }> = ({ assistantId }) => {
       setErrorMessage(err);
       return false;
     }
-
     return true;
   };
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = () => {
     setErrorMessage('');
-    if (!validateForm()) return;
+    if (!isMCP) {
+      if (!toolDefinition.name) {
+        setErrorMessage('Please provide a valid name for tool.');
+        return;
+      }
+      if (!/^[a-zA-Z0-9_]+$/.test(toolDefinition.name)) {
+        setErrorMessage(
+          'Name should only contain letters, numbers, and underscores.',
+        );
+        return;
+      }
+      if (!toolDefinition.parameters) {
+        setErrorMessage('Please provide valid parameters for the tool.');
+        return;
+      }
+      try {
+        JSON.parse(toolDefinition.parameters);
+      } catch {
+        setErrorMessage(
+          'Please provide valid parameters, must be a valid JSON.',
+        );
+        return;
+      }
+    }
+
     showLoader();
     CreateAssistantTool(
       connectionConfig,
@@ -121,6 +122,7 @@ export const CreateTool: FC<{ assistantId: string }> = ({ assistantId }) => {
           setErrorMessage(
             'Unable to create assistant tool, please check and try again.',
           );
+          return;
         }
         if (response?.getSuccess()) {
           toast.success(
@@ -129,16 +131,11 @@ export const CreateTool: FC<{ assistantId: string }> = ({ assistantId }) => {
           navigator.goToConfigureAssistantTool(assistantId);
         } else {
           if (response?.getError()) {
-            let err = response.getError();
-            const message = err?.getHumanmessage();
+            const message = response.getError()?.getHumanmessage();
             if (message) {
               setErrorMessage(message);
               return;
             }
-            setErrorMessage(
-              'Unable to create tool for assistant, please check and try again.',
-            );
-            return;
           }
           setErrorMessage(
             'Unable to create tool for assistant, please try again.',
@@ -154,41 +151,89 @@ export const CreateTool: FC<{ assistantId: string }> = ({ assistantId }) => {
   };
 
   return (
-    <form
-      onSubmit={onSubmit}
-      method="POST"
-      className="relative flex flex-col flex-1"
-    >
+    <>
       <ConfirmDialogComponent />
-      <div className="overflow-auto flex flex-col flex-1 pb-20">
-        <PageHeaderBlock>
-          <PageTitleBlock>New Tool</PageTitleBlock>
-        </PageHeaderBlock>
-        <BuildinTool
-          toolDefinition={toolDefinition}
-          onChangeToolDefinition={setToolDefinition}
-          onChangeBuildinTool={onChangeBuildinToolConfig}
-          onChangeConfig={setBuildinToolConfig}
-          config={buildinToolConfig}
-        />
-      </div>
-
-      <PageActionButtonBlock errorMessage={errorMessage}>
-        <ICancelButton
-          className="w-full h-full"
-          onClick={() => showDialog(navigator.goBack)}
-          type="button"
-        >
-          Cancel
-        </ICancelButton>
-        <IBlueBGArrowButton
-          isLoading={loading}
-          type="submit"
-          className="w-full h-full"
-        >
-          Configure Tool
-        </IBlueBGArrowButton>
-      </PageActionButtonBlock>
-    </form>
+      <TabForm
+        formHeading="Complete all steps to configure your tool."
+        activeTab={activeTab}
+        onChangeActiveTab={() => {}}
+        errorMessage={errorMessage}
+        form={[
+          {
+            code: 'action',
+            name: 'Action',
+            description:
+              'Select the action type and configure its connection options.',
+            actions: [
+              <ICancelButton
+                className="w-full h-full"
+                type="button"
+                onClick={() => showDialog(navigator.goBack)}
+              >
+                Cancel
+              </ICancelButton>,
+              <IBlueBGArrowButton
+                type="button"
+                isLoading={isMCP ? loading : undefined}
+                className="w-full h-full"
+                onClick={() => {
+                  if (isMCP) {
+                    if (validateAction()) onSubmit();
+                  } else {
+                    if (validateAction()) setActiveTab('definition');
+                  }
+                }}
+              >
+                {isMCP ? 'Configure Tool' : 'Continue'}
+              </IBlueBGArrowButton>,
+            ],
+            body: (
+              <BuildinTool
+                toolDefinition={toolDefinition}
+                onChangeToolDefinition={setToolDefinition}
+                onChangeBuildinTool={onChangeBuildinToolConfig}
+                onChangeConfig={setBuildinToolConfig}
+                config={buildinToolConfig}
+                showDefinitionForm={false}
+              />
+            ),
+          },
+          ...(!isMCP
+            ? [
+                {
+                  code: 'definition',
+                  name: 'Definition',
+                  description:
+                    'Define the tool name, description, and JSON parameter schema.',
+                  actions: [
+                    <ICancelButton
+                      className="w-full h-full"
+                      type="button"
+                      onClick={() => showDialog(navigator.goBack)}
+                    >
+                      Cancel
+                    </ICancelButton>,
+                    <IBlueBGArrowButton
+                      type="button"
+                      isLoading={loading}
+                      className="w-full h-full"
+                      onClick={onSubmit}
+                    >
+                      Configure Tool
+                    </IBlueBGArrowButton>,
+                  ],
+                  body: (
+                    <ToolDefinitionForm
+                      toolDefinition={toolDefinition}
+                      onChangeToolDefinition={setToolDefinition}
+                      documentationUrl="https://doc.rapida.ai/assistants/tools"
+                    />
+                  ),
+                },
+              ]
+            : []),
+        ]}
+      />
+    </>
   );
 };

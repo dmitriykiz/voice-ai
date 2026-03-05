@@ -26,11 +26,9 @@ import {
   Bug,
   ChevronRight,
   Code,
-  ExternalLink,
-  Info,
   PhoneCall,
 } from 'lucide-react';
-import { YellowNoticeBlock } from '@/app/components/container/message/notice-block';
+import { DocNoticeBlock } from '@/app/components/container/message/notice-block/doc-notice-block';
 import { CreateAssistant } from '@rapidaai/react';
 import { connectionConfig } from '@/configs';
 import { Globe } from 'lucide-react';
@@ -38,18 +36,7 @@ import { APiParameter } from '@/app/components/external-api/api-parameter';
 import { InputHelper } from '@/app/components/input-helper';
 import { CodeEditor } from '@/app/components/form/editor/code-editor';
 import toast from 'react-hot-toast/headless';
-
-/** Section divider — matches the one in create-endpoint */
-function SectionDivider({ label }: { label: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="text-[10px] font-semibold tracking-[0.12em] uppercase text-gray-500 dark:text-gray-400 whitespace-nowrap">
-        {label}
-      </span>
-      <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
-    </div>
-  );
-}
+import { SectionDivider } from '@/app/components/blocks/section-divider';
 
 export function CreateAgentKit() {
   const { authId, token, projectId } = useCurrentCredential();
@@ -202,25 +189,10 @@ export function CreateAgentKit() {
               'Configure and connect the agent using an AgentKit endpoint.',
             body: (
               <>
-                <YellowNoticeBlock className="flex items-center gap-3 px-8 py-3">
-                  <Info className="shrink-0 w-4 h-4" strokeWidth={1.5} />
-                  <p className="text-sm flex-1">
-                    Deploy your agent on-premises with the Rapida orchestration
-                    engine via AgentkitConnection.
-                  </p>
-                  <a
-                    target="_blank"
-                    href="https://doc.rapida.ai/assistants/overview"
-                    className="ml-auto flex items-center gap-1.5 text-sm font-medium text-yellow-700 hover:underline whitespace-nowrap"
-                    rel="noreferrer"
-                  >
-                    Read docs
-                    <ExternalLink
-                      className="shrink-0 w-3.5 h-3.5"
-                      strokeWidth={1.5}
-                    />
-                  </a>
-                </YellowNoticeBlock>
+                <DocNoticeBlock docUrl="https://doc.rapida.ai/assistants/overview" linkText="Read docs">
+                  Deploy your agent on-premises with the Rapida orchestration
+                  engine via AgentkitConnection.
+                </DocNoticeBlock>
                 <div className="px-8 pt-6 pb-8 max-w-4xl flex flex-col gap-8">
                   {/* Connection section */}
                   <div className="flex flex-col gap-6">
@@ -413,25 +385,10 @@ export function CreateAgentKit() {
             ],
             body: (
               <>
-                <YellowNoticeBlock className="flex items-center gap-3 px-8 py-3">
-                  <Info className="shrink-0 w-4 h-4" strokeWidth={1.5} />
-                  <p className="text-sm flex-1">
-                    Choose how you'd like to start engaging with users and add
-                    advanced features to customize the user's experience.
-                  </p>
-                  <a
-                    target="_blank"
-                    href="https://doc.rapida.ai/assistants/overview"
-                    className="ml-auto flex items-center gap-1.5 text-sm font-medium text-yellow-700 hover:underline whitespace-nowrap"
-                    rel="noreferrer"
-                  >
-                    Read docs
-                    <ExternalLink
-                      className="shrink-0 w-3.5 h-3.5"
-                      strokeWidth={1.5}
-                    />
-                  </a>
-                </YellowNoticeBlock>
+                <DocNoticeBlock docUrl="https://doc.rapida.ai/assistants/overview" linkText="Read docs">
+                  Choose how you'd like to start engaging with users and add
+                  advanced features to customize the user's experience.
+                </DocNoticeBlock>
                 <div className="px-8 pt-6 pb-8 flex flex-col gap-8">
                   {/* Deployments section */}
                   <div className="flex flex-col gap-6">

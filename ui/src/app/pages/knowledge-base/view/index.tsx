@@ -17,6 +17,7 @@ import { Tag } from '@rapidaai/react';
 import { ServiceError } from '@rapidaai/react';
 import { DocumentSegments } from '@/app/pages/knowledge-base/view/document-segments';
 import { PageHeaderBlock } from '@/app/components/blocks/page-header-block';
+import { PageTitleBlock } from '@/app/components/blocks/page-title-block';
 import { connectionConfig } from '@/configs';
 import { CreateKnowledgeDocumentDialog } from '@/app/components/base/modal/create-knowledge-document-modal';
 import { IBlueButton } from '@/app/components/form/button';
@@ -146,8 +147,8 @@ export function ViewKnowledgePage() {
         <Helmet title="Knowledge" />
         <PageHeaderBlock>
           <div className="flex items-center gap-3">
-            <div>Knowledge / {currentKnowledge?.getName()} </div>
-            <div className="text-xs opacity-75">
+            <PageTitleBlock>{currentKnowledge?.getName()}</PageTitleBlock>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
               {currentKnowledge?.getCreateddate() &&
                 toHumanReadableRelativeTime(
                   currentKnowledge?.getCreateddate()!,

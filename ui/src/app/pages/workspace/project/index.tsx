@@ -27,7 +27,7 @@ import { toHumanReadableDate } from '@/utils/date';
 import { RoleIndicator } from '@/app/components/indicators/role';
 import { ProjectOption } from '@/app/pages/workspace/project/project-options';
 import { PageHeaderBlock } from '@/app/components/blocks/page-header-block';
-import { PageTitleBlock } from '@/app/components/blocks/page-title-block';
+import { PageTitleWithCount } from '@/app/components/blocks/page-title-with-count';
 import { TableSection } from '@/app/components/sections/table-section';
 import { connectionConfig } from '@/configs';
 export function ProjectPage() {
@@ -146,12 +146,9 @@ export function ProjectPage() {
     <>
       <Helmet title="Projects" />
       <PageHeaderBlock>
-        <div className="flex items-center gap-3">
-          <PageTitleBlock>Projects</PageTitleBlock>
-          <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
-            {`${projects.length}/${totalCount}`}
-          </span>
-        </div>
+        <PageTitleWithCount count={projects.length} total={totalCount}>
+          Projects
+        </PageTitleWithCount>
         <div className="flex items-stretch h-12 border-l border-gray-200 dark:border-gray-800">
           <button
             type="button"

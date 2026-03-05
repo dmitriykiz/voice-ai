@@ -14,7 +14,7 @@ import { IButton } from '@/app/components/form/button';
 import { Plus, RotateCw } from 'lucide-react';
 import { PaginationButtonBlock } from '@/app/components/blocks/pagination-button-block';
 import { PageHeaderBlock } from '@/app/components/blocks/page-header-block';
-import { PageTitleBlock } from '@/app/components/blocks/page-title-block';
+import { PageTitleWithCount } from '@/app/components/blocks/page-title-with-count';
 import { TableSection } from '@/app/components/sections/table-section';
 import { Table } from '@/app/components/base/tables/table';
 import { TableBody } from '@/app/components/base/tables/table-body';
@@ -65,12 +65,9 @@ export function UserPage() {
     <>
       <Helmet title="User and Teams" />
       <PageHeaderBlock>
-        <div className="flex items-center gap-3">
-          <PageTitleBlock>Users</PageTitleBlock>
-          <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
-            {`${userActions.users.length}/${userActions.totalCount}`}
-          </span>
-        </div>
+        <PageTitleWithCount count={userActions.users.length} total={userActions.totalCount}>
+          Users
+        </PageTitleWithCount>
         <div className="flex items-stretch h-12 border-l border-gray-200 dark:border-gray-800">
           <button
             type="button"

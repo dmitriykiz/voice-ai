@@ -15,11 +15,12 @@ import { ActionableEmptyMessage } from '@/app/components/container/message/actio
 import { AuthContext } from '@/context/auth-context';
 import { PageHeaderBlock } from '@/app/components/blocks/page-header-block';
 import { PageTitleBlock } from '@/app/components/blocks/page-title-block';
-import { ExternalLink, Info, Plus, RotateCw } from 'lucide-react';
+import { PageTitleWithCount } from '@/app/components/blocks/page-title-with-count';
+import { Plus, RotateCw } from 'lucide-react';
 import { connectionConfig } from '@/configs';
 import { Eye, EyeOff, Copy, CheckCircle } from 'lucide-react';
 import { toHumanReadableDate } from '@/utils/date';
-import { YellowNoticeBlock } from '@/app/components/container/message/notice-block';
+import { DocNoticeBlock } from '@/app/components/container/message/notice-block/doc-notice-block';
 import { FieldSet } from '@/app/components/form/fieldset';
 import { FormLabel } from '@/app/components/form-label';
 import { CopyButton } from '@/app/components/form/button/copy-button';
@@ -134,12 +135,9 @@ export function ProjectCredentialPage() {
     <>
       <Helmet title="Providers and Models" />
       <PageHeaderBlock className="border-b">
-        <div className="flex items-center gap-3">
-          <PageTitleBlock>Project Developer Keys</PageTitleBlock>
-          <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
-            {`${ourKeys.length}/${ourKeys.length}`}
-          </span>
-        </div>
+        <PageTitleWithCount count={ourKeys.length} total={ourKeys.length}>
+          Project Developer Keys
+        </PageTitleWithCount>
         <div className="flex items-stretch h-12 border-l border-gray-200 dark:border-gray-800">
           <IButton onClick={shouldReload} className="h-full">
             <RotateCw strokeWidth={1.5} className="w-4 h-4" />
@@ -154,22 +152,10 @@ export function ProjectCredentialPage() {
           </button>
         </div>
       </PageHeaderBlock>
-      <YellowNoticeBlock className="flex items-center">
-        <Info className="shrink-0 w-4 h-4" />
-        <div className="ms-3 text-sm font-medium">
-          These are project-specific keys. They are used to authenticate and
-          interact with the Rapida service for this particular project.
-        </div>
-        <a
-          target="_blank"
-          href="https://doc.rapida.ai/integrations/rapida-credentials"
-          className="h-7 flex items-center font-medium hover:underline ml-auto text-yellow-600"
-          rel="noreferrer"
-        >
-          Read documentation
-          <ExternalLink className="shrink-0 w-4 h-4 ml-1.5" strokeWidth={1.5} />
-        </a>
-      </YellowNoticeBlock>
+      <DocNoticeBlock docUrl="https://doc.rapida.ai/integrations/rapida-credentials">
+        These are project-specific keys. They are used to authenticate and
+        interact with the Rapida service for this particular project.
+      </DocNoticeBlock>
       {ourKeys && ourKeys.length > 0 ? (
         <section className="grid content-start grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[2px] grow shrink-0 m-4">
           {ourKeys.map((pc, idx) => (
@@ -295,22 +281,10 @@ export function PersonalCredentialPage() {
           <PageTitleBlock>Personal Tokens</PageTitleBlock>
         </div>
       </PageHeaderBlock>
-      <YellowNoticeBlock className="flex items-center">
-        <Info className="shrink-0 w-4 h-4" />
-        <div className="ms-3 text-sm font-medium">
-          These are your personal access tokens. They are used to authenticate
-          and interact with the Rapida service across all your projects.
-        </div>
-        <a
-          target="_blank"
-          href="https://doc.rapida.ai/integrations/rapida-credentials"
-          className="h-7 flex items-center font-medium hover:underline ml-auto text-yellow-600"
-          rel="noreferrer"
-        >
-          Read documentation
-          <ExternalLink className="shrink-0 w-4 h-4 ml-1.5" strokeWidth={1.5} />
-        </a>
-      </YellowNoticeBlock>
+      <DocNoticeBlock docUrl="https://doc.rapida.ai/integrations/rapida-credentials">
+        These are your personal access tokens. They are used to authenticate
+        and interact with the Rapida service across all your projects.
+      </DocNoticeBlock>
       <section className="grid content-start grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[2px] grow shrink-0 m-4">
         <BaseCard>
           {/* Card header */}

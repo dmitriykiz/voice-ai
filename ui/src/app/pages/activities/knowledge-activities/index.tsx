@@ -6,18 +6,19 @@ import toast from 'react-hot-toast/headless';
 import { useRapidaStore } from '@/hooks';
 import { TablePagination } from '@/app/components/base/tables/table-pagination';
 import { SearchIconInput } from '@/app/components/form/input/IconInput';
-import { CustomLink } from '@/app/components/custom-link';
+import { LinkCell } from '@/app/components/base/tables/link-cell';
 import { BluredWrapper } from '@/app/components/wrapper/blured-wrapper';
 import { formatNanoToReadableMilli, toDateString } from '@/utils/date';
 import { Spinner } from '@/app/components/loader/spinner';
 import { ScrollableResizableTable } from '@/app/components/data-table';
 import { IButton } from '@/app/components/form/button';
-import { Eye, ExternalLink, RotateCw } from 'lucide-react';
-import TooltipPlus from '@/app/components/base/tooltip-plus';
+import { IconActionButton } from '@/app/components/form/button/icon-action-button';
+import { Eye, RotateCw } from 'lucide-react';
 import { TableCell } from '@/app/components/base/tables/table-cell';
 import { TableRow } from '@/app/components/base/tables/table-row';
 import { StatusIndicator } from '@/app/components/indicators/status';
-import { PageTitleBlock } from '@/app/components/blocks/page-title-block';
+import { ActionCell } from '@/app/components/base/tables/action-cell';
+import { PageTitleWithCount } from '@/app/components/blocks/page-title-with-count';
 import { YellowNoticeBlock } from '@/app/components/container/message/notice-block';
 import { PaginationButtonBlock } from '@/app/components/blocks/pagination-button-block';
 import { PageHeaderBlock } from '@/app/components/blocks/page-header-block';
@@ -108,12 +109,9 @@ export function ListingPage() {
 
       <Helmet title="LLM Logs" />
       <PageHeaderBlock>
-        <div className="flex items-center gap-3">
-          <PageTitleBlock>Knowledge Logs</PageTitleBlock>
-          <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
-            {`${activities.length}/${totalCount}`}
-          </span>
-        </div>
+        <PageTitleWithCount count={activities.length} total={totalCount}>
+          Knowledge Logs
+        </PageTitleWithCount>
       </PageHeaderBlock>
 
       <BluredWrapper className="sticky top-0 z-11">
@@ -154,15 +152,9 @@ export function ListingPage() {
             return (
               <TableRow key={idx} data-id={at.getId()}>
                 {visibleColumn('knowledge_id') && (
-                  <TableCell>
-                    <CustomLink
-                      to={`/knowledge/${at.getKnowledgeid()}`}
-                      className="font-normal dark:text-blue-500 text-blue-600 hover:underline cursor-pointer text-left flex items-center space-x-1"
-                    >
-                      <span>{at.getKnowledgeid()}</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </CustomLink>
-                  </TableCell>
+                  <LinkCell to={`/knowledge/${at.getKnowledgeid()}`}>
+                    {at.getKnowledgeid()}
+                  </LinkCell>
                 )}
                 {visibleColumn('retrieval_method') && (
                   <TableCell>{at.getRetrievalmethod()}</TableCell>
@@ -193,29 +185,17 @@ export function ListingPage() {
                 {visibleColumn('created_date') && (
                   <DateCell date={at.getCreateddate()} />
                 )}
-                <TableCell>
-                  <div className="flex border border-gray-200 dark:border-gray-800 divide-x divide-gray-200 dark:divide-gray-800 w-fit">
-                    <IButton
-                      className="rounded-none"
-                      onClick={event => {
-                        event.stopPropagation();
-                        setCurrentActivityId(at.getId());
-                        setShowLogModal(true);
-                      }}
-                    >
-                      <TooltipPlus
-                        className="bg-white dark:bg-gray-950 border-[0.5px] rounded-[2px] px-0 py-0"
-                        popupContent={
-                          <div className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400">
-                            View detail
-                          </div>
-                        }
-                      >
-                        <Eye strokeWidth={1.5} className="h-4 w-4" />
-                      </TooltipPlus>
-                    </IButton>
-                  </div>
-                </TableCell>
+                <ActionCell>
+                  <IconActionButton
+                    tooltip="View detail"
+                    icon={<Eye strokeWidth={1.5} className="h-4 w-4" />}
+                    onClick={event => {
+                      event.stopPropagation();
+                      setCurrentActivityId(at.getId());
+                      setShowLogModal(true);
+                    }}
+                  />
+                </ActionCell>
               </TableRow>
             );
           })}

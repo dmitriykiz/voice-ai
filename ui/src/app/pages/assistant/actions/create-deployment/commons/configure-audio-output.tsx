@@ -16,17 +16,7 @@ import {
 } from '@/providers';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/utils';
-
-function SectionDivider({ label }: { label: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="text-[10px] font-semibold tracking-[0.12em] uppercase text-gray-500 dark:text-gray-400 whitespace-nowrap">
-        {label}
-      </span>
-      <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
-    </div>
-  );
-}
+import { SectionDivider } from '@/app/components/blocks/section-divider';
 
 interface ConfigureAudioOutputProviderProps {
   audioOutputConfig: { provider: string; parameters: Metadata[] };

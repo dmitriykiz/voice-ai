@@ -511,6 +511,19 @@
 }
 
 @layer base {
+    :is(.dark *),
+    :root:is(.dark) {
+        --color-primary: #4589ff;
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not(.light) {
+        --color-primary: #4589ff;
+    }
+}
+
+@layer base {
 
     *,
     ::before,

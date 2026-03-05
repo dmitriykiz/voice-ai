@@ -7,7 +7,7 @@ import { useRapidaStore } from '@/hooks';
 import { TablePagination } from '@/app/components/base/tables/table-pagination';
 import { SearchIconInput } from '@/app/components/form/input/IconInput';
 import { Metadata } from '@rapidaai/react';
-import { CustomLink } from '@/app/components/custom-link';
+import { LinkCell } from '@/app/components/base/tables/link-cell';
 import { BluredWrapper } from '@/app/components/wrapper/blured-wrapper';
 import { formatNanoToReadableMilli, toDateString } from '@/utils/date';
 import { getMetadataValue } from '@/utils/metadata';
@@ -18,7 +18,8 @@ import { ExternalLink, Eye, RotateCw } from 'lucide-react';
 import { TableCell } from '@/app/components/base/tables/table-cell';
 import { TableRow } from '@/app/components/base/tables/table-row';
 import { StatusIndicator } from '@/app/components/indicators/status';
-import { PageTitleBlock } from '@/app/components/blocks/page-title-block';
+import { ActionCell } from '@/app/components/base/tables/action-cell';
+import { PageTitleWithCount } from '@/app/components/blocks/page-title-with-count';
 import { YellowNoticeBlock } from '@/app/components/container/message/notice-block';
 import { PaginationButtonBlock } from '@/app/components/blocks/pagination-button-block';
 import { PageHeaderBlock } from '@/app/components/blocks/page-header-block';
@@ -26,6 +27,7 @@ import { useToolActivityLogPage } from '@/hooks/use-tool-activity-log-page-store
 import { ToolLogDialog } from '@/app/components/base/modal/tool-log-modal';
 import { DateCell } from '@/app/components/base/tables/date-cell';
 import TooltipPlus from '@/app/components/base/tooltip-plus';
+import { IconActionButton } from '@/app/components/form/button/icon-action-button';
 
 /**
  * Listing all the audit log for the user organization and selected project
@@ -109,12 +111,9 @@ export function ListingPage() {
 
       <Helmet title="Tool Logs" />
       <PageHeaderBlock>
-        <div className="flex items-center gap-3">
-          <PageTitleBlock>Tool Logs</PageTitleBlock>
-          <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
-            {`${activities.length}/${totalCount}`}
-          </span>
-        </div>
+        <PageTitleWithCount count={activities.length} total={totalCount}>
+          Tool Logs
+        </PageTitleWithCount>
       </PageHeaderBlock>
 
       <BluredWrapper className="sticky top-0 z-11">
@@ -155,26 +154,14 @@ export function ListingPage() {
             return (
               <TableRow key={idx} data-id={at.getId()}>
                 {visibleColumn('assistant_id') && (
-                  <TableCell>
-                    <CustomLink
-                      to={`/deployment/assistant/${at.getAssistantid()}`}
-                      className="font-normal dark:text-blue-500 text-blue-600 hover:underline cursor-pointer text-left flex items-center space-x-1"
-                    >
-                      <span>{at.getAssistantid()}</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </CustomLink>
-                  </TableCell>
+                  <LinkCell to={`/deployment/assistant/${at.getAssistantid()}`}>
+                    {at.getAssistantid()}
+                  </LinkCell>
                 )}
                 {visibleColumn('assistant_conversation_id') && (
-                  <TableCell>
-                    <CustomLink
-                      to={`/deployment/assistant/${at.getAssistantid()}/sessions/${at.getAssistantconversationid()}`}
-                      className="font-normal dark:text-blue-500 text-blue-600 hover:underline cursor-pointer text-left flex items-center space-x-1"
-                    >
-                      <span>{at.getAssistantconversationid()}</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </CustomLink>
-                  </TableCell>
+                  <LinkCell to={`/deployment/assistant/${at.getAssistantid()}/sessions/${at.getAssistantconversationid()}`}>
+                    {at.getAssistantconversationid()}
+                  </LinkCell>
                 )}
                 {visibleColumn('assistant_tool_name') && (
                   <TableCell>{at.getAssistanttoolname()}</TableCell>
@@ -186,45 +173,32 @@ export function ListingPage() {
                   </TableCell>
                 )}
 
-                <TableCell>
-                  <div className="flex border border-gray-200 dark:border-gray-800 w-fit">
-                    <IButton
-                      className="rounded-none"
-                      onClick={event => {
-                        event.stopPropagation();
-                        setCurrentActivityId(at.getId());
-                        setShowLogModal(true);
-                      }}
+                <ActionCell>
+                  <IconActionButton
+                    tooltip="View detail"
+                    icon={<Eye strokeWidth={1.5} className="h-4 w-4" />}
+                    onClick={event => {
+                      event.stopPropagation();
+                      setCurrentActivityId(at.getId());
+                      setShowLogModal(true);
+                    }}
+                  />
+                  <ILinkBorderButton
+                    className="rounded-none border-0"
+                    href={`/deployment/assistant/${at.getAssistantid()}/sessions/${at.getAssistantconversationid()}`}
+                  >
+                    <TooltipPlus
+                      className="bg-white dark:bg-gray-950 border-[0.5px] rounded-[2px] px-0 py-0"
+                      popupContent={
+                        <div className="px-3 py-2 text-sm text-gray-600 dark:text-gray-500">
+                          View conversation
+                        </div>
+                      }
                     >
-                      <TooltipPlus
-                        className="bg-white dark:bg-gray-950 border-[0.5px] rounded-[2px] px-0 py-0"
-                        popupContent={
-                          <div className="px-3 py-2 text-sm text-gray-600 dark:text-gray-500">
-                            View detail
-                          </div>
-                        }
-                      >
-                        <Eye strokeWidth={1.5} className="h-4 w-4" />
-                      </TooltipPlus>
-                    </IButton>
-                    <span className="w-px self-stretch bg-gray-200 dark:bg-gray-800 shrink-0" />
-                    <ILinkBorderButton
-                      className="rounded-none border-0"
-                      href={`/deployment/assistant/${at.getAssistantid()}/sessions/${at.getAssistantconversationid()}`}
-                    >
-                      <TooltipPlus
-                        className="bg-white dark:bg-gray-950 border-[0.5px] rounded-[2px] px-0 py-0"
-                        popupContent={
-                          <div className="px-3 py-2 text-sm text-gray-600 dark:text-gray-500">
-                            View conversation
-                          </div>
-                        }
-                      >
-                        <ExternalLink strokeWidth={1.5} className="h-4 w-4" />
-                      </TooltipPlus>
-                    </ILinkBorderButton>
-                  </div>
-                </TableCell>
+                      <ExternalLink strokeWidth={1.5} className="h-4 w-4" />
+                    </TooltipPlus>
+                  </ILinkBorderButton>
+                </ActionCell>
                 {visibleColumn('status') && (
                   <TableCell>
                     <StatusIndicator state={at.getStatus()} />

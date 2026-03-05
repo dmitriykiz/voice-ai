@@ -37,12 +37,12 @@ import {
   CardDescription,
   CardTitle,
 } from '@/app/components/base/cards';
-import { ExternalLink, Info, Plus, SquareFunction } from 'lucide-react';
+import { ArrowUpRight, Plus, SquareFunction } from 'lucide-react';
 import { PageHeaderBlock } from '@/app/components/blocks/page-header-block';
 import { PageTitleBlock } from '@/app/components/blocks/page-title-block';
 import { ActionableEmptyMessage } from '@/app/components/container/message/actionable-empty-message';
 import { ConfigureAssistantToolDialog } from '@/app/components/base/modal/assistant-configure-tool-modal';
-import { YellowNoticeBlock } from '@/app/components/container/message/notice-block';
+import { DocNoticeBlock } from '@/app/components/container/message/notice-block/doc-notice-block';
 import { CardOptionMenu } from '@/app/components/menu';
 import { CreateAssistant } from '@rapidaai/react';
 import { CreateAssistantToolRequest } from '@rapidaai/react';
@@ -52,18 +52,12 @@ import { ChatCompletePrompt } from '@/utils/prompt';
 import toast from 'react-hot-toast/headless';
 import { InputHelper } from '@/app/components/input-helper';
 import { ConfigureAssistantNextDialog } from '@/app/components/base/modal/assistant-configure-next-modal';
-
-/** Section divider — matches the one in create-endpoint */
-function SectionDivider({ label }: { label: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="text-[10px] font-semibold tracking-[0.12em] uppercase text-gray-500 dark:text-gray-400 whitespace-nowrap">
-        {label}
-      </span>
-      <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
-    </div>
-  );
-}
+import { SectionDivider } from '@/app/components/blocks/section-divider';
+import { CornerBorderOverlay } from '@/app/components/base/corner-border';
+import {
+  AssistantTemplate,
+  ConfigureAssistantTemplateDialog,
+} from '@/app/components/base/modal/configure-assistant-template-modal';
 
 /**
  *
@@ -131,8 +125,8 @@ export function CreateAssistantPage() {
     provider: string;
     parameters: Metadata[];
   }>({
-    provider: 'azure',
-    parameters: GetDefaultTextProviderConfigIfInvalid('azure', []),
+    provider: 'azure-foundry',
+    parameters: GetDefaultTextProviderConfigIfInvalid('azure-foundry', []),
   });
   const [template, setTemplate] = useState<{
     prompt: { role: string; content: string }[];
@@ -143,6 +137,60 @@ export function CreateAssistantPage() {
   });
   const { showDialog, ConfirmDialogComponent } = useConfirmDialog({});
   const [configureToolOpen, setConfigureToolOpen] = useState(false);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
+
+  /**
+   * Applies a selected usecase template to pre-fill the form state.
+   */
+  const handleSelectTemplate = (tmpl: AssistantTemplate) => {
+    setName(tmpl.name);
+    setDescription(tmpl.description);
+
+    // Build prompt messages
+    const promptMessages = tmpl.instruction.map(inst => ({
+      role: inst.role,
+      content: inst.content,
+    }));
+
+    // Extract {{variable}} references from all prompt content
+    const variableRegex = /\{\{\s*(\w+)\s*\}\}/g;
+    const variables: { name: string; type: string; defaultvalue: string }[] = [];
+    const seen = new Set<string>();
+    tmpl.instruction.forEach(inst => {
+      let match;
+      while ((match = variableRegex.exec(inst.content)) !== null) {
+        const varName = match[1];
+        if (!seen.has(varName)) {
+          seen.add(varName);
+          variables.push({ name: varName, type: 'string', defaultvalue: '' });
+        }
+      }
+    });
+
+    setTemplate({
+      prompt: promptMessages,
+      variables: variables.length > 0 ? variables : [],
+    });
+
+    // Apply model/provider settings
+    const newParams = GetDefaultTextProviderConfigIfInvalid(tmpl.provider, []);
+    const setOrCreate = (key: string, value: string) => {
+      const existing = newParams.find(p => p.getKey() === key);
+      if (existing) {
+        existing.setValue(value);
+      } else {
+        const m = new Metadata();
+        m.setKey(key);
+        m.setValue(value);
+        newParams.push(m);
+      }
+    };
+    setOrCreate('model.temperature', String(tmpl.parameters.temperature));
+    setOrCreate('model.name', tmpl.model);
+    setOrCreate('model.id', `${tmpl.provider}/${tmpl.model}`);
+
+    setSelectedModel({ provider: tmpl.provider, parameters: newParams });
+  };
   const onAddTag = (tag: string) => {
     setTags([...tags, tag]);
   };
@@ -286,6 +334,13 @@ export function CreateAssistantPage() {
     <>
       <Helmet title="Create an assistant"></Helmet>
       <ConfirmDialogComponent />
+
+      <ConfigureAssistantTemplateDialog
+        modalOpen={templateModalOpen}
+        setModalOpen={setTemplateModalOpen}
+        onSelectTemplate={handleSelectTemplate}
+      />
+
       {assistant && (
         <ConfigureAssistantNextDialog
           assistant={assistant}
@@ -349,26 +404,36 @@ export function CreateAssistantPage() {
             code: 'choose-model',
             body: (
               <>
-                <YellowNoticeBlock className="flex items-center gap-3 px-8 py-3">
-                  <Info className="shrink-0 w-4 h-4" strokeWidth={1.5} />
-                  <p className="text-sm flex-1">
-                    Rapida Assistant enables you to deploy intelligent
-                    conversational agents across multiple channels.
-                  </p>
-                  <a
-                    target="_blank"
-                    href="https://doc.rapida.ai/assistants/overview"
-                    className="ml-auto flex items-center gap-1.5 text-sm font-medium text-yellow-700 hover:underline whitespace-nowrap"
-                    rel="noreferrer"
-                  >
-                    Read docs
-                    <ExternalLink
-                      className="shrink-0 w-3.5 h-3.5"
-                      strokeWidth={1.5}
-                    />
-                  </a>
-                </YellowNoticeBlock>
+                <DocNoticeBlock docUrl="https://doc.rapida.ai/assistants/overview" linkText="Read docs">
+                  Rapida Assistant enables you to deploy intelligent
+                  conversational agents across multiple channels.
+                </DocNoticeBlock>
                 <div className="px-8 pt-6 pb-8 max-w-4xl flex flex-col gap-8">
+                  {/* Quick start — Usecase Template tile */}
+                  <button
+                    type="button"
+                    className="group relative w-full flex items-start justify-between gap-4 p-4 text-left bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors duration-100"
+                    onClick={() => setTemplateModalOpen(true)}
+                  >
+                    <CornerBorderOverlay />
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <span className="text-[10px] font-semibold tracking-[0.12em] uppercase text-gray-500 dark:text-gray-400">
+                        Quick start
+                      </span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        Usecase Template
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-500 leading-relaxed">
+                        Browse 8 pre-configured assistant templates and auto-fill your form.
+                      </span>
+                    </div>
+                    <ArrowUpRight
+                      className="shrink-0 mt-0.5 text-gray-500 dark:text-gray-400 group-hover:text-primary transition-colors"
+                      strokeWidth={1.5}
+                      size={16}
+                    />
+                  </button>
+
                   {/* Model configuration section */}
                   <div className="flex flex-col gap-6">
                     <SectionDivider label="Model Configuration" />
@@ -455,26 +520,11 @@ export function CreateAssistantPage() {
                     </IBlueButton>
                   </div>
                 </PageHeaderBlock>
-                <YellowNoticeBlock className="flex items-center">
-                  <Info className="shrink-0 w-4 h-4" />
-                  <div className="ms-3 text-sm font-medium">
-                    Activate the tools you want your assistant to use, allowing
-                    it to perform actions like fetching real-time data,
-                    processing complex tasks, and more.
-                  </div>
-                  <a
-                    target="_blank"
-                    href="https://doc.rapida.ai/assistants/tools/"
-                    className="h-7 flex items-center font-medium hover:underline ml-auto text-yellow-600"
-                    rel="noreferrer"
-                  >
-                    Read documentation
-                    <ExternalLink
-                      className="shrink-0 w-4 h-4 ml-1.5"
-                      strokeWidth={1.5}
-                    />
-                  </a>
-                </YellowNoticeBlock>
+                <DocNoticeBlock docUrl="https://doc.rapida.ai/assistants/tools/">
+                  Activate the tools you want your assistant to use, allowing
+                  it to perform actions like fetching real-time data,
+                  processing complex tasks, and more.
+                </DocNoticeBlock>
                 <div className="overflow-auto flex flex-col flex-1">
                   {tools.length > 0 ? (
                     <section className="grid content-start grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-gray-200 dark:bg-gray-800 grow shrink-0 m-4">

@@ -502,12 +502,6 @@ export const AssistantAnalytics: FC<{ assistant: Assistant }> = props => {
                 data={activeSessionsData}
                 margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
               >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="#e5e7eb"
-                  strokeOpacity={0.5}
-                />
                 <YAxis
                   dataKey="total"
                   tickLine={false}

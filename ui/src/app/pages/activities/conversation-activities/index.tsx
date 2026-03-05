@@ -10,6 +10,7 @@ import { AssistantConversationMessage, Criteria } from '@rapidaai/react';
 import { SectionLoader } from '@/app/components/loader/section-loader';
 import { YellowNoticeBlock } from '@/app/components/container/message/notice-block';
 import { IButton, ILinkBorderButton } from '@/app/components/form/button';
+import { IconActionButton } from '@/app/components/form/button/icon-action-button';
 import {
   Download,
   ExternalLink,
@@ -36,11 +37,12 @@ import { PaginationButtonBlock } from '@/app/components/blocks/pagination-button
 import { useConversationLogPageStore } from '@/hooks/use-conversation-log-page-store';
 import { Helmet } from '@/app/components/helmet';
 import { PageHeaderBlock } from '@/app/components/blocks/page-header-block';
-import { PageTitleBlock } from '@/app/components/blocks/page-title-block';
+import { PageTitleWithCount } from '@/app/components/blocks/page-title-with-count';
+import { ActionCell } from '@/app/components/base/tables/action-cell';
 import { ConversationTelemetryDialog } from '@/app/components/base/modal/conversation-telemetry-modal';
 import { CONFIG } from '@/configs';
 import { TableCell } from '@/app/components/base/tables/table-cell';
-import { CustomLink } from '@/app/components/custom-link';
+import { LinkCell } from '@/app/components/base/tables/link-cell';
 import { TableRow } from '@/app/components/base/tables/table-row';
 import { StatusIndicator } from '@/app/components/indicators/status';
 import SourceIndicator from '@/app/components/indicators/source';
@@ -268,12 +270,12 @@ export const ListingPage: FC<{}> = () => {
         onFiltersChange={applyFilter}
       />
       <PageHeaderBlock>
-        <div className="flex items-center gap-3">
-          <PageTitleBlock>Conversation Logs</PageTitleBlock>
-          <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
-            {`${conversationLogAction.assistantMessages.length}/${conversationLogAction.totalCount}`}
-          </span>
-        </div>
+        <PageTitleWithCount
+          count={conversationLogAction.assistantMessages.length}
+          total={conversationLogAction.totalCount}
+        >
+          Conversation Logs
+        </PageTitleWithCount>
       </PageHeaderBlock>
       <BluredWrapper className="sticky top-0 z-11">
         <SearchIconInput
@@ -389,26 +391,14 @@ export const ListingPage: FC<{}> = () => {
               {conversationLogAction.visibleColumn(
                 'assistant_conversation_id',
               ) && (
-                <TableCell>
-                  <CustomLink
-                    to={`/deployment/assistant/${row.getAssistantid()}/sessions/${row.getAssistantconversationid()}`}
-                    className="font-normal dark:text-blue-500 text-blue-600 hover:underline cursor-pointer text-left flex items-center space-x-1"
-                  >
-                    <span>{row.getAssistantconversationid()}</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </CustomLink>
-                </TableCell>
+                <LinkCell to={`/deployment/assistant/${row.getAssistantid()}/sessions/${row.getAssistantconversationid()}`}>
+                  {row.getAssistantconversationid()}
+                </LinkCell>
               )}
               {conversationLogAction.visibleColumn('assistant_id') && (
-                <TableCell>
-                  <CustomLink
-                    to={`/deployment/assistant/${row.getAssistantid()}`}
-                    className="font-normal dark:text-blue-500 text-blue-600 hover:underline cursor-pointer text-left flex items-center space-x-1"
-                  >
-                    <span>{row.getAssistantid()}</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </CustomLink>
-                </TableCell>
+                <LinkCell to={`/deployment/assistant/${row.getAssistantid()}`}>
+                  {row.getAssistantid()}
+                </LinkCell>
               )}
               {conversationLogAction.visibleColumn('source') && (
                 <TableCell>
@@ -440,66 +430,38 @@ export const ListingPage: FC<{}> = () => {
                     toHumanReadableDateTime(row.getCreateddate()!)}
                 </TableCell>
               )}
-              <TableCell>
-                <div className="flex border border-gray-200 dark:border-gray-800 w-fit">
-                  <IButton
-                    className="rounded-none"
-                    onClick={event => {
-                      setCurrentActivity(row);
-                      setShowLogModal(true);
-                    }}
+              <ActionCell>
+                <IconActionButton
+                  tooltip="View detail"
+                  icon={<Eye strokeWidth={1.5} className="h-4 w-4" />}
+                  onClick={() => {
+                    setCurrentActivity(row);
+                    setShowLogModal(true);
+                  }}
+                />
+                {CONFIG.workspace.features?.telemetry !== false && (
+                  <IconActionButton
+                    tooltip="View telemetry"
+                    icon={<Telescope strokeWidth={1.5} className="h-4 w-4" />}
+                    onClick={() => handleTraceClick(row)}
+                  />
+                )}
+                <ILinkBorderButton
+                  className="rounded-none border-0"
+                  href={`/deployment/assistant/${row.getAssistantid()}/sessions/${row.getAssistantconversationid()}`}
+                >
+                  <TooltipPlus
+                    className="bg-white dark:bg-gray-950 border-[0.5px] rounded-[2px] px-0 py-0"
+                    popupContent={
+                      <div className="px-3 py-2 text-sm text-gray-600 dark:text-gray-500">
+                        View conversation
+                      </div>
+                    }
                   >
-                    <TooltipPlus
-                      className="bg-white dark:bg-gray-950 border-[0.5px] rounded-[2px] px-0 py-0"
-                      popupContent={
-                        <div className="px-3 py-2 text-sm text-gray-600 dark:text-gray-500">
-                          View detail
-                        </div>
-                      }
-                    >
-                      <Eye strokeWidth={1.5} className="h-4 w-4" />
-                    </TooltipPlus>
-                  </IButton>
-                  {CONFIG.workspace.features?.telemetry !== false && (
-                    <>
-                      <span className="w-px self-stretch bg-gray-200 dark:bg-gray-800 shrink-0" />
-                      <IButton
-                        className="rounded-none"
-                        onClick={event => {
-                          handleTraceClick(row);
-                        }}
-                      >
-                        <TooltipPlus
-                          className="bg-white dark:bg-gray-950 border-[0.5px] rounded-[2px] px-0 py-0"
-                          popupContent={
-                            <div className="px-3 py-2 text-sm text-gray-600 dark:text-gray-500">
-                              View telemetry
-                            </div>
-                          }
-                        >
-                          <Telescope strokeWidth={1.5} className="h-4 w-4" />
-                        </TooltipPlus>
-                      </IButton>
-                    </>
-                  )}
-                  <span className="w-px self-stretch bg-gray-200 dark:bg-gray-800 shrink-0" />
-                  <ILinkBorderButton
-                    className="rounded-none border-0"
-                    href={`/deployment/assistant/${row.getAssistantid()}/sessions/${row.getAssistantconversationid()}`}
-                  >
-                    <TooltipPlus
-                      className="bg-white dark:bg-gray-950 border-[0.5px] rounded-[2px] px-0 py-0"
-                      popupContent={
-                        <div className="px-3 py-2 text-sm text-gray-600 dark:text-gray-500">
-                          View conversation
-                        </div>
-                      }
-                    >
-                      <ExternalLink strokeWidth={1.5} className="h-4 w-4" />
-                    </TooltipPlus>
-                  </ILinkBorderButton>
-                </div>
-              </TableCell>
+                    <ExternalLink strokeWidth={1.5} className="h-4 w-4" />
+                  </TooltipPlus>
+                </ILinkBorderButton>
+              </ActionCell>
               {conversationLogAction.visibleColumn('status') && (
                 <TableCell>
                   <StatusIndicator state={row.getStatus()} />

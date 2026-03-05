@@ -1,26 +1,10 @@
 import React, { FC } from 'react';
-import { GenericModal, ModalProps } from '@/app/components/base/modal';
-import { HowItWorks } from '@/app/components/base/modal/how-it-works-modal';
-import { IBlueBGButton } from '@/app/components/form/button';
-import { Check } from 'lucide-react';
-import { ModalFooter } from '@/app/components/base/modal/modal-footer';
-import { ModalFitHeightBlock } from '@/app/components/blocks/modal-fit-height-block';
-import { ModalHeader } from '@/app/components/base/modal/modal-header';
-import { ModalTitleBlock } from '@/app/components/blocks/modal-title-block';
+import { ModalProps } from '@/app/components/base/modal';
+import { HowItWorksDialog } from '@/app/components/base/modal/how-it-works-modal';
 
-/**
- * creation provider key dialog props that gives ability for opening and closing modal props
- */
 interface HowKnowledgeWorksModalProps extends ModalProps {}
-/**
- *
- * to create a provider key for given model
- * @param props
- * @returns
- */
-export const HowKnowledgeWorksDialog: FC<
-  HowKnowledgeWorksModalProps
-> = props => {
+
+export const HowKnowledgeWorksDialog: FC<HowKnowledgeWorksModalProps> = props => {
   const steps = [
     {
       title: 'Upload and Explore',
@@ -87,32 +71,5 @@ export const HowKnowledgeWorksDialog: FC<
     },
   ];
 
-  /**
-   *
-   */
-  return (
-    <GenericModal modalOpen={props.modalOpen} setModalOpen={props.setModalOpen}>
-      <ModalFitHeightBlock className="w-1/2">
-        <ModalHeader
-          onClose={() => {
-            props.setModalOpen(false);
-          }}
-        >
-          <ModalTitleBlock>How it works</ModalTitleBlock>
-        </ModalHeader>
-        <HowItWorks steps={steps} />
-        <ModalFooter>
-          <IBlueBGButton
-            type="button"
-            onClick={() => {
-              props.setModalOpen(false);
-            }}
-          >
-            Got it
-            <Check className="ml-2" strokeWidth={1.5} />
-          </IBlueBGButton>
-        </ModalFooter>
-      </ModalFitHeightBlock>
-    </GenericModal>
-  );
+  return <HowItWorksDialog {...props} steps={steps} className="w-1/2" />;
 };

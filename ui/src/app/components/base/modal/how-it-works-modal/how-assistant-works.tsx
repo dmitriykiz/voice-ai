@@ -1,25 +1,10 @@
 import React, { FC } from 'react';
-import { GenericModal, ModalProps } from '@/app/components/base/modal';
-import { HowItWorks } from '@/app/components/base/modal/how-it-works-modal';
-import { Check } from 'lucide-react';
-import { ModalFooter } from '@/app/components/base/modal/modal-footer';
-import { ModalFitHeightBlock } from '@/app/components/blocks/modal-fit-height-block';
-import { ModalHeader } from '@/app/components/base/modal/modal-header';
-import { ModalTitleBlock } from '@/app/components/blocks/modal-title-block';
+import { ModalProps } from '@/app/components/base/modal';
+import { HowItWorksDialog } from '@/app/components/base/modal/how-it-works-modal';
 
-/**
- * creation provider key dialog props that gives ability for opening and closing modal props
- */
 interface HowAssistantWorksModalProps extends ModalProps {}
-/**
- *
- * to create a provider key for given model
- * @param props
- * @returns
- */
-export const HowAssistantWorksDialog: FC<
-  HowAssistantWorksModalProps
-> = props => {
+
+export const HowAssistantWorksDialog: FC<HowAssistantWorksModalProps> = props => {
   const steps = [
     {
       title: 'Design Your AI Assistant',
@@ -86,31 +71,5 @@ export const HowAssistantWorksDialog: FC<
     },
   ];
 
-  /**
-   *
-   */
-  return (
-    <GenericModal modalOpen={props.modalOpen} setModalOpen={props.setModalOpen}>
-      <ModalFitHeightBlock className="w-[800px]">
-        <ModalHeader
-          onClose={() => {
-            props.setModalOpen(false);
-          }}
-        >
-          <ModalTitleBlock>How it works</ModalTitleBlock>
-        </ModalHeader>
-        <HowItWorks steps={steps} />
-        <ModalFooter>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 h-10 px-4 text-sm text-white bg-primary hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
-            onClick={() => props.setModalOpen(false)}
-          >
-            Got it
-            <Check className="w-4 h-4" strokeWidth={1.5} />
-          </button>
-        </ModalFooter>
-      </ModalFitHeightBlock>
-    </GenericModal>
-  );
+  return <HowItWorksDialog {...props} steps={steps} />;
 };

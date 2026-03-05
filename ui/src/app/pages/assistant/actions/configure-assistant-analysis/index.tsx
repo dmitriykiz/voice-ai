@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useGlobalNavigation } from '@/hooks/use-global-navigator';
 import { toHumanReadableDateTime } from '@/utils/date';
 import { cn } from '@/utils';
-import { ExternalLink, Plus, RotateCw } from 'lucide-react';
+import { Plus, RotateCw } from 'lucide-react';
 import { useCurrentCredential } from '@/hooks/use-credential';
 import { useRapidaStore } from '@/hooks';
 import { SectionLoader } from '@/app/components/loader/section-loader';
@@ -23,7 +23,7 @@ import { CreateAssistantAnalysis } from '@/app/pages/assistant/actions/configure
 import { useAssistantAnalysisPageStore } from '@/app/pages/assistant/actions/store/use-analysis-page-store';
 import { UpdateAssistantAnalysis } from '@/app/pages/assistant/actions/configure-assistant-analysis/update-assistant-analysis';
 import { PaginationButtonBlock } from '@/app/components/blocks/pagination-button-block';
-import { CustomLink } from '@/app/components/custom-link';
+import { LinkCell } from '@/app/components/base/tables/link-cell';
 
 export function ConfigureAssistantAnalysisPage() {
   const { assistantId } = useParams();
@@ -147,15 +147,9 @@ const ConfigureAssistantAnalysis: FC<{ assistantId: string }> = ({
                   </TableCell>
                 )}
                 {axtion.visibleColumn('endpointId') && (
-                  <TableCell>
-                    <CustomLink
-                      to={`/deployment/endpoint/${row.getEndpointid()}`}
-                      className="font-normal dark:text-blue-500 text-blue-600 hover:underline cursor-pointer text-left flex items-center space-x-1"
-                    >
-                      <span>{row.getEndpointid()}</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </CustomLink>
-                  </TableCell>
+                  <LinkCell to={`/deployment/endpoint/${row.getEndpointid()}`}>
+                    {row.getEndpointid()}
+                  </LinkCell>
                 )}
                 {axtion.visibleColumn('endpointVersion') && (
                   <TableCell className="">{row.getEndpointversion()}</TableCell>

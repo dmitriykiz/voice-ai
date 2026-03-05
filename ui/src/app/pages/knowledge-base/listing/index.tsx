@@ -70,7 +70,7 @@ export function KnowledgePage() {
       <HowKnowledgeWorksDialog setModalOpen={sethiw} modalOpen={hiw} />
       <PageHeaderBlock>
         <div className="flex items-center gap-3">
-          <PageTitleBlock>Knowledges</PageTitleBlock>
+          <PageTitleBlock>Knowledge bases</PageTitleBlock>
           <div className="text-xs opacity-75">
             {`${knowledgeActions.knowledgeBases.length}/${knowledgeActions.totalCount}`}
           </div>
@@ -117,7 +117,7 @@ export function KnowledgePage() {
 
       {knowledgeActions.knowledgeBases &&
       knowledgeActions.knowledgeBases.length > 0 ? (
-        <section className="grid content-start grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-px bg-gray-200 dark:bg-gray-800 grow shrink-0 m-4">
+        <section className="grid content-start grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-[2px] grow shrink-0 m-4">
           {knowledgeActions.knowledgeBases.map((kf, idx) => (
             <ClickableKnowledgeCard key={idx} knowledge={kf} />
           ))}
@@ -125,8 +125,8 @@ export function KnowledgePage() {
       ) : knowledgeActions.criteria.length > 0 ? (
         <div className="flex flex-col h-full flex-1 items-center justify-center">
           <ActionableEmptyMessage
-            title="No Knowledge"
-            subtitle="There are no knowledges matching with your criteria to display"
+            title="No knowledge bases found"
+            subtitle="No knowledge bases match your search criteria."
             action="Create new knowledge"
             onActionClick={goToCreateKnowledge}
           />
@@ -134,8 +134,8 @@ export function KnowledgePage() {
       ) : !loading ? (
         <div className="flex flex-col h-full flex-1 items-center justify-center">
           <ActionableEmptyMessage
-            title="No Knowledge"
-            subtitle="There are no knowledges to display"
+            title="No knowledge bases"
+            subtitle="You haven't created any knowledge bases yet."
             action="Create new knowledge"
             onActionClick={goToCreateKnowledge}
           />

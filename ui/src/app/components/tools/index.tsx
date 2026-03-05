@@ -221,7 +221,7 @@ const ToolOptionRenderer: FC<{ icon: string; name: string }> = ({
 
 const ConfigureBuildinTool: FC<{
   toolDefinition: ToolDefinition;
-  onChangeToolDefinition: (value: ToolDefinition) => void;
+  onChangeToolDefinition?: (value: ToolDefinition) => void;
   config: BuildinToolConfig;
   onParameterChange: (params: Metadata[]) => void;
   inputClass?: string;
@@ -256,6 +256,7 @@ export const BuildinTool: FC<{
   onChangeConfig: (config: BuildinToolConfig) => void;
   inputClass?: string;
   config: BuildinToolConfig;
+  showDefinitionForm?: boolean;
 }> = ({
   toolDefinition,
   onChangeToolDefinition,
@@ -263,6 +264,7 @@ export const BuildinTool: FC<{
   onChangeConfig,
   config,
   inputClass,
+  showDefinitionForm = true,
 }) => {
   const handleParameterChange = useCallback(
     (params: Metadata[]) => {
@@ -310,7 +312,9 @@ export const BuildinTool: FC<{
 
       <ConfigureBuildinTool
         toolDefinition={toolDefinition}
-        onChangeToolDefinition={onChangeToolDefinition}
+        onChangeToolDefinition={
+          showDefinitionForm ? onChangeToolDefinition : undefined
+        }
         config={config}
         onParameterChange={handleParameterChange}
         inputClass={inputClass}

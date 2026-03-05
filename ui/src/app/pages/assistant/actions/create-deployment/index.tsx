@@ -267,7 +267,7 @@ export const ConfigureAssistantDeploymentPage = () => {
       </PageHeaderBlock>
 
       {hasAnyDeployment ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 content-start gap-px bg-gray-200 dark:bg-gray-800 m-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 content-start gap-[2px] m-4">
           {/* Debugger */}
           {assistant?.hasDebuggerdeployment() && (
             <BaseCard>

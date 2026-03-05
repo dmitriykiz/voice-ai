@@ -22,8 +22,7 @@ import { Textarea } from '@/app/components/form/textarea';
 import { ErrorContainer } from '@/app/components/error-container';
 import { CreateAssistantProvider, GetAssistant } from '@rapidaai/react';
 import { connectionConfig } from '@/configs';
-import { YellowNoticeBlock } from '@/app/components/container/message/notice-block';
-import { ExternalLink, Info } from 'lucide-react';
+import { DocNoticeBlock } from '@/app/components/container/message/notice-block/doc-notice-block';
 import { Input } from '@/app/components/form/input';
 import { APiParameter } from '@/app/components/external-api/api-parameter';
 
@@ -249,25 +248,10 @@ const CreateNewVersion: FC<{ assistantId: string }> = ({ assistantId }) => {
             ],
             body: (
               <>
-                <YellowNoticeBlock className="flex items-center">
-                  <Info className="shrink-0 w-4 h-4" strokeWidth={1.5} />
-                  <div className="ms-3 text-sm font-medium">
-                    Please note that new versions of the assistant will not be
-                    deployed automatically.
-                  </div>
-                  <a
-                    target="_blank"
-                    href="https://doc.rapida.ai/assistant/create-new-version"
-                    className="h-7 flex items-center font-medium hover:underline ml-auto text-yellow-600"
-                    rel="noreferrer"
-                  >
-                    Read documentation
-                    <ExternalLink
-                      className="shrink-0 w-4 h-4 ml-1.5"
-                      strokeWidth={1.5}
-                    />
-                  </a>
-                </YellowNoticeBlock>
+                <DocNoticeBlock docUrl="https://doc.rapida.ai/assistant/create-new-version">
+                  Please note that new versions of the assistant will not be
+                  deployed automatically.
+                </DocNoticeBlock>
                 <div className="space-y-6 px-8 max-w-4xl">
                   <FieldSet className="relative w-full">
                     <FormLabel>Websocket Endpoint</FormLabel>
@@ -330,25 +314,10 @@ const CreateNewVersion: FC<{ assistantId: string }> = ({ assistantId }) => {
             ],
             body: (
               <>
-                <YellowNoticeBlock className="flex items-center">
-                  <Info className="shrink-0 w-4 h-4" strokeWidth={1.5} />
-                  <div className="ms-3 text-sm font-medium">
-                    Please note that new versions of the assistant will not be
-                    deployed automatically.
-                  </div>
-                  <a
-                    target="_blank"
-                    href="https://doc.rapida.ai/assistant/create-new-version"
-                    className="h-7 flex items-center font-medium hover:underline ml-auto text-yellow-600"
-                    rel="noreferrer"
-                  >
-                    Read documentation
-                    <ExternalLink
-                      className="shrink-0 w-4 h-4 ml-1.5"
-                      strokeWidth={1.5}
-                    />
-                  </a>
-                </YellowNoticeBlock>
+                <DocNoticeBlock docUrl="https://doc.rapida.ai/assistant/create-new-version">
+                  Please note that new versions of the assistant will not be
+                  deployed automatically.
+                </DocNoticeBlock>
                 <div className="space-y-6 px-8 max-w-4xl">
                   <FieldSet>
                     <FormLabel>Change description</FormLabel>

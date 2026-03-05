@@ -40,18 +40,7 @@ import { InputHelper } from '@/app/components/input-helper';
 import { ArrowUpRight, ExternalLink, Info } from 'lucide-react';
 import { ConfigureEndpointPromptDialog } from '@/app/components/base/modal/configure-endpoint-prompt-modal/index';
 import { CornerBorderOverlay } from '@/app/components/base/corner-border';
-
-/** Section divider used between IBM form sections */
-function SectionDivider({ label }: { label: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="text-[10px] font-semibold tracking-[0.12em] uppercase text-gray-500 dark:text-gray-400 whitespace-nowrap">
-        {label}
-      </span>
-      <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
-    </div>
-  );
-}
+import { SectionDivider } from '@/app/components/blocks/section-divider';
 
 export function CreateEndpointPage() {
   const { authId, token, projectId } = useCurrentCredential();
@@ -76,8 +65,8 @@ export function CreateEndpointPage() {
     provider: string;
     parameters: Metadata[];
   }>({
-    provider: 'azure',
-    parameters: GetDefaultTextProviderConfigIfInvalid('azure', []),
+    provider: 'azure-foundry',
+    parameters: GetDefaultTextProviderConfigIfInvalid('azure-foundry', []),
   });
 
   const onChangeTextProvider = (providerName: string) => {

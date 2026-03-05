@@ -77,35 +77,40 @@ export const SingleDocument: FC<SingleDocumentProps> = ({
     >
       {kdAction.visibleColumn('getStatus') && (
         <TableCell>
-          <div className="flex items-center space-x-1.5">
+          <div className="flex items-center gap-2">
             <span
               className={cn(
+                'p-1 w-fit block',
                 document.getDisplaystatus() === 'available' &&
-                  'text-green-600! bg-green-400/20!',
+                  'text-green-600 bg-green-400/20',
                 document.getDisplaystatus() === 'error' &&
-                  'text-rose-600! bg-rose-400/20!',
-                'p-1 bg-yellow-400/20 text-yellow-600 rounded-[2px] w-fit block',
+                  'text-rose-600 bg-rose-400/20',
+                document.getDisplaystatus() !== 'available' &&
+                  document.getDisplaystatus() !== 'error' &&
+                  'text-yellow-600 bg-yellow-400/20',
               )}
             >
               {document.getDisplaystatus() === 'error' ? (
-                <WarningInfo className="w-6 h-6" />
+                <WarningInfo className="w-5 h-5" />
               ) : (
-                <TickIcon className="w-6 h-6" />
+                <TickIcon className="w-5 h-5" />
               )}
             </span>
             <div>
               <span
                 className={cn(
+                  'font-medium block text-xs leading-4 capitalize',
                   document.getDisplaystatus() === 'available' &&
-                    '!text-green-60',
-                  document.getDisplaystatus() === 'error' && 'text-rose-600!',
-                  'font-medium block leading-3 capitalize',
+                    'text-green-600',
+                  document.getDisplaystatus() === 'error' && 'text-rose-600',
+                  document.getDisplaystatus() !== 'available' &&
+                    document.getDisplaystatus() !== 'error' &&
+                    'text-yellow-600',
                 )}
               >
                 {document.getDisplaystatus()}
               </span>
-              <span className="opacity-60 text-xs leading-3 capitalize truncate">
-                {document.getDisplaystatus()}{' '}
+              <span className="text-xs text-gray-500 dark:text-gray-400 capitalize truncate">
                 {document?.getCreateddate() &&
                   toHumanReadableRelativeTime(document?.getCreateddate()!)}
               </span>
@@ -114,21 +119,23 @@ export const SingleDocument: FC<SingleDocumentProps> = ({
         </TableCell>
       )}
       {kdAction.visibleColumn('getName') && (
-        <td className="px-2 py-2 text-left text-sm font-medium my-auto relative w-auto flex space-x-1 items-center">
-          <div className="p-1.5 border rounded-[2px] bg-gray-50 dark:bg-gray-950/30 backdrop-blur-sm mr-1">
-            <FileExtensionIcon filename={document.getName()} />
+        <TableCell>
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/30 shrink-0">
+              <FileExtensionIcon filename={document.getName()} />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-semibold line-clamp-1 text-gray-900 dark:text-gray-100">
+                {document.getName()}
+              </span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                Uploaded{' '}
+                {document.getCreateddate() &&
+                  toHumanReadableRelativeTime(document.getCreateddate()!)}
+              </span>
+            </div>
           </div>
-          <div className="flex flex-col grow flex-1">
-            <span className="font-semibold line-clamp-1 text-[0.9rem]">
-              {document.getName()}
-            </span>
-            <span className="font-medium truncate text-[0.8rem] opacity-75">
-              Uploaded on{' '}
-              {document.getCreateddate() &&
-                toHumanReadableRelativeTime(document.getCreateddate()!)}
-            </span>
-          </div>
-        </td>
+        </TableCell>
       )}
       {kdAction.visibleColumn('getDocumenttype') && (
         <LabelCell className="bg-blue-300/10 text-blue-500 dark:text-blue-400 truncate">

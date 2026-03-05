@@ -1,5 +1,5 @@
-import { FC } from 'react';
-import { ExternalLink, Info } from 'lucide-react';
+import { FC, useState, useCallback } from 'react';
+import { ArrowRight, Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/utils';
 import { FormLabel } from '@/app/components/form-label';
 import { FieldSet } from '@/app/components/form/fieldset';
@@ -8,14 +8,21 @@ import { Select } from '@/app/components/form/select';
 import { Textarea } from '@/app/components/form/textarea';
 import { CodeEditor } from '@/app/components/form/editor/code-editor';
 import { InputGroup } from '@/app/components/input-group';
-import { YellowNoticeBlock } from '@/app/components/container/message/notice-block';
+import { DocNoticeBlock } from '@/app/components/container/message/notice-block/doc-notice-block';
+import {
+  IBlueBorderButton,
+  IRedBorderButton,
+} from '@/app/components/form/button';
 import {
   ToolDefinition,
   ParameterType,
+  KeyValueParameter,
+  PARAMETER_TYPE_OPTIONS,
   ASSISTANT_KEY_OPTIONS,
   CONVERSATION_KEY_OPTIONS,
   TOOL_KEY_OPTIONS,
 } from './types';
+import { parseJsonParameters, stringifyParameters } from './hooks';
 
 // ============================================================================
 // Documentation Notice Block
@@ -30,19 +37,9 @@ export const DocumentationNotice: FC<DocumentationNoticeProps> = ({
   title = 'Know more about knowledge tool definition that can be supported by rapida',
   documentationUrl,
 }) => (
-  <YellowNoticeBlock className="flex items-center -mx-6 -mt-6">
-    <Info className="shrink-0 w-4 h-4" />
-    <div className="ms-3 text-sm font-medium">{title}</div>
-    <a
-      target="_blank"
-      href={documentationUrl}
-      className="h-7 flex items-center font-medium hover:underline ml-auto text-yellow-600"
-      rel="noreferrer"
-    >
-      Read documentation
-      <ExternalLink className="shrink-0 w-4 h-4 ml-1.5" strokeWidth={1.5} />
-    </a>
-  </YellowNoticeBlock>
+  <div className="-mx-6 -mt-6">
+    <DocNoticeBlock docUrl={documentationUrl}>{title}</DocNoticeBlock>
+  </div>
 );
 
 // ============================================================================
@@ -173,4 +170,178 @@ export const TypeKeySelector: FC<TypeKeySelectorProps> = ({
         />
       );
   }
+};
+
+// ============================================================================
+// Parameter Row
+// ============================================================================
+
+interface ParameterRowProps {
+  type: ParameterType;
+  paramKey: string;
+  value: string;
+  inputClass?: string;
+  typeOptions: Array<{ name: string; value: string }>;
+  onTypeChange: (type: string) => void;
+  onKeyChange: (key: string) => void;
+  onValueChange: (value: string) => void;
+  onRemove: () => void;
+}
+
+export const ParameterRow: FC<ParameterRowProps> = ({
+  type,
+  paramKey,
+  value,
+  inputClass,
+  typeOptions,
+  onTypeChange,
+  onKeyChange,
+  onValueChange,
+  onRemove,
+}) => (
+  <div className="grid grid-cols-2 border-b border-gray-300 dark:border-gray-700">
+    <div className="flex col-span-1 items-center">
+      <Select
+        value={type}
+        onChange={e => onTypeChange(e.target.value)}
+        className={cn('bg-light-background border-none', inputClass)}
+        options={typeOptions}
+      />
+      <TypeKeySelector
+        type={type}
+        inputClass={inputClass}
+        value={paramKey}
+        onChange={onKeyChange}
+      />
+      <div
+        className={cn(
+          'bg-light-background dark:bg-gray-950 h-full flex items-center justify-center',
+          inputClass,
+        )}
+      >
+        <ArrowRight strokeWidth={1.5} className="w-4 h-4" />
+      </div>
+    </div>
+    <div className="col-span-1 flex">
+      <Input
+        value={value}
+        onChange={e => onValueChange(e.target.value)}
+        placeholder="Value"
+        className={cn('bg-light-background w-full border-none', inputClass)}
+      />
+      <IRedBorderButton
+        className="border-none outline-hidden h-10"
+        onClick={onRemove}
+        type="button"
+      >
+        <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+      </IRedBorderButton>
+    </div>
+  </div>
+);
+
+// ============================================================================
+// Parameter Editor
+// ============================================================================
+
+interface ParameterEditorProps {
+  /** JSON-serialised key-value map, e.g. '{"assistant.name":"Alice"}' */
+  value: string;
+  onChange: (value: string) => void;
+  /** Overrides the default full PARAMETER_TYPE_OPTIONS list */
+  typeOptions?: Array<{ name: string; value: string }>;
+  /** Type prefix used for newly-added rows (default: 'assistant') */
+  defaultNewType?: string;
+  inputClass?: string;
+}
+
+export const ParameterEditor: FC<ParameterEditorProps> = ({
+  value,
+  onChange,
+  typeOptions = [...PARAMETER_TYPE_OPTIONS],
+  defaultNewType = 'assistant',
+  inputClass,
+}) => {
+  const [params, setParams] = useState<KeyValueParameter[]>(() =>
+    parseJsonParameters(value),
+  );
+
+  const commit = useCallback(
+    (next: KeyValueParameter[]) => {
+      setParams(next);
+      onChange(stringifyParameters(next));
+    },
+    [onChange],
+  );
+
+  const handleTypeChange = useCallback(
+    (index: number, newType: string) => {
+      const next = [...params];
+      next[index] = { key: `${newType}.`, value: '' };
+      commit(next);
+    },
+    [params, commit],
+  );
+
+  const handleKeyChange = useCallback(
+    (index: number, newKey: string) => {
+      const next = [...params];
+      const [type] = params[index].key.split('.');
+      next[index] = { ...params[index], key: `${type}.${newKey}` };
+      commit(next);
+    },
+    [params, commit],
+  );
+
+  const handleValueChange = useCallback(
+    (index: number, newValue: string) => {
+      const next = [...params];
+      next[index] = { ...params[index], value: newValue };
+      commit(next);
+    },
+    [params, commit],
+  );
+
+  const handleRemove = useCallback(
+    (index: number) => {
+      commit(params.filter((_, i) => i !== index));
+    },
+    [params, commit],
+  );
+
+  const handleAdd = useCallback(() => {
+    commit([...params, { key: `${defaultNewType}.`, value: '' }]);
+  }, [params, commit, defaultNewType]);
+
+  return (
+    <FieldSet>
+      <FormLabel>Parameters ({params.length})</FormLabel>
+      <div className="text-sm grid w-full">
+        {params.map(({ key, value: val }, index) => {
+          const [type, paramKey] = key.split('.');
+          return (
+            <ParameterRow
+              key={index}
+              type={type as ParameterType}
+              paramKey={paramKey}
+              value={val}
+              inputClass={inputClass}
+              typeOptions={typeOptions}
+              onTypeChange={newType => handleTypeChange(index, newType)}
+              onKeyChange={newKey => handleKeyChange(index, newKey)}
+              onValueChange={newValue => handleValueChange(index, newValue)}
+              onRemove={() => handleRemove(index)}
+            />
+          );
+        })}
+      </div>
+      <IBlueBorderButton
+        onClick={handleAdd}
+        className="justify-between space-x-8"
+      >
+        <span>Add parameter</span>
+        <Plus className="h-4 w-4 ml-1.5" />
+      </IBlueBorderButton>
+    </FieldSet>
+  );
 };
