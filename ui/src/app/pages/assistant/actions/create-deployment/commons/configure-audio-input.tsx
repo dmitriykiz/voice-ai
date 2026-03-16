@@ -7,6 +7,8 @@ import {
   GetDefaultMicrophoneConfig,
   GetDefaultSpeechToTextIfInvalid,
 } from '@/app/components/providers/speech-to-text/provider';
+import { GetDefaultEOSConfig } from '@/app/components/providers/end-of-speech/provider';
+import { GetDefaultVADConfig } from '@/app/components/providers/vad/provider';
 import { VADProvider } from '@/app/components/providers/vad';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/utils';
@@ -52,24 +54,27 @@ export const ConfigureAudioInputProvider: React.FC<
     [JSON.stringify(audioInputConfig.parameters)],
   );
 
-  const updateParameter = (key: string, value: string) => {
-    const updatedParams = (audioInputConfig.parameters || []).map(param => {
-      if (param.getKey() === key) {
-        const updatedParam = new Metadata();
-        updatedParam.setKey(key);
-        updatedParam.setValue(value);
-        return updatedParam;
+  const updateParameter = useCallback(
+    (key: string, value: string) => {
+      const updatedParams = (audioInputConfig.parameters || []).map(param => {
+        if (param.getKey() === key) {
+          const updatedParam = new Metadata();
+          updatedParam.setKey(key);
+          updatedParam.setValue(value);
+          return updatedParam;
+        }
+        return param;
+      });
+      if (!updatedParams.some(param => param.getKey() === key)) {
+        const newParam = new Metadata();
+        newParam.setKey(key);
+        newParam.setValue(value);
+        updatedParams.push(newParam);
       }
-      return param;
-    });
-    if (!updatedParams.some(param => param.getKey() === key)) {
-      const newParam = new Metadata();
-      newParam.setKey(key);
-      newParam.setValue(value);
-      updatedParams.push(newParam);
-    }
-    onChangeAudioInputParameter(updatedParams);
-  };
+      onChangeAudioInputParameter(updatedParams);
+    },
+    [audioInputConfig.parameters],
+  );
 
   return (
     <div className="border-b border-gray-200 dark:border-gray-800">
@@ -106,7 +111,9 @@ export const ConfigureAudioInputProvider: React.FC<
                     'silero_vad',
                   )}
                   onChangeProvider={v =>
-                    updateParameter('microphone.vad.provider', v)
+                    onChangeAudioInputParameter(
+                      GetDefaultVADConfig(v, audioInputConfig.parameters),
+                    )
                   }
                   parameters={audioInputConfig.parameters}
                   onChangeParameter={onChangeAudioInputParameter}
@@ -128,7 +135,12 @@ export const ConfigureAudioInputProvider: React.FC<
                     'silence_based_eos',
                   )}
                   onChangeProvider={provider =>
-                    updateParameter('microphone.eos.provider', provider)
+                    onChangeAudioInputParameter(
+                      GetDefaultEOSConfig(
+                        provider,
+                        audioInputConfig.parameters,
+                      ),
+                    )
                   }
                   parameters={audioInputConfig.parameters}
                   onChangeParameter={onChangeAudioInputParameter}
