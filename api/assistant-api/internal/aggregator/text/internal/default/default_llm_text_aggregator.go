@@ -112,14 +112,16 @@ func NewDefaultLLMTextAggregator(_ context.Context, logger commons.Logger, onPac
 }
 
 // compileBoundaryRegex builds a regex that matches any sentence boundary
-// character followed by optional whitespace.
+// character. Whitespace after the boundary is intentionally NOT consumed
+// so that it is preserved as a leading space in the next emitted chunk,
+// preventing TTS engines from merging words across sentence boundaries.
 func compileBoundaryRegex() (*regexp.Regexp, error) {
 	parts := make([]string, len(sentenceBoundaries))
 	for i, b := range sentenceBoundaries {
 		parts[i] = regexp.QuoteMeta(b)
 	}
 
-	pattern := fmt.Sprintf(`(%s)\s*`, strings.Join(parts, "|"))
+	pattern := fmt.Sprintf(`(%s)`, strings.Join(parts, "|"))
 	regex, err := regexp.Compile(pattern)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile sentence boundary regex: %w", err)

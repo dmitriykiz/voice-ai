@@ -405,12 +405,19 @@ func TestWhitespaceHandling(t *testing.T) {
 	aggregator.Aggregate(ctx, internal_type.LLMResponseDeltaPacket{ContextID: "speaker1", Text: "World."})
 
 	results := collect()
-	if len(results) < 1 {
-		t.Fatalf("expected at least 1 result, got %d", len(results))
+	if len(results) < 2 {
+		t.Fatalf("expected at least 2 results, got %d", len(results))
 	}
 
-	if ts, ok := results[0].(internal_type.SpeakTextPacket); ok && ts.Text != "Hello.   \n  " {
-		t.Errorf("expected 'Hello.', got %q", ts.Text)
+	// Whitespace after the boundary stays in the buffer, not consumed by the regex.
+	// First chunk: just the sentence up to and including the boundary punctuation.
+	if ts, ok := results[0].(internal_type.SpeakTextPacket); ok && ts.Text != "Hello." {
+		t.Errorf("expected %q, got %q", "Hello.", ts.Text)
+	}
+
+	// Second chunk: the preserved whitespace followed by the next sentence.
+	if ts, ok := results[1].(internal_type.SpeakTextPacket); ok && ts.Text != "   \n  World." {
+		t.Errorf("expected %q, got %q", "   \n  World.", ts.Text)
 	}
 }
 
