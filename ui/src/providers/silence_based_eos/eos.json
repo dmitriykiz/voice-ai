@@ -1,0 +1,13 @@
+{
+  "parameters": [
+    {
+      "key": "microphone.eos.timeout",
+      "label": "Activity Timeout",
+      "type": "slider",
+      "default": "700",
+      "min": 500,
+      "max": 4000,
+      "step": 100
+    }
+  ]
+}

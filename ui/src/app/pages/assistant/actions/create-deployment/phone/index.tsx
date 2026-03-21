@@ -5,6 +5,7 @@ import {
 import { ConfigureAudioInputProvider } from '@/app/pages/assistant/actions/create-deployment/commons/configure-audio-input';
 import { ConfigureAudioOutputProvider } from '@/app/pages/assistant/actions/create-deployment/commons/configure-audio-output';
 import { useRapidaStore } from '@/hooks';
+import { useAllProviderCredentials } from '@/hooks/use-model';
 import { Phone } from 'lucide-react';
 import { FC, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -86,6 +87,7 @@ const ConfigureAssistantCallDeployment: FC<{ assistantId: string }> = ({
 }) => {
   const { goToDeploymentAssistant } = useGlobalNavigation();
   const { loading, showLoader, hideLoader } = useRapidaStore();
+  const { providerCredentials } = useAllProviderCredentials();
   const { authId, projectId, token } = useCurrentCredential();
 
   const [activeTab, setActiveTab] = useState('telephony');
@@ -201,6 +203,11 @@ const ConfigureAssistantCallDeployment: FC<{ assistantId: string }> = ({
       });
   }, [assistantId, token, authId, projectId]);
 
+  const getProviderCredentialIds = (provider: string) =>
+    providerCredentials
+      .filter(c => c.getProvider() === provider)
+      .map(c => c.getId());
+
   const handleTabChange = (code: string) => {
     const clickedIndex = STEPS.findIndex(s => s.code === code);
     const currentIndex = STEPS.findIndex(s => s.code === activeTab);
@@ -234,6 +241,7 @@ const ConfigureAssistantCallDeployment: FC<{ assistantId: string }> = ({
       const err = ValidateSpeechToTextIfInvalid(
         audioInputConfig.provider,
         audioInputConfig.parameters,
+        getProviderCredentialIds(audioInputConfig.provider),
       );
       if (err) {
         setErrorMessage(err);
@@ -270,6 +278,7 @@ const ConfigureAssistantCallDeployment: FC<{ assistantId: string }> = ({
     const sttError = ValidateSpeechToTextIfInvalid(
       audioInputConfig.provider,
       audioInputConfig.parameters,
+      getProviderCredentialIds(audioInputConfig.provider),
     );
     if (sttError) {
       hideLoader();
@@ -286,6 +295,7 @@ const ConfigureAssistantCallDeployment: FC<{ assistantId: string }> = ({
     const ttsError = ValidateTextToSpeechIfInvalid(
       audioOutputConfig.provider,
       audioOutputConfig.parameters,
+      getProviderCredentialIds(audioOutputConfig.provider),
     );
     if (ttsError) {
       hideLoader();

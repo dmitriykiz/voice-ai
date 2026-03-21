@@ -1,19 +1,12 @@
 import { Metadata } from '@rapidaai/react';
 import { SetMetadata } from '@/utils/metadata';
 import {
-  CategoryConfig,
   ParameterConfig,
+  ProviderConfigCategory,
   ProviderConfig,
   loadProviderData,
+  resolveCategoryParameters,
 } from './config-loader';
-
-export type ProviderConfigCategory =
-  | 'stt'
-  | 'tts'
-  | 'text'
-  | 'vad'
-  | 'eos'
-  | 'noise';
 
 interface GetDefaultsFromConfigOptions {
   includeCredential?: boolean;
@@ -29,6 +22,12 @@ export function getDefaultsFromConfig(
 ): Metadata[] {
   const catConfig = config[category];
   if (!catConfig) return currentMetadata;
+  const resolvedParameters = resolveCategoryParameters(
+    provider,
+    category,
+    catConfig,
+    currentMetadata,
+  );
 
   const mtds: Metadata[] = [];
   const includeCredential = options.includeCredential !== false;
@@ -48,24 +47,31 @@ export function getDefaultsFromConfig(
     addMetadata('rapida.credential_id');
   }
 
-  for (const param of catConfig.parameters) {
+  for (const param of resolvedParameters) {
     keysToKeep.push(param.key);
     if (param.linkedField) {
       keysToKeep.push(param.linkedField.key);
     }
 
-    const validationFn = buildValidationFn(param, provider);
+    const validationFn = buildValidationFn(param, provider, category);
     addMetadata(param.key, param.default, validationFn);
 
     if (param.linkedField) {
       const data = param.data ? loadProviderData(provider, param.data) : [];
       const existingValue = currentMetadata.find(m => m.getKey() === param.key)?.getValue();
+      const existingLinkedValue = currentMetadata.find(
+        m => m.getKey() === param.linkedField!.key,
+      )?.getValue();
       const valueToUse = existingValue || param.default;
-      if (valueToUse && data.length > 0 && param.valueField) {
+      if (existingLinkedValue) {
+        addMetadata(param.linkedField.key, existingLinkedValue);
+      } else if (valueToUse && data.length > 0 && param.valueField) {
         const matched = data.find((item: any) => item[param.valueField!] === valueToUse);
         if (matched) {
           addMetadata(param.linkedField.key, matched[param.linkedField.sourceField]);
         }
+      } else if (valueToUse && param.customValue) {
+        addMetadata(param.linkedField.key, valueToUse);
       }
     }
   }
@@ -98,6 +104,12 @@ export function validateFromConfig(
 ): string | undefined {
   const catConfig = config[category];
   if (!catConfig) return undefined;
+  const resolvedParameters = resolveCategoryParameters(
+    provider,
+    category,
+    catConfig,
+    options,
+  );
 
   const credentialID = options.find(
     opt => opt.getKey() === 'rapida.credential_id',
@@ -110,7 +122,7 @@ export function validateFromConfig(
     return `Please provide a valid ${provider} credential.`;
   }
 
-  for (const param of catConfig.parameters) {
+  for (const param of resolvedParameters) {
     const isRequired = param.required !== false;
     const option = options.find(opt => opt.getKey() === param.key);
     const value = option?.getValue() ?? '';
@@ -134,14 +146,24 @@ export function validateFromConfig(
 function buildValidationFn(
   param: ParameterConfig,
   provider: string,
+  category: ProviderConfigCategory,
 ): ((value: string) => boolean) | undefined {
-  if (param.strict === false) return undefined;
-  if (param.type === 'dropdown' && param.data && param.valueField) {
-    const data = loadProviderData(provider, param.data);
-    const field = param.valueField;
-    return (value: string) => data.some((item: any) => item[field] === value);
+  if (category !== 'text') {
+    if (param.strict === false) return undefined;
+    if (param.type === 'dropdown' && param.data && param.valueField) {
+      const data = loadProviderData(provider, param.data);
+      const field = param.valueField;
+      return (value: string) => data.some((item: any) => item[field] === value);
+    }
+    return undefined;
   }
-  return undefined;
+
+  return (value: string) => {
+    if (!value) {
+      return param.required === false;
+    }
+    return validateParamValue(param, value, provider) === undefined;
+  };
 }
 
 function validateParamValue(

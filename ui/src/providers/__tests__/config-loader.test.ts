@@ -1,4 +1,9 @@
-import { loadProviderConfig, loadProviderData } from '../config-loader';
+import {
+  loadProviderConfig,
+  loadProviderData,
+  resolveCategoryParameters,
+} from '../config-loader';
+import { Metadata } from '@rapidaai/react';
 
 // Clear require cache between tests to reset the module-level caches
 beforeEach(() => {
@@ -6,7 +11,7 @@ beforeEach(() => {
 });
 
 describe('loadProviderConfig', () => {
-  it('loads a valid config.json and returns parsed config', () => {
+  it('loads split category config and returns parsed config', () => {
     const config = loadProviderConfig('groq');
     expect(config).not.toBeNull();
     expect(config?.stt).toBeDefined();
@@ -14,9 +19,18 @@ describe('loadProviderConfig', () => {
     expect(config?.stt?.parameters.length).toBeGreaterThan(0);
   });
 
-  it('returns null for provider without config.json', () => {
+  it('returns null for provider without split category config', () => {
     const config = loadProviderConfig('nonexistent-provider-xyz');
     expect(config).toBeNull();
+  });
+
+  it('synthesizes text config from model catalog when text.json is absent', () => {
+    const config = loadProviderConfig('anthropic');
+    expect(config).not.toBeNull();
+    expect(config?.text).toBeDefined();
+    expect(config?.text?.parameters).toBeInstanceOf(Array);
+    expect(config?.text?.parameters[0]?.key).toBe('model.id');
+    expect(config?.text?.parameters[0]?.data).toBe('text-models.json');
   });
 
   it('returns config with tts section for providers that have it', () => {
@@ -96,5 +110,85 @@ describe('loadProviderData', () => {
     expect(data).toBeInstanceOf(Array);
     expect(data.length).toBeGreaterThan(0);
     expect(data[0]).toHaveProperty('code');
+  });
+});
+
+describe('resolveCategoryParameters', () => {
+  const createMetadata = (key: string, value: string): Metadata => {
+    const m = new Metadata();
+    m.setKey(key);
+    m.setValue(value);
+    return m;
+  };
+
+  it('includes model selector + model-defined parameters', () => {
+    const config = loadProviderConfig('openai');
+    expect(config?.text).toBeDefined();
+
+    const resolved = resolveCategoryParameters(
+      'openai',
+      'text',
+      config!.text!,
+      [
+        createMetadata('model.id', 'openai/gpt-4o'),
+        createMetadata('model.name', 'gpt-4o'),
+      ],
+    );
+
+    expect(resolved.find(p => p.key === 'model.id')).toBeDefined();
+    const temperature = resolved.find(p => p.key === 'model.temperature');
+    expect(temperature).toBeDefined();
+    expect(temperature?.type).toBe('slider');
+  });
+
+  it('applies per-model defaults from model config parameters', () => {
+    const config = loadProviderConfig('openai');
+    expect(config?.text).toBeDefined();
+
+    const resolvedDefault = resolveCategoryParameters(
+      'openai',
+      'text',
+      config!.text!,
+      [
+        createMetadata('model.id', 'openai/gpt-4o'),
+        createMetadata('model.name', 'gpt-4o'),
+      ],
+    );
+
+    const resolvedMini = resolveCategoryParameters(
+      'openai',
+      'text',
+      config!.text!,
+      [
+        createMetadata('model.id', 'openai/gpt-4o-mini'),
+        createMetadata('model.name', 'gpt-4o-mini'),
+      ],
+    );
+
+    const defaultTemperature = resolvedDefault.find(
+      p => p.key === 'model.temperature',
+    );
+    const miniTemperature = resolvedMini.find(p => p.key === 'model.temperature');
+
+    expect(defaultTemperature?.default).toBe('0.7');
+    expect(miniTemperature?.default).toBe('0.3');
+  });
+
+  it('keeps model-specific params for custom-model providers via fallback schema', () => {
+    const config = loadProviderConfig('azure-foundry');
+    expect(config?.text).toBeDefined();
+
+    const resolved = resolveCategoryParameters(
+      'azure-foundry',
+      'text',
+      config!.text!,
+      [
+        createMetadata('model.id', 'my-custom-deployment'),
+        createMetadata('model.name', 'my-custom-deployment'),
+      ],
+    );
+
+    expect(resolved.find(p => p.key === 'model.id')).toBeDefined();
+    expect(resolved.find(p => p.key === 'model.temperature')).toBeDefined();
   });
 });

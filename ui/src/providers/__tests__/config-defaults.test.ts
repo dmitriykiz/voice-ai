@@ -1,5 +1,5 @@
 import { Metadata } from '@rapidaai/react';
-import { ProviderConfig } from '../config-loader';
+import { ProviderConfig, loadProviderConfig } from '../config-loader';
 import { getDefaultsFromConfig, validateFromConfig } from '../config-defaults';
 
 // Helper to create a Metadata with key+value
@@ -298,6 +298,54 @@ describe('getDefaultsFromConfig', () => {
     expect(voice?.getValue()).toBe('my-custom-voice');
   });
 
+  it('applies model-level defaults from selected model config', () => {
+    const openaiConfig = loadProviderConfig('openai') as ProviderConfig;
+    const result = getDefaultsFromConfig(
+      openaiConfig,
+      'text',
+      [
+        createMetadata('model.id', 'openai/gpt-4o-mini'),
+        createMetadata('model.name', 'gpt-4o-mini'),
+      ],
+      'openai',
+      { includeCredential: false },
+    );
+
+    expect(findMeta(result, 'model.temperature')?.getValue()).toBe('0.3');
+    expect(findMeta(result, 'model.max_completion_tokens')?.getValue()).toBe('2048');
+  });
+
+  it('preserves valid existing values and patches invalid values against model constraints', () => {
+    const openaiConfig = loadProviderConfig('openai') as ProviderConfig;
+    const withValidExisting = getDefaultsFromConfig(
+      openaiConfig,
+      'text',
+      [
+        createMetadata('model.id', 'openai/gpt-4o-mini'),
+        createMetadata('model.name', 'gpt-4o-mini'),
+        createMetadata('model.temperature', '0.8'),
+      ],
+      'openai',
+      { includeCredential: false },
+    );
+
+    expect(findMeta(withValidExisting, 'model.temperature')?.getValue()).toBe('0.8');
+
+    const withInvalidExisting = getDefaultsFromConfig(
+      openaiConfig,
+      'text',
+      [
+        createMetadata('model.id', 'openai/gpt-4o-mini'),
+        createMetadata('model.name', 'gpt-4o-mini'),
+        createMetadata('model.temperature', '2'),
+      ],
+      'openai',
+      { includeCredential: false },
+    );
+
+    expect(findMeta(withInvalidExisting, 'model.temperature')?.getValue()).toBe('0.3');
+  });
+
   it('replaces scoped prefix params while keeping non-scoped metadata', () => {
     const existing = [
       createMetadata('rapida.credential_id', 'cred-1'),
@@ -503,6 +551,38 @@ describe('validateFromConfig', () => {
       [cred, model, voice],
     );
     expect(result).toBeUndefined();
+  });
+
+  it('validates using model-level parameters loaded from selected model', () => {
+    const openaiConfig = loadProviderConfig('openai') as ProviderConfig;
+    const cred = createMetadata('rapida.credential_id', 'valid-cred');
+    const model = createMetadata('model.id', 'openai/gpt-4o');
+    const modelName = createMetadata('model.name', 'gpt-4o');
+    const frequencyPenalty = createMetadata('model.frequency_penalty', '0');
+    const topP = createMetadata('model.top_p', '1');
+    const presencePenalty = createMetadata('model.presence_penalty', '0');
+    const maxTokens = createMetadata('model.max_completion_tokens', '2048');
+    const temperature = createMetadata('model.temperature', '2');
+
+    const result = validateFromConfig(
+      openaiConfig,
+      'text',
+      'openai',
+      [
+        cred,
+        model,
+        modelName,
+        frequencyPenalty,
+        topP,
+        presencePenalty,
+        maxTokens,
+        temperature,
+      ],
+    );
+
+    expect(result).toBe(
+      'Please check and provide a correct value for temperature any decimal value between 0 to 1',
+    );
   });
 
   it('returns undefined when category not in config', () => {

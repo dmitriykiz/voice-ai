@@ -1,73 +1,598 @@
 [
-    {
-        "id": "nova-2",
-        "name": "Nova 2"
-    },
-    {
-        "id": "nova-2-general",
-        "name": "Nova 2 General",
-        "description": "Optimized for everyday audio processing."
-    },
-    {
-        "id": "nova-2-meeting",
-        "name": "Nova 2 Meeting",
-        "description": "Optimized for conference room settings with multiple speakers and a single listen."
-    },
-    {
-        "id": "nova-2-phonecall",
-        "name": "Nova 2 Phone Call",
-        "description": "Optimized for low-bandwidth audio phone calls."
-    },
-    {
-        "id": "nova-2-voicemail",
-        "name": "Nova 2 Voicemail",
-        "description": "Optimized for low-bandwidth audio clips with a single speaker. Derived from the phonecall model."
-    },
-    {
-        "id": "nova-2-finance",
-        "name": "Nova 2 Finance",
-        "description": "Optimized for multiple speakers with varying audio quality, such as on earnings calls. Finance-oriented vocabulary."
-    },
-    {
-        "id": "nova-2-conversationalai",
-        "name": "Nova 2 Conversational AI",
-        "description": "Optimized for human-bot interactions like IVR, voice assistants, or automated kiosks."
-    },
-    {
-        "id": "nova-2-video",
-        "name": "Nova 2 Video",
-        "description": "Optimized for audio sourced from videos."
-    },
-    {
-        "id": "nova-2-medical",
-        "name": "Nova 2 Medical",
-        "description": "Optimized for audio with medical-oriented vocabulary."
-    },
-    {
-        "id": "nova-2-drivethru",
-        "name": "Nova 2 Drive-Thru",
-        "description": "Optimized for audio sources from drive-thrus."
-    },
-    {
-        "id": "nova-2-automotive",
-        "name": "Nova 2 Automotive",
-        "description": "Optimized for audio with automotive-oriented vocabulary."
-    },
-    {
-        "id": "nova-2-atc",
-        "name": "Nova 2 ATC",
-        "description": "Optimized for air traffic control communications."
-    },
-    {
-        "id": "nova-3",
-        "name": "Nova 3"
-    },
-    {
-        "id": "nova-3-general",
-        "name": "Nova 3 General"
-    },
-    {
-        "id": "nova-3-medical",
-        "name": "Nova 3 Medical"
+  {
+    "id": "nova-2",
+    "name": "Nova 2",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "multi",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid deepgram language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        },
+        {
+          "key": "listen.keywords",
+          "label": "Keyword / Keyterms",
+          "type": "textarea",
+          "required": false,
+          "default": "",
+          "colSpan": 2,
+          "placeholder": "Enter keywords or key terms separated by space",
+          "helpText": "Enter keywords separated by spaces. These will be used as key terms for transcription."
+        }
+      ]
     }
+  },
+  {
+    "id": "nova-2-general",
+    "name": "Nova 2 General",
+    "description": "Optimized for everyday audio processing.",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "multi",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid deepgram language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        },
+        {
+          "key": "listen.keywords",
+          "label": "Keyword / Keyterms",
+          "type": "textarea",
+          "required": false,
+          "default": "",
+          "colSpan": 2,
+          "placeholder": "Enter keywords or key terms separated by space",
+          "helpText": "Enter keywords separated by spaces. These will be used as key terms for transcription."
+        }
+      ]
+    }
+  },
+  {
+    "id": "nova-2-meeting",
+    "name": "Nova 2 Meeting",
+    "description": "Optimized for conference room settings with multiple speakers and a single listen.",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "multi",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid deepgram language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        },
+        {
+          "key": "listen.keywords",
+          "label": "Keyword / Keyterms",
+          "type": "textarea",
+          "required": false,
+          "default": "",
+          "colSpan": 2,
+          "placeholder": "Enter keywords or key terms separated by space",
+          "helpText": "Enter keywords separated by spaces. These will be used as key terms for transcription."
+        }
+      ]
+    }
+  },
+  {
+    "id": "nova-2-phonecall",
+    "name": "Nova 2 Phone Call",
+    "description": "Optimized for low-bandwidth audio phone calls.",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "multi",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid deepgram language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        },
+        {
+          "key": "listen.keywords",
+          "label": "Keyword / Keyterms",
+          "type": "textarea",
+          "required": false,
+          "default": "",
+          "colSpan": 2,
+          "placeholder": "Enter keywords or key terms separated by space",
+          "helpText": "Enter keywords separated by spaces. These will be used as key terms for transcription."
+        }
+      ]
+    }
+  },
+  {
+    "id": "nova-2-voicemail",
+    "name": "Nova 2 Voicemail",
+    "description": "Optimized for low-bandwidth audio clips with a single speaker. Derived from the phonecall model.",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "multi",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid deepgram language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        },
+        {
+          "key": "listen.keywords",
+          "label": "Keyword / Keyterms",
+          "type": "textarea",
+          "required": false,
+          "default": "",
+          "colSpan": 2,
+          "placeholder": "Enter keywords or key terms separated by space",
+          "helpText": "Enter keywords separated by spaces. These will be used as key terms for transcription."
+        }
+      ]
+    }
+  },
+  {
+    "id": "nova-2-finance",
+    "name": "Nova 2 Finance",
+    "description": "Optimized for multiple speakers with varying audio quality, such as on earnings calls. Finance-oriented vocabulary.",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "multi",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid deepgram language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        },
+        {
+          "key": "listen.keywords",
+          "label": "Keyword / Keyterms",
+          "type": "textarea",
+          "required": false,
+          "default": "",
+          "colSpan": 2,
+          "placeholder": "Enter keywords or key terms separated by space",
+          "helpText": "Enter keywords separated by spaces. These will be used as key terms for transcription."
+        }
+      ]
+    }
+  },
+  {
+    "id": "nova-2-conversationalai",
+    "name": "Nova 2 Conversational AI",
+    "description": "Optimized for human-bot interactions like IVR, voice assistants, or automated kiosks.",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "multi",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid deepgram language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        },
+        {
+          "key": "listen.keywords",
+          "label": "Keyword / Keyterms",
+          "type": "textarea",
+          "required": false,
+          "default": "",
+          "colSpan": 2,
+          "placeholder": "Enter keywords or key terms separated by space",
+          "helpText": "Enter keywords separated by spaces. These will be used as key terms for transcription."
+        }
+      ]
+    }
+  },
+  {
+    "id": "nova-2-video",
+    "name": "Nova 2 Video",
+    "description": "Optimized for audio sourced from videos.",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "multi",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid deepgram language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        },
+        {
+          "key": "listen.keywords",
+          "label": "Keyword / Keyterms",
+          "type": "textarea",
+          "required": false,
+          "default": "",
+          "colSpan": 2,
+          "placeholder": "Enter keywords or key terms separated by space",
+          "helpText": "Enter keywords separated by spaces. These will be used as key terms for transcription."
+        }
+      ]
+    }
+  },
+  {
+    "id": "nova-2-medical",
+    "name": "Nova 2 Medical",
+    "description": "Optimized for audio with medical-oriented vocabulary.",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "multi",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid deepgram language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        },
+        {
+          "key": "listen.keywords",
+          "label": "Keyword / Keyterms",
+          "type": "textarea",
+          "required": false,
+          "default": "",
+          "colSpan": 2,
+          "placeholder": "Enter keywords or key terms separated by space",
+          "helpText": "Enter keywords separated by spaces. These will be used as key terms for transcription."
+        }
+      ]
+    }
+  },
+  {
+    "id": "nova-2-drivethru",
+    "name": "Nova 2 Drive-Thru",
+    "description": "Optimized for audio sources from drive-thrus.",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "multi",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid deepgram language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        },
+        {
+          "key": "listen.keywords",
+          "label": "Keyword / Keyterms",
+          "type": "textarea",
+          "required": false,
+          "default": "",
+          "colSpan": 2,
+          "placeholder": "Enter keywords or key terms separated by space",
+          "helpText": "Enter keywords separated by spaces. These will be used as key terms for transcription."
+        }
+      ]
+    }
+  },
+  {
+    "id": "nova-2-automotive",
+    "name": "Nova 2 Automotive",
+    "description": "Optimized for audio with automotive-oriented vocabulary.",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "multi",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid deepgram language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        },
+        {
+          "key": "listen.keywords",
+          "label": "Keyword / Keyterms",
+          "type": "textarea",
+          "required": false,
+          "default": "",
+          "colSpan": 2,
+          "placeholder": "Enter keywords or key terms separated by space",
+          "helpText": "Enter keywords separated by spaces. These will be used as key terms for transcription."
+        }
+      ]
+    }
+  },
+  {
+    "id": "nova-2-atc",
+    "name": "Nova 2 ATC",
+    "description": "Optimized for air traffic control communications.",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "multi",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid deepgram language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        },
+        {
+          "key": "listen.keywords",
+          "label": "Keyword / Keyterms",
+          "type": "textarea",
+          "required": false,
+          "default": "",
+          "colSpan": 2,
+          "placeholder": "Enter keywords or key terms separated by space",
+          "helpText": "Enter keywords separated by spaces. These will be used as key terms for transcription."
+        }
+      ]
+    }
+  },
+  {
+    "id": "nova-3",
+    "name": "Nova 3",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "multi",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid deepgram language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        },
+        {
+          "key": "listen.keywords",
+          "label": "Keyword / Keyterms",
+          "type": "textarea",
+          "required": false,
+          "default": "",
+          "colSpan": 2,
+          "placeholder": "Enter keywords or key terms separated by space",
+          "helpText": "Enter keywords separated by spaces. These will be used as key terms for transcription."
+        }
+      ]
+    }
+  },
+  {
+    "id": "nova-3-general",
+    "name": "Nova 3 General",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "multi",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid deepgram language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        },
+        {
+          "key": "listen.keywords",
+          "label": "Keyword / Keyterms",
+          "type": "textarea",
+          "required": false,
+          "default": "",
+          "colSpan": 2,
+          "placeholder": "Enter keywords or key terms separated by space",
+          "helpText": "Enter keywords separated by spaces. These will be used as key terms for transcription."
+        }
+      ]
+    }
+  },
+  {
+    "id": "nova-3-medical",
+    "name": "Nova 3 Medical",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "multi",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid deepgram language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        },
+        {
+          "key": "listen.keywords",
+          "label": "Keyword / Keyterms",
+          "type": "textarea",
+          "required": false,
+          "default": "",
+          "colSpan": 2,
+          "placeholder": "Enter keywords or key terms separated by space",
+          "helpText": "Enter keywords separated by spaces. These will be used as key terms for transcription."
+        }
+      ]
+    }
+  }
 ]

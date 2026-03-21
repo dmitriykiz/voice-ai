@@ -1,4 +1,38 @@
 [
-    { "id": "whisper-large-v3-turbo", "name": "Whisper Large V3 Turbo" },
-    { "id": "whisper-large-v3", "name": "Whisper Large V3" }
+  {
+    "id": "whisper-large-v3-turbo",
+    "name": "Whisper Large V3 Turbo",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "en",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid groq language for speech to text."
+        }
+      ]
+    }
+  },
+  {
+    "id": "whisper-large-v3",
+    "name": "Whisper Large V3",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "en",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid groq language for speech to text."
+        }
+      ]
+    }
+  }
 ]

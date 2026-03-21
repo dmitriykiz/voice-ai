@@ -1,0 +1,20 @@
+[
+  {
+    "id": "azure-speech",
+    "name": "Azure Speech",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "en-US",
+          "data": "speech-to-text-language.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid azure language for speech to text."
+        }
+      ]
+    }
+  }
+]

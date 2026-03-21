@@ -17,6 +17,7 @@ import {
 import { useConfirmDialog } from '@/app/pages/assistant/actions/hooks/use-confirmation';
 import { useGlobalNavigation } from '@/hooks/use-global-navigator';
 import { useCurrentCredential } from '@/hooks/use-credential';
+import { useAllProviderCredentials } from '@/hooks/use-model';
 import { ConfigPrompt } from '@/app/components/configuration/config-prompt';
 import { randomMeaningfullName, randomString } from '@/utils';
 import { FieldSet } from '@/app/components/form/fieldset';
@@ -73,6 +74,7 @@ export function CreateAssistantPage() {
    * global reloading
    */
   const { loading, showLoader, hideLoader } = useRapidaStore();
+  const { providerCredentials } = useAllProviderCredentials();
 
   /**
    * after creation of assistant maintaining stage
@@ -188,9 +190,13 @@ export function CreateAssistantPage() {
     };
     setOrCreate('model.temperature', String(tmpl.parameters.temperature));
     setOrCreate('model.name', tmpl.model);
-    setOrCreate('model.id', `${tmpl.provider}/${tmpl.model}`);
+    setOrCreate('model.id', tmpl.model);
+    const normalizedParams = GetDefaultTextProviderConfigIfInvalid(
+      tmpl.provider,
+      newParams,
+    );
 
-    setSelectedModel({ provider: tmpl.provider, parameters: newParams });
+    setSelectedModel({ provider: tmpl.provider, parameters: normalizedParams });
   };
   const onAddTag = (tag: string) => {
     setTags([...tags, tag]);
@@ -199,11 +205,14 @@ export function CreateAssistantPage() {
     setTags(tags.filter(t => t !== tag));
   };
   const onChangeProvider = (providerName: string) => {
+    const parametersWithoutCredential = selectedModel.parameters.filter(
+      p => p.getKey() !== 'rapida.credential_id',
+    );
     setSelectedModel({
       provider: providerName,
       parameters: GetDefaultTextProviderConfigIfInvalid(
         providerName,
-        selectedModel.parameters,
+        parametersWithoutCredential,
       ),
     });
   };
@@ -216,11 +225,11 @@ export function CreateAssistantPage() {
    * @returns
    */
   const createAssistant = () => {
-    showLoader('overlay');
     if (!name) {
       setErrorMessage('Please provide a valid name for assistant.');
       return false;
     }
+    showLoader('overlay');
     const assistantToolConfig = tools.map(t => {
       const req = new CreateAssistantToolRequest();
       req.setName(t.name);
@@ -293,6 +302,9 @@ export function CreateAssistantPage() {
     let err = ValidateTextProviderDefaultOptions(
       selectedModel.provider,
       selectedModel.parameters,
+      providerCredentials
+        .filter(c => c.getProvider() === selectedModel.provider)
+        .map(c => c.getId()),
     );
     if (err) {
       setErrorMessage(err);

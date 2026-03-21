@@ -1,0 +1,17 @@
+{
+  "preservePrefix": "speaker.",
+  "parameters": [
+    {
+      "key": "speak.voice.id",
+      "label": "Voice",
+      "type": "dropdown",
+      "required": true,
+      "data": "voices.json",
+      "valueField": "voice_id",
+      "searchable": true,
+      "strict": false,
+      "customValue": true,
+      "errorMessage": "Please select a valid voice ID for text to speech."
+    }
+  ]
+}

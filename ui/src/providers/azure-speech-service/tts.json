@@ -1,0 +1,27 @@
+{
+  "preservePrefix": "speaker.",
+  "parameters": [
+    {
+      "key": "speak.language",
+      "label": "Language",
+      "type": "dropdown",
+      "required": true,
+      "default": "en-US",
+      "data": "text-to-speech-language.json",
+      "valueField": "code",
+      "errorMessage": "Please select valid language for text to speech."
+    },
+    {
+      "key": "speak.voice.id",
+      "label": "Voice",
+      "type": "dropdown",
+      "required": true,
+      "data": "voices.json",
+      "valueField": "shortName",
+      "searchable": true,
+      "strict": false,
+      "customValue": true,
+      "errorMessage": "Please select valid voice for text to speech."
+    }
+  ]
+}

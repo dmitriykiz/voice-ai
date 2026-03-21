@@ -1,0 +1,278 @@
+[
+  {
+    "voice_id": "shubh",
+    "name": "Shubh",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "aditya",
+    "name": "Aditya",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "rahul",
+    "name": "Rahul",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "rohan",
+    "name": "Rohan",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "amit",
+    "name": "Amit",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "dev",
+    "name": "Dev",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "ratan",
+    "name": "Ratan",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "varun",
+    "name": "Varun",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "manan",
+    "name": "Manan",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "sumit",
+    "name": "Sumit",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "kabir",
+    "name": "Kabir",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "aayan",
+    "name": "Aayan",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "ashutosh",
+    "name": "Ashutosh",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "advait",
+    "name": "Advait",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "anand",
+    "name": "Anand",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "tarun",
+    "name": "Tarun",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "sunny",
+    "name": "Sunny",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "mani",
+    "name": "Mani",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "gokul",
+    "name": "Gokul",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "vijay",
+    "name": "Vijay",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "mohit",
+    "name": "Mohit",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "rehan",
+    "name": "Rehan",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "soham",
+    "name": "Soham",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "ritu",
+    "name": "Ritu",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "priya",
+    "name": "Priya",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "neha",
+    "name": "Neha",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "pooja",
+    "name": "Pooja",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "simran",
+    "name": "Simran",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "kavya",
+    "name": "Kavya",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "ishita",
+    "name": "Ishita",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "shreya",
+    "name": "Shreya",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "roopa",
+    "name": "Roopa",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "amelia",
+    "name": "Amelia",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "sophia",
+    "name": "Sophia",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "tanya",
+    "name": "Tanya",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "shruti",
+    "name": "Shruti",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "suhani",
+    "name": "Suhani",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "kavitha",
+    "name": "Kavitha",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "rupali",
+    "name": "Rupali",
+    "model_id": "bulbul:v3",
+    "language_id": ""
+  },
+  {
+    "voice_id": "anushka",
+    "name": "Anushka",
+    "model_id": "bulbul:v2",
+    "language_id": ""
+  },
+  {
+    "voice_id": "manisha",
+    "name": "Manisha",
+    "model_id": "bulbul:v2",
+    "language_id": ""
+  },
+  {
+    "voice_id": "vidya",
+    "name": "Vidya",
+    "model_id": "bulbul:v2",
+    "language_id": ""
+  },
+  {
+    "voice_id": "arya",
+    "name": "Arya",
+    "model_id": "bulbul:v2",
+    "language_id": ""
+  },
+  {
+    "voice_id": "abhilash",
+    "name": "Abhilash",
+    "model_id": "bulbul:v2",
+    "language_id": ""
+  },
+  {
+    "voice_id": "karun",
+    "name": "Karun",
+    "model_id": "bulbul:v2",
+    "language_id": ""
+  },
+  {
+    "voice_id": "hitesh",
+    "name": "Hitesh",
+    "model_id": "bulbul:v2",
+    "language_id": ""
+  }
+]

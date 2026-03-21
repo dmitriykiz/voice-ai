@@ -1,6 +1,20 @@
 [
-    {
-        "name": "ink-whisper",
-        "id": "ink-whisper"
+  {
+    "name": "ink-whisper",
+    "id": "ink-whisper",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "en",
+          "data": "languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide valid cartesia language options for speech to text."
+        }
+      ]
     }
+  }
 ]

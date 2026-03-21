@@ -1,0 +1,15 @@
+{
+  "preservePrefix": "microphone.",
+  "parameters": [
+    {
+      "key": "listen.model",
+      "label": "Model",
+      "type": "dropdown",
+      "required": true,
+      "default": "gpt4o-transcribe",
+      "data": "speech-to-text-models.json",
+      "valueField": "id",
+      "errorMessage": "Please provide a valid openai model for speech to text."
+    }
+  ]
+}

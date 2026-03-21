@@ -1,0 +1,3147 @@
+[
+  {
+    "id": "openai/gpt-4",
+    "name": "gpt-4",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.7",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.reasoning_effort",
+          "label": "Reasoning Effort",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "showWhen": {
+            "key": "model.name",
+            "pattern": "^o"
+          },
+          "choices": [
+            {
+              "label": "Low",
+              "value": "low"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "High",
+              "value": "high"
+            }
+          ],
+          "helpText": "Constrains effort on reasoning for reasoning models."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.service_tier",
+          "label": "Service Tier",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Default",
+              "value": "default"
+            },
+            {
+              "label": "Flex",
+              "value": "flex"
+            },
+            {
+              "label": "Priority",
+              "value": "priority"
+            }
+          ],
+          "helpText": "Specifies the processing type for the request."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.top_logprobs",
+          "label": "Top Log Probabilities",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 20,
+          "step": 1,
+          "helpText": "Number of most likely tokens to return at each position (0-20)."
+        }
+      ]
+    }
+  },
+  {
+    "id": "openai/gpt-4-0613",
+    "name": "gpt-4-0613",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.7",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.reasoning_effort",
+          "label": "Reasoning Effort",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "showWhen": {
+            "key": "model.name",
+            "pattern": "^o"
+          },
+          "choices": [
+            {
+              "label": "Low",
+              "value": "low"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "High",
+              "value": "high"
+            }
+          ],
+          "helpText": "Constrains effort on reasoning for reasoning models."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.service_tier",
+          "label": "Service Tier",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Default",
+              "value": "default"
+            },
+            {
+              "label": "Flex",
+              "value": "flex"
+            },
+            {
+              "label": "Priority",
+              "value": "priority"
+            }
+          ],
+          "helpText": "Specifies the processing type for the request."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.top_logprobs",
+          "label": "Top Log Probabilities",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 20,
+          "step": 1,
+          "helpText": "Number of most likely tokens to return at each position (0-20)."
+        }
+      ]
+    }
+  },
+  {
+    "id": "openai/gpt-3.5-turbo",
+    "name": "gpt-3.5-turbo",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.7",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.reasoning_effort",
+          "label": "Reasoning Effort",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "showWhen": {
+            "key": "model.name",
+            "pattern": "^o"
+          },
+          "choices": [
+            {
+              "label": "Low",
+              "value": "low"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "High",
+              "value": "high"
+            }
+          ],
+          "helpText": "Constrains effort on reasoning for reasoning models."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.service_tier",
+          "label": "Service Tier",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Default",
+              "value": "default"
+            },
+            {
+              "label": "Flex",
+              "value": "flex"
+            },
+            {
+              "label": "Priority",
+              "value": "priority"
+            }
+          ],
+          "helpText": "Specifies the processing type for the request."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.top_logprobs",
+          "label": "Top Log Probabilities",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 20,
+          "step": 1,
+          "helpText": "Number of most likely tokens to return at each position (0-20)."
+        }
+      ]
+    }
+  },
+  {
+    "id": "openai/gpt-3.5-turbo-16k",
+    "name": "gpt-3.5-turbo-16k",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.7",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.reasoning_effort",
+          "label": "Reasoning Effort",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "showWhen": {
+            "key": "model.name",
+            "pattern": "^o"
+          },
+          "choices": [
+            {
+              "label": "Low",
+              "value": "low"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "High",
+              "value": "high"
+            }
+          ],
+          "helpText": "Constrains effort on reasoning for reasoning models."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.service_tier",
+          "label": "Service Tier",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Default",
+              "value": "default"
+            },
+            {
+              "label": "Flex",
+              "value": "flex"
+            },
+            {
+              "label": "Priority",
+              "value": "priority"
+            }
+          ],
+          "helpText": "Specifies the processing type for the request."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.top_logprobs",
+          "label": "Top Log Probabilities",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 20,
+          "step": 1,
+          "helpText": "Number of most likely tokens to return at each position (0-20)."
+        }
+      ]
+    }
+  },
+  {
+    "id": "openai/gpt-3.5-turbo-16k-0613",
+    "name": "gpt-3.5-turbo-16k-0613",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.7",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.reasoning_effort",
+          "label": "Reasoning Effort",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "showWhen": {
+            "key": "model.name",
+            "pattern": "^o"
+          },
+          "choices": [
+            {
+              "label": "Low",
+              "value": "low"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "High",
+              "value": "high"
+            }
+          ],
+          "helpText": "Constrains effort on reasoning for reasoning models."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.service_tier",
+          "label": "Service Tier",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Default",
+              "value": "default"
+            },
+            {
+              "label": "Flex",
+              "value": "flex"
+            },
+            {
+              "label": "Priority",
+              "value": "priority"
+            }
+          ],
+          "helpText": "Specifies the processing type for the request."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.top_logprobs",
+          "label": "Top Log Probabilities",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 20,
+          "step": 1,
+          "helpText": "Number of most likely tokens to return at each position (0-20)."
+        }
+      ]
+    }
+  },
+  {
+    "id": "openai/gpt-4o",
+    "name": "gpt-4o",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.7",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.reasoning_effort",
+          "label": "Reasoning Effort",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "showWhen": {
+            "key": "model.name",
+            "pattern": "^o"
+          },
+          "choices": [
+            {
+              "label": "Low",
+              "value": "low"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "High",
+              "value": "high"
+            }
+          ],
+          "helpText": "Constrains effort on reasoning for reasoning models."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.service_tier",
+          "label": "Service Tier",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Default",
+              "value": "default"
+            },
+            {
+              "label": "Flex",
+              "value": "flex"
+            },
+            {
+              "label": "Priority",
+              "value": "priority"
+            }
+          ],
+          "helpText": "Specifies the processing type for the request."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.top_logprobs",
+          "label": "Top Log Probabilities",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 20,
+          "step": 1,
+          "helpText": "Number of most likely tokens to return at each position (0-20)."
+        }
+      ]
+    }
+  },
+  {
+    "id": "openai/gpt-4-turbo-preview",
+    "name": "gpt-4-turbo-preview",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.7",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.reasoning_effort",
+          "label": "Reasoning Effort",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "showWhen": {
+            "key": "model.name",
+            "pattern": "^o"
+          },
+          "choices": [
+            {
+              "label": "Low",
+              "value": "low"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "High",
+              "value": "high"
+            }
+          ],
+          "helpText": "Constrains effort on reasoning for reasoning models."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.service_tier",
+          "label": "Service Tier",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Default",
+              "value": "default"
+            },
+            {
+              "label": "Flex",
+              "value": "flex"
+            },
+            {
+              "label": "Priority",
+              "value": "priority"
+            }
+          ],
+          "helpText": "Specifies the processing type for the request."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.top_logprobs",
+          "label": "Top Log Probabilities",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 20,
+          "step": 1,
+          "helpText": "Number of most likely tokens to return at each position (0-20)."
+        }
+      ]
+    }
+  },
+  {
+    "id": "openai/gpt-4-turbo",
+    "name": "gpt-4-turbo",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.7",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.reasoning_effort",
+          "label": "Reasoning Effort",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "showWhen": {
+            "key": "model.name",
+            "pattern": "^o"
+          },
+          "choices": [
+            {
+              "label": "Low",
+              "value": "low"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "High",
+              "value": "high"
+            }
+          ],
+          "helpText": "Constrains effort on reasoning for reasoning models."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.service_tier",
+          "label": "Service Tier",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Default",
+              "value": "default"
+            },
+            {
+              "label": "Flex",
+              "value": "flex"
+            },
+            {
+              "label": "Priority",
+              "value": "priority"
+            }
+          ],
+          "helpText": "Specifies the processing type for the request."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.top_logprobs",
+          "label": "Top Log Probabilities",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 20,
+          "step": 1,
+          "helpText": "Number of most likely tokens to return at each position (0-20)."
+        }
+      ]
+    }
+  },
+  {
+    "id": "openai/gpt-4.1-mini",
+    "name": "gpt-4.1-mini",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.7",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.reasoning_effort",
+          "label": "Reasoning Effort",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "showWhen": {
+            "key": "model.name",
+            "pattern": "^o"
+          },
+          "choices": [
+            {
+              "label": "Low",
+              "value": "low"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "High",
+              "value": "high"
+            }
+          ],
+          "helpText": "Constrains effort on reasoning for reasoning models."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.service_tier",
+          "label": "Service Tier",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Default",
+              "value": "default"
+            },
+            {
+              "label": "Flex",
+              "value": "flex"
+            },
+            {
+              "label": "Priority",
+              "value": "priority"
+            }
+          ],
+          "helpText": "Specifies the processing type for the request."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.top_logprobs",
+          "label": "Top Log Probabilities",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 20,
+          "step": 1,
+          "helpText": "Number of most likely tokens to return at each position (0-20)."
+        }
+      ]
+    }
+  },
+  {
+    "id": "openai/gpt-4.1-nano",
+    "name": "gpt-4.1-nano",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.7",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.reasoning_effort",
+          "label": "Reasoning Effort",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "showWhen": {
+            "key": "model.name",
+            "pattern": "^o"
+          },
+          "choices": [
+            {
+              "label": "Low",
+              "value": "low"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "High",
+              "value": "high"
+            }
+          ],
+          "helpText": "Constrains effort on reasoning for reasoning models."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.service_tier",
+          "label": "Service Tier",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Default",
+              "value": "default"
+            },
+            {
+              "label": "Flex",
+              "value": "flex"
+            },
+            {
+              "label": "Priority",
+              "value": "priority"
+            }
+          ],
+          "helpText": "Specifies the processing type for the request."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.top_logprobs",
+          "label": "Top Log Probabilities",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 20,
+          "step": 1,
+          "helpText": "Number of most likely tokens to return at each position (0-20)."
+        }
+      ]
+    }
+  },
+  {
+    "id": "openai/o3-mini",
+    "name": "o3-mini",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.7",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.reasoning_effort",
+          "label": "Reasoning Effort",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "showWhen": {
+            "key": "model.name",
+            "pattern": "^o"
+          },
+          "choices": [
+            {
+              "label": "Low",
+              "value": "low"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "High",
+              "value": "high"
+            }
+          ],
+          "helpText": "Constrains effort on reasoning for reasoning models."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.service_tier",
+          "label": "Service Tier",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Default",
+              "value": "default"
+            },
+            {
+              "label": "Flex",
+              "value": "flex"
+            },
+            {
+              "label": "Priority",
+              "value": "priority"
+            }
+          ],
+          "helpText": "Specifies the processing type for the request."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.top_logprobs",
+          "label": "Top Log Probabilities",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 20,
+          "step": 1,
+          "helpText": "Number of most likely tokens to return at each position (0-20)."
+        }
+      ]
+    }
+  },
+  {
+    "id": "openai/gpt-4o-mini",
+    "name": "gpt-4o-mini",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.3",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.reasoning_effort",
+          "label": "Reasoning Effort",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "showWhen": {
+            "key": "model.name",
+            "pattern": "^o"
+          },
+          "choices": [
+            {
+              "label": "Low",
+              "value": "low"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "High",
+              "value": "high"
+            }
+          ],
+          "helpText": "Constrains effort on reasoning for reasoning models."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.service_tier",
+          "label": "Service Tier",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Default",
+              "value": "default"
+            },
+            {
+              "label": "Flex",
+              "value": "flex"
+            },
+            {
+              "label": "Priority",
+              "value": "priority"
+            }
+          ],
+          "helpText": "Specifies the processing type for the request."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.top_logprobs",
+          "label": "Top Log Probabilities",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 20,
+          "step": 1,
+          "helpText": "Number of most likely tokens to return at each position (0-20)."
+        }
+      ]
+    }
+  },
+  {
+    "id": "openai/o4-mini",
+    "name": "o4-mini",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.7",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.reasoning_effort",
+          "label": "Reasoning Effort",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "showWhen": {
+            "key": "model.name",
+            "pattern": "^o"
+          },
+          "choices": [
+            {
+              "label": "Low",
+              "value": "low"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "High",
+              "value": "high"
+            }
+          ],
+          "helpText": "Constrains effort on reasoning for reasoning models."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.service_tier",
+          "label": "Service Tier",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Default",
+              "value": "default"
+            },
+            {
+              "label": "Flex",
+              "value": "flex"
+            },
+            {
+              "label": "Priority",
+              "value": "priority"
+            }
+          ],
+          "helpText": "Specifies the processing type for the request."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.top_logprobs",
+          "label": "Top Log Probabilities",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 20,
+          "step": 1,
+          "helpText": "Number of most likely tokens to return at each position (0-20)."
+        }
+      ]
+    }
+  },
+  {
+    "id": "openai/o3",
+    "name": "o3",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.7",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.reasoning_effort",
+          "label": "Reasoning Effort",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "showWhen": {
+            "key": "model.name",
+            "pattern": "^o"
+          },
+          "choices": [
+            {
+              "label": "Low",
+              "value": "low"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "High",
+              "value": "high"
+            }
+          ],
+          "helpText": "Constrains effort on reasoning for reasoning models."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.service_tier",
+          "label": "Service Tier",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Default",
+              "value": "default"
+            },
+            {
+              "label": "Flex",
+              "value": "flex"
+            },
+            {
+              "label": "Priority",
+              "value": "priority"
+            }
+          ],
+          "helpText": "Specifies the processing type for the request."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.top_logprobs",
+          "label": "Top Log Probabilities",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 20,
+          "step": 1,
+          "helpText": "Number of most likely tokens to return at each position (0-20)."
+        }
+      ]
+    }
+  },
+  {
+    "id": "openai/o3-pro",
+    "name": "o3-pro",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.7",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.reasoning_effort",
+          "label": "Reasoning Effort",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "showWhen": {
+            "key": "model.name",
+            "pattern": "^o"
+          },
+          "choices": [
+            {
+              "label": "Low",
+              "value": "low"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "High",
+              "value": "high"
+            }
+          ],
+          "helpText": "Constrains effort on reasoning for reasoning models."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.service_tier",
+          "label": "Service Tier",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Default",
+              "value": "default"
+            },
+            {
+              "label": "Flex",
+              "value": "flex"
+            },
+            {
+              "label": "Priority",
+              "value": "priority"
+            }
+          ],
+          "helpText": "Specifies the processing type for the request."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.top_logprobs",
+          "label": "Top Log Probabilities",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 20,
+          "step": 1,
+          "helpText": "Number of most likely tokens to return at each position (0-20)."
+        }
+      ]
+    }
+  },
+  {
+    "id": "openai/o1",
+    "name": "o1",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.7",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.reasoning_effort",
+          "label": "Reasoning Effort",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "showWhen": {
+            "key": "model.name",
+            "pattern": "^o"
+          },
+          "choices": [
+            {
+              "label": "Low",
+              "value": "low"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "High",
+              "value": "high"
+            }
+          ],
+          "helpText": "Constrains effort on reasoning for reasoning models."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.service_tier",
+          "label": "Service Tier",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Default",
+              "value": "default"
+            },
+            {
+              "label": "Flex",
+              "value": "flex"
+            },
+            {
+              "label": "Priority",
+              "value": "priority"
+            }
+          ],
+          "helpText": "Specifies the processing type for the request."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.top_logprobs",
+          "label": "Top Log Probabilities",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 20,
+          "step": 1,
+          "helpText": "Number of most likely tokens to return at each position (0-20)."
+        }
+      ]
+    }
+  },
+  {
+    "id": "openai/o1-pro",
+    "name": "o1-pro",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.7",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.reasoning_effort",
+          "label": "Reasoning Effort",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "showWhen": {
+            "key": "model.name",
+            "pattern": "^o"
+          },
+          "choices": [
+            {
+              "label": "Low",
+              "value": "low"
+            },
+            {
+              "label": "Medium",
+              "value": "medium"
+            },
+            {
+              "label": "High",
+              "value": "high"
+            }
+          ],
+          "helpText": "Constrains effort on reasoning for reasoning models."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.service_tier",
+          "label": "Service Tier",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Default",
+              "value": "default"
+            },
+            {
+              "label": "Flex",
+              "value": "flex"
+            },
+            {
+              "label": "Priority",
+              "value": "priority"
+            }
+          ],
+          "helpText": "Specifies the processing type for the request."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.top_logprobs",
+          "label": "Top Log Probabilities",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 20,
+          "step": 1,
+          "helpText": "Number of most likely tokens to return at each position (0-20)."
+        }
+      ]
+    }
+  }
+]

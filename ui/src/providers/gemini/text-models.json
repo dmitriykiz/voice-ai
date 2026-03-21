@@ -1,50 +1,650 @@
 [
-    {
-        "id": "gemini/gemini-3-pro-preview",
-        "provide": "gemini",
-        "name": "gemini-3-pro-preview",
-        "description": "The best model in the world for multimodal understanding, and our most powerful agentic and vibe-coding model yet.",
-        "human_name": "Gemini 3 Pro",
-        "category": "text"
-    },
-    {
-        "id": "gemini/gemini-2.5-pro",
-        "provide": "gemini",
-        "name": "gemini-2.5-pro",
-        "description": "Enhanced thinking and reasoning, multimodal understanding, advanced coding, and more",
-        "human_name": "Gemini 2.5 Pro",
-        "category": "text"
-    },
-    {
-        "id": "gemini/gemini-2.5-flash",
-        "provide": "gemini",
-        "name": "gemini-2.5-flash",
-        "description": "Adaptive thinking, cost efficiency",
-        "human_name": "Gemini 2.5 Flash",
-        "category": "text"
-    },
-    {
-        "id": "gemini/gemini-2.5-lite",
-        "provide": "gemini",
-        "name": "gemini-2.5-lite",
-        "description": "Our smallest and most cost effective model, built for at scale usage.",
-        "human_name": "Gemini 2.5 Lite",
-        "category": "text"
-    },
-    {
-        "id": "gemini/gemini-2.0-flash",
-        "provide": "gemini",
-        "name": "gemini-2.0-flash",
-        "description": "Next generation features, speed, and realtime streaming.",
-        "human_name": "Gemini 2.0 Flash",
-        "category": "text"
-    },
-    {
-        "id": "gemini/gemini-2.0-flash-lite",
-        "provide": "gemini",
-        "name": "gemini-2.0-flash-lite",
-        "description": "Cost efficiency and low latency",
-        "human_name": "Gemini 2.0 Flash-Lite",
-        "category": "text"
+  {
+    "id": "gemini/gemini-3-pro-preview",
+    "provide": "gemini",
+    "name": "gemini-3-pro-preview",
+    "description": "The best model in the world for multimodal understanding, and our most powerful agentic and vibe-coding model yet.",
+    "human_name": "Gemini 3 Pro",
+    "category": "text",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_k",
+          "label": "Top K",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.candidate_count",
+          "label": "Candidate Count",
+          "type": "number",
+          "advanced": true,
+          "required": false,
+          "default": "1"
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.max_output_tokens",
+          "label": "Max Output Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens"
+        },
+        {
+          "key": "model.stop_sequences",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "default": "STOP!"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "default": "0.0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "default": "0.0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Schema",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        }
+      ]
     }
+  },
+  {
+    "id": "gemini/gemini-2.5-pro",
+    "provide": "gemini",
+    "name": "gemini-2.5-pro",
+    "description": "Enhanced thinking and reasoning, multimodal understanding, advanced coding, and more",
+    "human_name": "Gemini 2.5 Pro",
+    "category": "text",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_k",
+          "label": "Top K",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.candidate_count",
+          "label": "Candidate Count",
+          "type": "number",
+          "advanced": true,
+          "required": false,
+          "default": "1"
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.max_output_tokens",
+          "label": "Max Output Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens"
+        },
+        {
+          "key": "model.stop_sequences",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "default": "STOP!"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "default": "0.0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "default": "0.0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Schema",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        }
+      ]
+    }
+  },
+  {
+    "id": "gemini/gemini-2.5-flash",
+    "provide": "gemini",
+    "name": "gemini-2.5-flash",
+    "description": "Adaptive thinking, cost efficiency",
+    "human_name": "Gemini 2.5 Flash",
+    "category": "text",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_k",
+          "label": "Top K",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.candidate_count",
+          "label": "Candidate Count",
+          "type": "number",
+          "advanced": true,
+          "required": false,
+          "default": "1"
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.max_output_tokens",
+          "label": "Max Output Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens"
+        },
+        {
+          "key": "model.stop_sequences",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "default": "STOP!"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "default": "0.0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "default": "0.0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Schema",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        }
+      ]
+    }
+  },
+  {
+    "id": "gemini/gemini-2.5-lite",
+    "provide": "gemini",
+    "name": "gemini-2.5-lite",
+    "description": "Our smallest and most cost effective model, built for at scale usage.",
+    "human_name": "Gemini 2.5 Lite",
+    "category": "text",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_k",
+          "label": "Top K",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.candidate_count",
+          "label": "Candidate Count",
+          "type": "number",
+          "advanced": true,
+          "required": false,
+          "default": "1"
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.max_output_tokens",
+          "label": "Max Output Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens"
+        },
+        {
+          "key": "model.stop_sequences",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "default": "STOP!"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "default": "0.0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "default": "0.0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Schema",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        }
+      ]
+    }
+  },
+  {
+    "id": "gemini/gemini-2.0-flash",
+    "provide": "gemini",
+    "name": "gemini-2.0-flash",
+    "description": "Next generation features, speed, and realtime streaming.",
+    "human_name": "Gemini 2.0 Flash",
+    "category": "text",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_k",
+          "label": "Top K",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.candidate_count",
+          "label": "Candidate Count",
+          "type": "number",
+          "advanced": true,
+          "required": false,
+          "default": "1"
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.max_output_tokens",
+          "label": "Max Output Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens"
+        },
+        {
+          "key": "model.stop_sequences",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "default": "STOP!"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "default": "0.0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "default": "0.0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Schema",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        }
+      ]
+    }
+  },
+  {
+    "id": "gemini/gemini-2.0-flash-lite",
+    "provide": "gemini",
+    "name": "gemini-2.0-flash-lite",
+    "description": "Cost efficiency and low latency",
+    "human_name": "Gemini 2.0 Flash-Lite",
+    "category": "text",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "1",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.top_k",
+          "label": "Top K",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.candidate_count",
+          "label": "Candidate Count",
+          "type": "number",
+          "advanced": true,
+          "required": false,
+          "default": "1"
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.max_output_tokens",
+          "label": "Max Output Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens"
+        },
+        {
+          "key": "model.stop_sequences",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "default": "STOP!"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "default": "0.0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "default": "0.0",
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty a valid value between -2 to 2."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Schema",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        }
+      ]
+    }
+  }
 ]

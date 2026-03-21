@@ -14,7 +14,7 @@ export const SpeechToTextProvider: React.FC<ProviderComponentProps> = props => {
     (key: string) => {
       return parameters?.find(p => p.getKey() === key)?.getValue() ?? '';
     },
-    [JSON.stringify(parameters)],
+    [parameters],
   );
   const updateParameter = (key: string, value: string) => {
     const updatedParams = [...(parameters || [])];

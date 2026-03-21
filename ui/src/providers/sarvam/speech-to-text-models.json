@@ -1,6 +1,20 @@
 [
-    {
-        "model_id": "saarika:v2.5",
-        "name": "saarika:v2.5"
+  {
+    "model_id": "saarika:v2.5",
+    "name": "saarika:v2.5",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "en-IN",
+          "data": "languages.json",
+          "valueField": "language_id",
+          "errorMessage": "Please provide valid sarvam language options for speech to text."
+        }
+      ]
     }
+  }
 ]

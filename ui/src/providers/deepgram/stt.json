@@ -1,0 +1,15 @@
+{
+  "preservePrefix": "microphone.",
+  "parameters": [
+    {
+      "key": "listen.model",
+      "label": "Model",
+      "type": "dropdown",
+      "required": true,
+      "default": "nova-3",
+      "data": "speech-to-text-models.json",
+      "valueField": "id",
+      "errorMessage": "Please provide a valid deepgram model for speech to text."
+    }
+  ]
+}

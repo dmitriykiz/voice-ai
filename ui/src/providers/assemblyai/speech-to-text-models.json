@@ -1,26 +1,126 @@
 [
-    {
-        "id": "slam-1",
-        "name": "Slam-1",
-        "description": "Highest accuracy for English pre-recorded audio with fine-tuning support",
-        "bestFor": "English content requiring highest accuracy"
-    },
-    {
-        "id": "universal",
-        "name": "Universal",
-        "description": "Best for out-of-the-box transcription with multi-lingual support",
-        "bestFor": "Production-ready transcription out of the box"
-    },
-    {
-        "id": "nano",
-        "name": "Nano",
-        "description": "Most cost-effective transcription with broad language support",
-        "bestFor": "Cost-sensitive applications with broad language needs"
-    },
-    {
-        "id": "universal-streaming",
-        "name": "Universal-Streaming",
-        "description": "Streaming audio transcription for real-time applications",
-        "bestFor": "Voice agents and real-time voice applications"
+  {
+    "id": "slam-1",
+    "name": "Slam-1",
+    "description": "Highest accuracy for English pre-recorded audio with fine-tuning support",
+    "bestFor": "English content requiring highest accuracy",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "en",
+          "data": "languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide valid language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        }
+      ]
     }
+  },
+  {
+    "id": "universal",
+    "name": "Universal",
+    "description": "Best for out-of-the-box transcription with multi-lingual support",
+    "bestFor": "Production-ready transcription out of the box",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "en",
+          "data": "languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide valid language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        }
+      ]
+    }
+  },
+  {
+    "id": "nano",
+    "name": "Nano",
+    "description": "Most cost-effective transcription with broad language support",
+    "bestFor": "Cost-sensitive applications with broad language needs",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "en",
+          "data": "languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide valid language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        }
+      ]
+    }
+  },
+  {
+    "id": "universal-streaming",
+    "name": "Universal-Streaming",
+    "description": "Streaming audio transcription for real-time applications",
+    "bestFor": "Voice agents and real-time voice applications",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "en",
+          "data": "languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide valid language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        }
+      ]
+    }
+  }
 ]

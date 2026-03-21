@@ -3,31 +3,8 @@ import {
   GetDefaultTextProviderConfigIfInvalid,
   ValidateTextProviderDefaultOptions,
 } from '../index';
-import {
-  GetOpenaiTextProviderDefaultOptions,
-  ValidateOpenaiTextProviderDefaultOptions,
-} from '@/app/components/providers/text/openai/constants';
-import {
-  GetAzureTextProviderDefaultOptions,
-  ValidateAzureTextProviderDefaultOptions,
-} from '@/app/components/providers/text/azure-foundry/constants';
-import {
-  GetGeminiTextProviderDefaultOptions,
-  ValidateGeminiTextProviderDefaultOptions,
-} from '@/app/components/providers/text/gemini/constants';
-import {
-  GetVertexAiTextProviderDefaultOptions,
-  ValidateVertexAiTextProviderDefaultOptions,
-} from '@/app/components/providers/text/vertexai/constants';
-import {
-  GetAnthropicTextProviderDefaultOptions,
-  ValidateAnthropicTextProviderDefaultOptions,
-} from '@/app/components/providers/text/anthropic/constants';
-import {
-  GetCohereTextProviderDefaultOptions,
-  ValidateCohereTextProviderDefaultOptions,
-} from '@/app/components/providers/text/cohere/constants';
 import { TEXT_PROVIDERS } from '@/providers';
+import { loadProviderConfig, loadProviderData } from '@/providers/config-loader';
 
 jest.mock('@/app/components/providers', () => ({}));
 jest.mock('@/utils', () => ({
@@ -35,6 +12,9 @@ jest.mock('@/utils', () => ({
 }));
 jest.mock('@/app/components/dropdown', () => ({
   Dropdown: () => null,
+}));
+jest.mock('@/app/components/dropdown/custom-value-dropdown', () => ({
+  CustomValueDropdown: () => null,
 }));
 jest.mock('@/app/components/dropdown/credential-dropdown', () => ({
   CredentialDropdown: () => null,
@@ -48,62 +28,6 @@ jest.mock('@/app/components/form-label', () => ({
 jest.mock('@/app/components/providers/config-renderer', () => ({
   ConfigRenderer: () => null,
 }));
-jest.mock('@/app/components/providers/text/openai', () => ({
-  ConfigureOpenaiTextProviderModel: () => null,
-}));
-jest.mock('@/app/components/providers/text/azure-foundry', () => {
-  const constants = jest.requireActual(
-    '@/app/components/providers/text/azure-foundry/constants',
-  );
-  return {
-    ConfigureAzureTextProviderModel: () => null,
-    ...constants,
-  };
-});
-jest.mock('@/app/components/providers/text/gemini', () => ({
-  ConfigureGeminiTextProviderModel: () => null,
-}));
-jest.mock('@/app/components/providers/text/vertexai', () => ({
-  ConfigureVertexAiTextProviderModel: () => null,
-}));
-jest.mock('@/app/components/providers/text/anthropic', () => ({
-  ConfigureAnthropicTextProviderModel: () => null,
-}));
-jest.mock('@/app/components/providers/text/cohere', () => ({
-  ConfigureCohereTextProviderModel: () => null,
-}));
-
-type LegacyFns = {
-  getDefault: (current: Metadata[]) => Metadata[];
-  validate: (options: Metadata[]) => string | undefined;
-};
-
-const legacyByProvider: Record<string, LegacyFns> = {
-  openai: {
-    getDefault: GetOpenaiTextProviderDefaultOptions,
-    validate: ValidateOpenaiTextProviderDefaultOptions,
-  },
-  'azure-foundry': {
-    getDefault: GetAzureTextProviderDefaultOptions,
-    validate: ValidateAzureTextProviderDefaultOptions,
-  },
-  gemini: {
-    getDefault: GetGeminiTextProviderDefaultOptions,
-    validate: ValidateGeminiTextProviderDefaultOptions,
-  },
-  vertexai: {
-    getDefault: GetVertexAiTextProviderDefaultOptions,
-    validate: ValidateVertexAiTextProviderDefaultOptions,
-  },
-  anthropic: {
-    getDefault: GetAnthropicTextProviderDefaultOptions,
-    validate: ValidateAnthropicTextProviderDefaultOptions,
-  },
-  cohere: {
-    getDefault: GetCohereTextProviderDefaultOptions,
-    validate: ValidateCohereTextProviderDefaultOptions,
-  },
-};
 
 const createMetadata = (key: string, value: string): Metadata => {
   const m = new Metadata();
@@ -131,41 +55,82 @@ const withCredential = (source: Metadata[]): Metadata[] => {
   return cloned;
 };
 
-describe('Text provider runtime parity', () => {
-  const providers = Object.keys(legacyByProvider);
+const withMetadataValue = (
+  source: Metadata[],
+  key: string,
+  value: string,
+): Metadata[] => {
+  const cloned = cloneMetadata(source);
+  const item = cloned.find(m => m.getKey() === key);
+  if (item) {
+    item.setValue(value);
+    return cloned;
+  }
+  cloned.push(createMetadata(key, value));
+  return cloned;
+};
 
-  it('keeps runtime coverage aligned with configured text providers', () => {
-    const configuredProviders = TEXT_PROVIDERS.map(p => p.code).sort();
-    const coveredProviders = [...providers].sort();
-    expect(configuredProviders).toEqual(coveredProviders);
+describe('Text provider runtime parity', () => {
+  const configuredTextProviders = TEXT_PROVIDERS.filter(p =>
+    Boolean(loadProviderConfig(p.code)?.text),
+  );
+
+  it('all supported text providers are config-driven', () => {
+    expect(configuredTextProviders.length).toBeGreaterThan(0);
+    for (const provider of configuredTextProviders) {
+      expect(loadProviderConfig(provider.code)?.text).toBeDefined();
+    }
   });
 
-  it.each(providers)(
-    '%s defaults remain parity with legacy switch behavior',
+  it.each(configuredTextProviders.map(p => p.code))(
+    '%s keeps text config focused on model selector only',
     provider => {
-      const seed = [
-        createMetadata('rapida.credential_id', 'seed-cred'),
-        createMetadata('custom.key', 'custom'),
-      ];
-      const legacy = legacyByProvider[provider].getDefault(cloneMetadata(seed));
-      const current = GetDefaultTextProviderConfigIfInvalid(
-        provider,
-        cloneMetadata(seed),
-      );
-      expect(normalizeMetadata(current)).toEqual(normalizeMetadata(legacy));
+      const textConfig = loadProviderConfig(provider)?.text;
+      expect(textConfig).toBeDefined();
+      expect(textConfig?.parameters.length).toBe(1);
+      expect(textConfig?.parameters[0].key).toBe('model.id');
+      expect(textConfig?.parameters[0].type).toBe('dropdown');
+      expect(Boolean(textConfig?.parameters[0].data)).toBe(true);
     },
   );
 
-  it.each(providers)(
-    '%s validation keeps same pass/fail status as legacy',
+  it.each(configuredTextProviders.map(p => p.code))(
+    '%s model catalog uses per-model config.parameters',
     provider => {
-      const legacyDefaults = legacyByProvider[provider].getDefault([]);
-      const options = withCredential(legacyDefaults);
-      const legacyHasError = Boolean(legacyByProvider[provider].validate(options));
-      const currentHasError = Boolean(
-        ValidateTextProviderDefaultOptions(provider, cloneMetadata(options)),
+      const textConfig = loadProviderConfig(provider)?.text;
+      const dataFile = textConfig?.parameters[0]?.data;
+      expect(dataFile).toBeDefined();
+      const modelCatalog = loadProviderData(provider, dataFile!);
+      expect(modelCatalog.length).toBeGreaterThan(0);
+      for (const model of modelCatalog) {
+        expect(Array.isArray(model?.config?.parameters)).toBe(true);
+        expect(model.config.parameters.length).toBeGreaterThan(0);
+      }
+    },
+  );
+
+  it.each(configuredTextProviders.map(p => p.code))(
+    '%s defaults + validation are stable',
+    provider => {
+      const seed = [
+        createMetadata('custom.key', 'custom'),
+        createMetadata('rapida.credential_id', 'seed-cred'),
+      ];
+      const defaults = GetDefaultTextProviderConfigIfInvalid(
+        provider,
+        cloneMetadata(seed),
       );
-      expect(currentHasError).toBe(legacyHasError);
+
+      expect(defaults.some(m => m.getKey() === 'model.id')).toBe(true);
+      expect(defaults.some(m => m.getKey() === 'rapida.credential_id')).toBe(
+        true,
+      );
+
+      const validated = ValidateTextProviderDefaultOptions(
+        provider,
+        withCredential(defaults),
+      );
+      expect(validated).toBeUndefined();
     },
   );
 
@@ -173,11 +138,83 @@ describe('Text provider runtime parity', () => {
     const seed = [createMetadata('custom.key', 'custom')];
     expect(
       normalizeMetadata(
-        GetDefaultTextProviderConfigIfInvalid('unknown-provider', cloneMetadata(seed)),
+        GetDefaultTextProviderConfigIfInvalid(
+          'unknown-provider',
+          cloneMetadata(seed),
+        ),
       ),
     ).toEqual(normalizeMetadata(seed));
     expect(ValidateTextProviderDefaultOptions('unknown-provider', [])).toBe(
       'Please select a valid model and provider.',
     );
+  });
+
+  it('normalizes template-style model token values into canonical model id/name', () => {
+    const openai = GetDefaultTextProviderConfigIfInvalid('openai', [
+      createMetadata('model.id', 'gpt-4o'),
+      createMetadata('model.name', 'gpt-4o'),
+    ]);
+    expect(openai.find(m => m.getKey() === 'model.id')?.getValue()).toBe(
+      'openai/gpt-4o',
+    );
+    expect(openai.find(m => m.getKey() === 'model.name')?.getValue()).toBe(
+      'gpt-4o',
+    );
+
+    const gemini = GetDefaultTextProviderConfigIfInvalid('gemini', [
+      createMetadata('model.id', 'gemini-2.5-flash'),
+      createMetadata('model.name', 'gemini-2.5-flash'),
+    ]);
+    expect(gemini.find(m => m.getKey() === 'model.id')?.getValue()).toBe(
+      'gemini/gemini-2.5-flash',
+    );
+    expect(gemini.find(m => m.getKey() === 'model.name')?.getValue()).toBe(
+      'gemini-2.5-flash',
+    );
+  });
+
+  it('custom-model providers keep explicit custom ids', () => {
+    const azure = GetDefaultTextProviderConfigIfInvalid('azure-foundry', [
+      createMetadata('model.id', 'my-custom-deployment'),
+      createMetadata('model.name', 'my-custom-deployment'),
+    ]);
+    expect(azure.find(m => m.getKey() === 'model.id')?.getValue()).toBe(
+      'my-custom-deployment',
+    );
+    expect(azure.find(m => m.getKey() === 'model.name')?.getValue()).toBe(
+      'my-custom-deployment',
+    );
+  });
+
+  it('normalizes model tokens during validation', () => {
+    const defaults = GetDefaultTextProviderConfigIfInvalid('openai', [
+      createMetadata('rapida.credential_id', 'cred-openai'),
+    ]);
+    const withLegacyModelToken = withMetadataValue(defaults, 'model.id', 'gpt-4o');
+    const withLegacyModelName = withMetadataValue(
+      withLegacyModelToken,
+      'model.name',
+      'gpt-4o',
+    );
+    const err = ValidateTextProviderDefaultOptions(
+      'openai',
+      withLegacyModelName,
+      ['cred-openai'],
+    );
+
+    expect(err).toBeUndefined();
+  });
+
+  it('rejects stale credential ids that do not belong to selected provider', () => {
+    const defaults = GetDefaultTextProviderConfigIfInvalid('openai', [
+      createMetadata('rapida.credential_id', 'cred-from-other-provider'),
+    ]);
+    const err = ValidateTextProviderDefaultOptions(
+      'openai',
+      defaults,
+      ['cred-openai-1', 'cred-openai-2'],
+    );
+
+    expect(err).toBe('Please select a valid openai credential.');
   });
 });

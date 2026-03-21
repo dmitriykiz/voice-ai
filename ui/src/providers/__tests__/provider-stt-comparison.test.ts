@@ -154,12 +154,14 @@ describe('Speechmatics STT — config vs original', () => {
 
   it('produces the same default keys and values', () => {
     const result = getDefaultsFromConfig(config, 'stt', [], 'speechmatics');
+    expect(findMeta(result, 'listen.model')).toBe('speechmatics-universal');
     expect(findMeta(result, 'listen.language')).toBe('en');
   });
 
   it('validates: valid options returns undefined', () => {
     const opts = [
       cred(),
+      createMetadata('listen.model', 'speechmatics-universal'),
       createMetadata('listen.language', 'en'),
     ];
     expect(validateFromConfig(config, 'stt', 'speechmatics', opts)).toBeUndefined();
@@ -168,6 +170,7 @@ describe('Speechmatics STT — config vs original', () => {
   it('validates: invalid language returns error', () => {
     const opts = [
       cred(),
+      createMetadata('listen.model', 'speechmatics-universal'),
       createMetadata('listen.language', 'xx-invalid'),
     ];
     expect(validateFromConfig(config, 'stt', 'speechmatics', opts)).toBe(
@@ -181,12 +184,14 @@ describe('Nvidia STT — config vs original', () => {
 
   it('produces the same default keys and values', () => {
     const result = getDefaultsFromConfig(config, 'stt', [], 'nvidia');
+    expect(findMeta(result, 'listen.model')).toBe('nvidia-parakeet');
     expect(findMeta(result, 'listen.language')).toBe('en-US');
   });
 
   it('validates: valid options returns undefined', () => {
     const opts = [
       cred(),
+      createMetadata('listen.model', 'nvidia-parakeet'),
       createMetadata('listen.language', 'en-US'),
     ];
     expect(validateFromConfig(config, 'stt', 'nvidia', opts)).toBeUndefined();
@@ -228,12 +233,14 @@ describe('AWS STT — config vs original', () => {
 
   it('produces the same default keys and values', () => {
     const result = getDefaultsFromConfig(config, 'stt', [], 'aws');
+    expect(findMeta(result, 'listen.model')).toBe('aws-transcribe');
     expect(findMeta(result, 'listen.language')).toBe('en-US');
   });
 
   it('validates: valid options returns undefined', () => {
     const opts = [
       cred(),
+      createMetadata('listen.model', 'aws-transcribe'),
       createMetadata('listen.language', 'en-US'),
     ];
     expect(validateFromConfig(config, 'stt', 'aws', opts)).toBeUndefined();
@@ -242,6 +249,7 @@ describe('AWS STT — config vs original', () => {
   it('validates: invalid language returns error', () => {
     const opts = [
       cred(),
+      createMetadata('listen.model', 'aws-transcribe'),
       createMetadata('listen.language', 'invalid'),
     ];
     expect(validateFromConfig(config, 'stt', 'aws', opts)).toBe(
@@ -255,12 +263,14 @@ describe('Azure Speech Service STT — config vs original', () => {
 
   it('produces the same default keys and values', () => {
     const result = getDefaultsFromConfig(config, 'stt', [], 'azure-speech-service');
-    expect(findMeta(result, 'listen.language')).toBeUndefined();
+    expect(findMeta(result, 'listen.model')).toBe('azure-speech');
+    expect(findMeta(result, 'listen.language')).toBe('en-US');
   });
 
   it('validates: valid options returns undefined', () => {
     const opts = [
       cred(),
+      createMetadata('listen.model', 'azure-speech'),
       createMetadata('listen.language', 'en-US'),
     ];
     expect(validateFromConfig(config, 'stt', 'azure-speech-service', opts)).toBeUndefined();
@@ -274,13 +284,14 @@ describe('Google Speech Service STT — config vs original', () => {
     const result = getDefaultsFromConfig(config, 'stt', [], 'google-speech-service');
     expect(findMeta(result, 'listen.threshold')).toBe('0.5');
     expect(findMeta(result, 'listen.region')).toBeUndefined();
-    expect(findMeta(result, 'listen.model')).toBeUndefined();
+    expect(findMeta(result, 'listen.model')).toBe('latest_long');
     expect(findMeta(result, 'listen.language')).toBeUndefined();
   });
 
   it('validates: valid options returns undefined', () => {
     const opts = [
       cred(),
+      createMetadata('listen.model', 'latest_long'),
     ];
     expect(validateFromConfig(config, 'stt', 'google-speech-service', opts)).toBeUndefined();
   });

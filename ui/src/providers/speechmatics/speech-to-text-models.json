@@ -1,0 +1,20 @@
+[
+  {
+    "id": "speechmatics-universal",
+    "name": "Speechmatics Universal",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "en",
+          "data": "languages.json",
+          "valueField": "language_id",
+          "errorMessage": "Please provide a valid speechmatics language for speech to text."
+        }
+      ]
+    }
+  }
+]

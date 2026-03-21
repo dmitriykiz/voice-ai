@@ -4,42 +4,13 @@ import { ProviderComponentProps } from '@/app/components/providers';
 import { loadProviderConfig } from '@/providers/config-loader';
 import { getDefaultsFromConfig, validateFromConfig } from '@/providers/config-defaults';
 import { ConfigRenderer } from '@/app/components/providers/config-renderer';
-import { ConfigureAnthropicTextProviderModel } from '@/app/components/providers/text/anthropic';
-import {
-  GetAnthropicTextProviderDefaultOptions,
-  ValidateAnthropicTextProviderDefaultOptions,
-} from '@/app/components/providers/text/anthropic/constants';
-import {
-  ConfigureAzureTextProviderModel,
-  GetAzureTextProviderDefaultOptions,
-  ValidateAzureTextProviderDefaultOptions,
-} from '@/app/components/providers/text/azure-foundry';
-import { ConfigureCohereTextProviderModel } from '@/app/components/providers/text/cohere';
-import {
-  GetCohereTextProviderDefaultOptions,
-  ValidateCohereTextProviderDefaultOptions,
-} from '@/app/components/providers/text/cohere/constants';
-import { ConfigureGeminiTextProviderModel } from '@/app/components/providers/text/gemini';
-import {
-  GetGeminiTextProviderDefaultOptions,
-  ValidateGeminiTextProviderDefaultOptions,
-} from '@/app/components/providers/text/gemini/constants';
-import { ConfigureOpenaiTextProviderModel } from '@/app/components/providers/text/openai';
-import {
-  GetOpenaiTextProviderDefaultOptions,
-  ValidateOpenaiTextProviderDefaultOptions,
-} from '@/app/components/providers/text/openai/constants';
 import { cn } from '@/utils';
-import { FC, useCallback } from 'react';
+import { FC, useCallback, useMemo } from 'react';
 import { FieldSet } from '@/app/components/form/fieldset';
 import { FormLabel } from '@/app/components/form-label';
 import { CredentialDropdown } from '@/app/components/dropdown/credential-dropdown';
 import { TEXT_PROVIDERS } from '@/providers';
-import {
-  GetVertexAiTextProviderDefaultOptions,
-  ValidateVertexAiTextProviderDefaultOptions,
-} from './vertexai/constants';
-import { ConfigureVertexAiTextProviderModel } from './vertexai';
+import { NormalizeTextProviderModelSelection } from './model-normalization';
 
 /**
  *
@@ -52,23 +23,14 @@ export const GetDefaultTextProviderConfigIfInvalid = (
   parameters: Metadata[],
 ): Metadata[] => {
   const config = loadProviderConfig(provider);
-  if (config?.text) return getDefaultsFromConfig(config, 'text', parameters, provider);
-  switch (provider) {
-    case 'openai':
-      return GetOpenaiTextProviderDefaultOptions(parameters);
-    case 'azure-foundry':
-      return GetAzureTextProviderDefaultOptions(parameters);
-    case 'gemini':
-      return GetGeminiTextProviderDefaultOptions(parameters);
-    case 'vertexai':
-      return GetVertexAiTextProviderDefaultOptions(parameters);
-    case 'anthropic':
-      return GetAnthropicTextProviderDefaultOptions(parameters);
-    case 'cohere':
-      return GetCohereTextProviderDefaultOptions(parameters);
-    default:
-      return parameters;
-  }
+  if (!config?.text) return parameters;
+
+  const normalizedParameters = NormalizeTextProviderModelSelection(
+    provider,
+    parameters,
+  );
+
+  return getDefaultsFromConfig(config, 'text', normalizedParameters, provider);
 };
 
 /**
@@ -80,25 +42,34 @@ export const GetDefaultTextProviderConfigIfInvalid = (
 export const ValidateTextProviderDefaultOptions = (
   provider: string,
   parameters: Metadata[],
+  providerCredentialIds?: string[],
 ): string | undefined => {
   const config = loadProviderConfig(provider);
-  if (config?.text) return validateFromConfig(config, 'text', provider, parameters);
-  switch (provider) {
-    case 'openai':
-      return ValidateOpenaiTextProviderDefaultOptions(parameters);
-    case 'azure-foundry':
-      return ValidateAzureTextProviderDefaultOptions(parameters);
-    case 'gemini':
-      return ValidateGeminiTextProviderDefaultOptions(parameters);
-    case 'vertexai':
-      return ValidateVertexAiTextProviderDefaultOptions(parameters);
-    case 'anthropic':
-      return ValidateAnthropicTextProviderDefaultOptions(parameters);
-    case 'cohere':
-      return ValidateCohereTextProviderDefaultOptions(parameters);
-    default:
-      return 'Please select a valid model and provider.';
+  if (!config?.text) return 'Please select a valid model and provider.';
+  const normalizedParameters = NormalizeTextProviderModelSelection(
+    provider,
+    parameters,
+  );
+  const validationError = validateFromConfig(
+    config,
+    'text',
+    provider,
+    normalizedParameters,
+  );
+  if (validationError) return validationError;
+
+  if (!providerCredentialIds) return undefined;
+
+  const credentialID = normalizedParameters.find(
+    opt => opt.getKey() === 'rapida.credential_id',
+  )?.getValue();
+  if (!credentialID) {
+    return `Please provide a valid ${provider} credential.`;
   }
+  if (!providerCredentialIds.includes(credentialID)) {
+    return `Please select a valid ${provider} credential.`;
+  }
+  return undefined;
 };
 
 /**
@@ -112,63 +83,17 @@ const TextProviderConfigComponent: FC<ProviderComponentProps> = ({
   onChangeParameter,
 }) => {
   const config = loadProviderConfig(provider);
-  if (config?.text) {
-    return (
-      <ConfigRenderer
-        provider={provider}
-        category="text"
-        config={config.text}
-        parameters={parameters}
-        onParameterChange={onChangeParameter}
-      />
-    );
-  }
-  switch (provider) {
-    case 'openai':
-      return (
-        <ConfigureOpenaiTextProviderModel
-          parameters={parameters}
-          onParameterChange={onChangeParameter}
-        />
-      );
-    case 'azure-foundry':
-      return (
-        <ConfigureAzureTextProviderModel
-          parameters={parameters}
-          onParameterChange={onChangeParameter}
-        />
-      );
-    case 'gemini':
-      return (
-        <ConfigureGeminiTextProviderModel
-          parameters={parameters}
-          onParameterChange={onChangeParameter}
-        />
-      );
-    case 'vertexai':
-      return (
-        <ConfigureVertexAiTextProviderModel
-          parameters={parameters}
-          onParameterChange={onChangeParameter}
-        />
-      );
-    case 'anthropic':
-      return (
-        <ConfigureAnthropicTextProviderModel
-          parameters={parameters}
-          onParameterChange={onChangeParameter}
-        />
-      );
-    case 'cohere':
-      return (
-        <ConfigureCohereTextProviderModel
-          parameters={parameters}
-          onParameterChange={onChangeParameter}
-        />
-      );
-    default:
-      return null;
-  }
+  if (!config?.text) return null;
+
+  return (
+    <ConfigRenderer
+      provider={provider}
+      category="text"
+      config={config.text}
+      parameters={parameters}
+      onParameterChange={onChangeParameter}
+    />
+  );
 };
 
 /**
@@ -178,11 +103,16 @@ const TextProviderConfigComponent: FC<ProviderComponentProps> = ({
  */
 export const TextProvider: React.FC<ProviderComponentProps> = props => {
   const { provider, parameters, onChangeProvider, onChangeParameter } = props;
+  const textProviders = useMemo(
+    () => TEXT_PROVIDERS.filter(p => Boolean(loadProviderConfig(p.code)?.text)),
+    [],
+  );
+
   const getParamValue = useCallback(
     (key: string) => {
       return parameters?.find(p => p.getKey() === key)?.getValue() ?? '';
     },
-    [JSON.stringify(parameters)],
+    [parameters],
   );
 
   const updateParameter = (key: string, value: string) => {
@@ -217,11 +147,11 @@ export const TextProvider: React.FC<ProviderComponentProps> = props => {
           <div className="w-44 relative">
             <Dropdown
               className="max-w-full focus-within:border-none! outline-none! border-none! outline-hidden"
-              currentValue={TEXT_PROVIDERS.find(x => x.code === provider)}
+              currentValue={textProviders.find(x => x.code === provider)}
               setValue={v => {
                 onChangeProvider(v.code);
               }}
-              allValue={TEXT_PROVIDERS}
+              allValue={textProviders}
               placeholder="Select provider"
               option={c => {
                 return (

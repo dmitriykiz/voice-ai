@@ -5,6 +5,7 @@ import {
   WebWidgetExperienceConfig,
 } from '@/app/pages/assistant/actions/create-deployment/web-plugin/configure-experience';
 import { useRapidaStore } from '@/hooks';
+import { useAllProviderCredentials } from '@/hooks/use-model';
 import { useCurrentCredential } from '@/hooks/use-credential';
 import { useGlobalNavigation } from '@/hooks/use-global-navigator';
 import { FC, useEffect, useRef, useState } from 'react';
@@ -78,6 +79,7 @@ const ConfigureAssistantWebDeployment: FC<{ assistantId: string }> = ({
 }) => {
   const { goToDeploymentAssistant } = useGlobalNavigation();
   const { loading, showLoader, hideLoader } = useRapidaStore();
+  const { providerCredentials } = useAllProviderCredentials();
   const { authId, projectId, token } = useCurrentCredential();
   const { showDialog, ConfirmDialogComponent } = useConfirmDialog({});
 
@@ -192,6 +194,11 @@ const ConfigureAssistantWebDeployment: FC<{ assistantId: string }> = ({
       });
   }, [assistantId, token, authId, projectId]);
 
+  const getProviderCredentialIds = (provider: string) =>
+    providerCredentials
+      .filter(c => c.getProvider() === provider)
+      .map(c => c.getId());
+
   const handleTabChange = (code: string) => {
     const clickedIndex = STEPS.findIndex(s => s.code === code);
     const currentIndex = STEPS.findIndex(s => s.code === activeTab);
@@ -220,6 +227,7 @@ const ConfigureAssistantWebDeployment: FC<{ assistantId: string }> = ({
       const err = ValidateSpeechToTextIfInvalid(
         audioInputConfig.provider,
         audioInputConfig.parameters,
+        getProviderCredentialIds(audioInputConfig.provider),
       );
       if (err) {
         setErrorMessage(err);
@@ -266,6 +274,7 @@ const ConfigureAssistantWebDeployment: FC<{ assistantId: string }> = ({
       const err = ValidateSpeechToTextIfInvalid(
         audioInputConfig.provider,
         audioInputConfig.parameters,
+        getProviderCredentialIds(audioInputConfig.provider),
       );
       if (err) {
         hideLoader();
@@ -285,6 +294,7 @@ const ConfigureAssistantWebDeployment: FC<{ assistantId: string }> = ({
       const err = ValidateTextToSpeechIfInvalid(
         audioOutputConfig.provider,
         audioOutputConfig.parameters,
+        getProviderCredentialIds(audioOutputConfig.provider),
       );
       if (err) {
         hideLoader();

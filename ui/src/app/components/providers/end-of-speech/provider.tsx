@@ -1,11 +1,9 @@
 import { ProviderComponentProps } from '@/app/components/providers';
-import { ConfigureSilenceBasedEOS } from '@/app/components/providers/end-of-speech/silence-based';
-import { ConfigureLivekitEOS } from '@/app/components/providers/end-of-speech/livekit-eos';
-import { ConfigurePipecatSmartTurnEOS } from '@/app/components/providers/end-of-speech/pipecat-smart-turn';
 import { loadProviderConfig } from '@/providers/config-loader';
 import { getDefaultsFromConfig } from '@/providers/config-defaults';
 import { Metadata } from '@rapidaai/react';
 import { FC } from 'react';
+import { ConfigRenderer } from '@/app/components/providers/config-renderer';
 
 const upsertScopedProvider = (
   parameters: Metadata[],
@@ -48,29 +46,16 @@ export const EndOfSpeechConfigComponent: FC<ProviderComponentProps> = ({
   parameters,
   onChangeParameter,
 }) => {
-  switch (provider) {
-    case 'silence_based_eos':
-      return (
-        <ConfigureSilenceBasedEOS
-          parameters={parameters}
-          onParameterChange={onChangeParameter}
-        />
-      );
-    case 'livekit_eos':
-      return (
-        <ConfigureLivekitEOS
-          parameters={parameters}
-          onParameterChange={onChangeParameter}
-        />
-      );
-    case 'pipecat_smart_turn_eos':
-      return (
-        <ConfigurePipecatSmartTurnEOS
-          parameters={parameters}
-          onParameterChange={onChangeParameter}
-        />
-      );
-    default:
-      return null;
-  }
+  const config = loadProviderConfig(provider);
+  if (!config?.eos) return null;
+
+  return (
+    <ConfigRenderer
+      provider={provider}
+      category="eos"
+      config={config.eos}
+      parameters={parameters}
+      onParameterChange={onChangeParameter}
+    />
+  );
 };

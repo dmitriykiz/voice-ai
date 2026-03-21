@@ -1,0 +1,1311 @@
+[
+  {
+    "id": "cohere/command-a-03-2025",
+    "name": "command-a-03-2025",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.max_tokens",
+          "label": "Max Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_token."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.3",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.p",
+          "label": "P (Top-p)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0.01,
+          "max": 0.99,
+          "step": 0.01,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.k",
+          "label": "K (Top-K)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 500,
+          "step": 1
+        },
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.stop_sequences",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "default": ""
+        },
+        {
+          "key": "model.safety_mode",
+          "label": "Safety Mode",
+          "type": "select",
+          "advanced": true,
+          "required": true,
+          "default": "CONTEXTUAL",
+          "choices": [
+            {
+              "label": "CONTEXTUAL",
+              "value": "CONTEXTUAL"
+            },
+            {
+              "label": "STRICT",
+              "value": "STRICT"
+            },
+            {
+              "label": "OFF",
+              "value": "OFF"
+            }
+          ]
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output."
+        }
+      ]
+    }
+  },
+  {
+    "id": "cohere/command-r7b-12-2024",
+    "name": "command-r7b-12-2024",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.max_tokens",
+          "label": "Max Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_token."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.3",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.p",
+          "label": "P (Top-p)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0.01,
+          "max": 0.99,
+          "step": 0.01,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.k",
+          "label": "K (Top-K)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 500,
+          "step": 1
+        },
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.stop_sequences",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "default": ""
+        },
+        {
+          "key": "model.safety_mode",
+          "label": "Safety Mode",
+          "type": "select",
+          "advanced": true,
+          "required": true,
+          "default": "CONTEXTUAL",
+          "choices": [
+            {
+              "label": "CONTEXTUAL",
+              "value": "CONTEXTUAL"
+            },
+            {
+              "label": "STRICT",
+              "value": "STRICT"
+            },
+            {
+              "label": "OFF",
+              "value": "OFF"
+            }
+          ]
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output."
+        }
+      ]
+    }
+  },
+  {
+    "id": "cohere/command-r-plus-04-2024",
+    "name": "command-r-plus-04-2024",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.max_tokens",
+          "label": "Max Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_token."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.3",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.p",
+          "label": "P (Top-p)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0.01,
+          "max": 0.99,
+          "step": 0.01,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.k",
+          "label": "K (Top-K)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 500,
+          "step": 1
+        },
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.stop_sequences",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "default": ""
+        },
+        {
+          "key": "model.safety_mode",
+          "label": "Safety Mode",
+          "type": "select",
+          "advanced": true,
+          "required": true,
+          "default": "CONTEXTUAL",
+          "choices": [
+            {
+              "label": "CONTEXTUAL",
+              "value": "CONTEXTUAL"
+            },
+            {
+              "label": "STRICT",
+              "value": "STRICT"
+            },
+            {
+              "label": "OFF",
+              "value": "OFF"
+            }
+          ]
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output."
+        }
+      ]
+    }
+  },
+  {
+    "id": "cohere/command-r-plus",
+    "name": "command-r-plus",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.max_tokens",
+          "label": "Max Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_token."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.3",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.p",
+          "label": "P (Top-p)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0.01,
+          "max": 0.99,
+          "step": 0.01,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.k",
+          "label": "K (Top-K)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 500,
+          "step": 1
+        },
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.stop_sequences",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "default": ""
+        },
+        {
+          "key": "model.safety_mode",
+          "label": "Safety Mode",
+          "type": "select",
+          "advanced": true,
+          "required": true,
+          "default": "CONTEXTUAL",
+          "choices": [
+            {
+              "label": "CONTEXTUAL",
+              "value": "CONTEXTUAL"
+            },
+            {
+              "label": "STRICT",
+              "value": "STRICT"
+            },
+            {
+              "label": "OFF",
+              "value": "OFF"
+            }
+          ]
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output."
+        }
+      ]
+    }
+  },
+  {
+    "id": "cohere/command-r-08-2024",
+    "name": "command-r-08-2024",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.max_tokens",
+          "label": "Max Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_token."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.3",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.p",
+          "label": "P (Top-p)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0.01,
+          "max": 0.99,
+          "step": 0.01,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.k",
+          "label": "K (Top-K)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 500,
+          "step": 1
+        },
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.stop_sequences",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "default": ""
+        },
+        {
+          "key": "model.safety_mode",
+          "label": "Safety Mode",
+          "type": "select",
+          "advanced": true,
+          "required": true,
+          "default": "CONTEXTUAL",
+          "choices": [
+            {
+              "label": "CONTEXTUAL",
+              "value": "CONTEXTUAL"
+            },
+            {
+              "label": "STRICT",
+              "value": "STRICT"
+            },
+            {
+              "label": "OFF",
+              "value": "OFF"
+            }
+          ]
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output."
+        }
+      ]
+    }
+  },
+  {
+    "id": "cohere/command-r-03-2024",
+    "name": "command-r-03-2024",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.max_tokens",
+          "label": "Max Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_token."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.3",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.p",
+          "label": "P (Top-p)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0.01,
+          "max": 0.99,
+          "step": 0.01,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.k",
+          "label": "K (Top-K)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 500,
+          "step": 1
+        },
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.stop_sequences",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "default": ""
+        },
+        {
+          "key": "model.safety_mode",
+          "label": "Safety Mode",
+          "type": "select",
+          "advanced": true,
+          "required": true,
+          "default": "CONTEXTUAL",
+          "choices": [
+            {
+              "label": "CONTEXTUAL",
+              "value": "CONTEXTUAL"
+            },
+            {
+              "label": "STRICT",
+              "value": "STRICT"
+            },
+            {
+              "label": "OFF",
+              "value": "OFF"
+            }
+          ]
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output."
+        }
+      ]
+    }
+  },
+  {
+    "id": "cohere/command-r",
+    "name": "command-r",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.max_tokens",
+          "label": "Max Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_token."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.3",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.p",
+          "label": "P (Top-p)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0.01,
+          "max": 0.99,
+          "step": 0.01,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.k",
+          "label": "K (Top-K)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 500,
+          "step": 1
+        },
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.stop_sequences",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "default": ""
+        },
+        {
+          "key": "model.safety_mode",
+          "label": "Safety Mode",
+          "type": "select",
+          "advanced": true,
+          "required": true,
+          "default": "CONTEXTUAL",
+          "choices": [
+            {
+              "label": "CONTEXTUAL",
+              "value": "CONTEXTUAL"
+            },
+            {
+              "label": "STRICT",
+              "value": "STRICT"
+            },
+            {
+              "label": "OFF",
+              "value": "OFF"
+            }
+          ]
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output."
+        }
+      ]
+    }
+  },
+  {
+    "id": "cohere/command",
+    "name": "command",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.max_tokens",
+          "label": "Max Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_token."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.3",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.p",
+          "label": "P (Top-p)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0.01,
+          "max": 0.99,
+          "step": 0.01,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.k",
+          "label": "K (Top-K)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 500,
+          "step": 1
+        },
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.stop_sequences",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "default": ""
+        },
+        {
+          "key": "model.safety_mode",
+          "label": "Safety Mode",
+          "type": "select",
+          "advanced": true,
+          "required": true,
+          "default": "CONTEXTUAL",
+          "choices": [
+            {
+              "label": "CONTEXTUAL",
+              "value": "CONTEXTUAL"
+            },
+            {
+              "label": "STRICT",
+              "value": "STRICT"
+            },
+            {
+              "label": "OFF",
+              "value": "OFF"
+            }
+          ]
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output."
+        }
+      ]
+    }
+  },
+  {
+    "id": "cohere/command-nightly",
+    "name": "command-nightly",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.max_tokens",
+          "label": "Max Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_token."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.3",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.p",
+          "label": "P (Top-p)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0.01,
+          "max": 0.99,
+          "step": 0.01,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.k",
+          "label": "K (Top-K)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 500,
+          "step": 1
+        },
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.stop_sequences",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "default": ""
+        },
+        {
+          "key": "model.safety_mode",
+          "label": "Safety Mode",
+          "type": "select",
+          "advanced": true,
+          "required": true,
+          "default": "CONTEXTUAL",
+          "choices": [
+            {
+              "label": "CONTEXTUAL",
+              "value": "CONTEXTUAL"
+            },
+            {
+              "label": "STRICT",
+              "value": "STRICT"
+            },
+            {
+              "label": "OFF",
+              "value": "OFF"
+            }
+          ]
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output."
+        }
+      ]
+    }
+  },
+  {
+    "id": "cohere/command-light",
+    "name": "command-light",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.max_tokens",
+          "label": "Max Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_token."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.3",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.p",
+          "label": "P (Top-p)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0.01,
+          "max": 0.99,
+          "step": 0.01,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.k",
+          "label": "K (Top-K)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 500,
+          "step": 1
+        },
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.stop_sequences",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "default": ""
+        },
+        {
+          "key": "model.safety_mode",
+          "label": "Safety Mode",
+          "type": "select",
+          "advanced": true,
+          "required": true,
+          "default": "CONTEXTUAL",
+          "choices": [
+            {
+              "label": "CONTEXTUAL",
+              "value": "CONTEXTUAL"
+            },
+            {
+              "label": "STRICT",
+              "value": "STRICT"
+            },
+            {
+              "label": "OFF",
+              "value": "OFF"
+            }
+          ]
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output."
+        }
+      ]
+    }
+  },
+  {
+    "id": "cohere/command-light-nightly",
+    "name": "command-light-nightly",
+    "config": {
+      "parameters": [
+        {
+          "key": "model.max_tokens",
+          "label": "Max Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "errorMessage": "Please check and provide a correct value for max_completion_token."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": true,
+          "default": "0.3",
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for temperature any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.p",
+          "label": "P (Top-p)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0.01,
+          "max": 0.99,
+          "step": 0.01,
+          "errorMessage": "Please check and provide a correct value for top_p any decimal value between 0 to 1"
+        },
+        {
+          "key": "model.k",
+          "label": "K (Top-K)",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 500,
+          "step": 1
+        },
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for frequency_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "errorMessage": "Please check and provide a correct value for presence_penalty any decimal value between -2 to 2"
+        },
+        {
+          "key": "model.stop_sequences",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "default": ""
+        },
+        {
+          "key": "model.safety_mode",
+          "label": "Safety Mode",
+          "type": "select",
+          "advanced": true,
+          "required": true,
+          "default": "CONTEXTUAL",
+          "choices": [
+            {
+              "label": "CONTEXTUAL",
+              "value": "CONTEXTUAL"
+            },
+            {
+              "label": "STRICT",
+              "value": "STRICT"
+            },
+            {
+              "label": "OFF",
+              "value": "OFF"
+            }
+          ]
+        },
+        {
+          "key": "model.seed",
+          "label": "Seed",
+          "type": "number",
+          "advanced": true,
+          "required": false
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output."
+        }
+      ]
+    }
+  }
+]

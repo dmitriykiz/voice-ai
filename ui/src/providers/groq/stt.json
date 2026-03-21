@@ -1,0 +1,15 @@
+{
+  "preservePrefix": "microphone.",
+  "parameters": [
+    {
+      "key": "listen.model",
+      "label": "Model",
+      "type": "dropdown",
+      "required": true,
+      "default": "whisper-large-v3-turbo",
+      "data": "speech-to-text-models.json",
+      "valueField": "id",
+      "errorMessage": "Please provide a valid groq model for speech to text."
+    }
+  ]
+}

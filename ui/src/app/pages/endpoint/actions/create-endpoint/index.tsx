@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useRapidaStore } from '@/hooks';
 import { useCurrentCredential } from '@/hooks/use-credential';
+import { useAllProviderCredentials } from '@/hooks/use-model';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast/headless';
 import { Helmet } from '@/app/components/helmet';
@@ -48,6 +49,7 @@ export function CreateEndpointPage() {
   const [activeTab, setActiveTab] = useState('choose-model');
   const [errorMessage, setErrorMessage] = useState('');
   const { loading, showLoader, hideLoader } = useRapidaStore();
+  const { providerCredentials } = useAllProviderCredentials();
   const navigator = useNavigate();
 
   const [name, setName] = useState<string>(randomMeaningfullName('endpoint'));
@@ -70,11 +72,14 @@ export function CreateEndpointPage() {
   });
 
   const onChangeTextProvider = (providerName: string) => {
+    const parametersWithoutCredential = textProviderModel.parameters.filter(
+      p => p.getKey() !== 'rapida.credential_id',
+    );
     setTextProviderModel({
       provider: providerName,
       parameters: GetDefaultTextProviderConfigIfInvalid(
         providerName,
-        textProviderModel.parameters,
+        parametersWithoutCredential,
       ),
     });
   };
@@ -123,6 +128,9 @@ export function CreateEndpointPage() {
     const err = ValidateTextProviderDefaultOptions(
       textProviderModel.provider,
       textProviderModel.parameters,
+      providerCredentials
+        .filter(c => c.getProvider() === textProviderModel.provider)
+        .map(c => c.getId()),
     );
     if (err) {
       setErrorMessage(err);
@@ -169,7 +177,7 @@ export function CreateEndpointPage() {
 
     const endpointattr = new EndpointAttribute();
     endpointattr.setName(name);
-    if (description.trim() === '') {
+    if (description.trim() !== '') {
       endpointattr.setDescription(description);
     }
 
@@ -263,11 +271,15 @@ export function CreateEndpointPage() {
       );
     }
     setOrCreateParam('model.name', template.model);
-    setOrCreateParam('model.id', `${template.provider}/${template.model}`);
+    setOrCreateParam('model.id', template.model);
+    const normalizedParams = GetDefaultTextProviderConfigIfInvalid(
+      template.provider,
+      newParams,
+    );
 
     setTextProviderModel({
       provider: template.provider,
-      parameters: newParams,
+      parameters: normalizedParams,
     });
   };
 

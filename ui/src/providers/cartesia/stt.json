@@ -1,0 +1,15 @@
+{
+  "preservePrefix": "microphone.",
+  "parameters": [
+    {
+      "key": "listen.model",
+      "label": "Model",
+      "type": "dropdown",
+      "required": true,
+      "default": "ink-whisper",
+      "data": "speech-to-text-models.json",
+      "valueField": "id",
+      "errorMessage": "Please provide valid cartesia model for speech to text."
+    }
+  ]
+}

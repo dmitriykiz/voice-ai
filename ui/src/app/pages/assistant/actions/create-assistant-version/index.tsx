@@ -32,6 +32,7 @@ import {
 } from '@/app/components/providers/text';
 import { randomString } from '@/utils';
 import { ValidateTextProviderDefaultOptions } from '@/app/components/providers/text/index';
+import { useAllProviderCredentials } from '@/hooks/use-model';
 import { connectionConfig } from '@/configs';
 import { DocNoticeBlock } from '@/app/components/container/message/notice-block/doc-notice-block';
 import { InputHelper } from '@/app/components/input-helper';
@@ -116,13 +117,17 @@ const CreateNewVersion: FC<{ assistantId: string }> = ({ assistantId }) => {
    * global loader
    */
   const { loading, showLoader, hideLoader } = useRapidaStore();
+  const { providerCredentials } = useAllProviderCredentials();
 
   const onChangeProvider = (providerName: string) => {
+    const parametersWithoutCredential = selectedModel.parameters.filter(
+      p => p.getKey() !== 'rapida.credential_id',
+    );
     setSelectedModel({
       provider: providerName,
       parameters: GetDefaultTextProviderConfigIfInvalid(
         providerName,
-        selectedModel.parameters,
+        parametersWithoutCredential,
       ),
     });
   };
@@ -136,6 +141,9 @@ const CreateNewVersion: FC<{ assistantId: string }> = ({ assistantId }) => {
     let err = ValidateTextProviderDefaultOptions(
       selectedModel.provider,
       selectedModel.parameters,
+      providerCredentials
+        .filter(c => c.getProvider() === selectedModel.provider)
+        .map(c => c.getId()),
     );
     if (err) {
       setErrorMessage(err);

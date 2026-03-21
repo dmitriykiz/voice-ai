@@ -32,7 +32,7 @@ describe('Groq TTS — config vs original', () => {
   it('produces defaults with no pre-set values (no defaults in original)', () => {
     const result = getDefaultsFromConfig(config, 'tts', [], 'groq');
     // Original: no defaults for model or voice
-    // Config-driven: no defaults set in config.json either
+    // Config-driven: no defaults set in tts.json either
     // Only keys present should be from the parameters (with undefined values if no defaults)
     const keys = result.map(m => m.getKey());
     expect(keys).not.toContain('speak.language'); // groq TTS has no language param

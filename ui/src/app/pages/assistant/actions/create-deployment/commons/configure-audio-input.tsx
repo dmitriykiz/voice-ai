@@ -29,15 +29,14 @@ export const ConfigureAudioInputProvider: React.FC<
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const onChangeAudioInputProvider = (providerName: string) => {
+    const microphoneScopedParameters = audioInputConfig.parameters.filter(
+      p => p.getKey().startsWith('microphone.'),
+    );
     setAudioInputConfig({
       provider: providerName,
       parameters: GetDefaultSpeechToTextIfInvalid(
         providerName,
-        GetDefaultMicrophoneConfig(
-          audioInputConfig.parameters.filter(p =>
-            p.getKey().startsWith('microphone.'),
-          ),
-        ),
+        GetDefaultMicrophoneConfig(microphoneScopedParameters),
       ),
     });
   };
@@ -52,7 +51,7 @@ export const ConfigureAudioInputProvider: React.FC<
       const param = audioInputConfig.parameters?.find(p => p.getKey() === key);
       return param ? param.getValue() : defaultValue;
     },
-    [JSON.stringify(audioInputConfig.parameters)],
+    [audioInputConfig.parameters],
   );
 
   return (
@@ -103,6 +102,8 @@ export const ConfigureAudioInputProvider: React.FC<
                     'microphone.denoising.provider',
                     'rn_noise',
                   )}
+                  parameters={audioInputConfig.parameters}
+                  onChangeParameter={onChangeAudioInputParameter}
                   onChangeNoiseCancellationProvider={v =>
                     onChangeAudioInputParameter(
                       GetDefaultNoiseCancellationConfig(

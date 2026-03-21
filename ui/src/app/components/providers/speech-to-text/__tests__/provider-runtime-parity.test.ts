@@ -3,201 +3,13 @@ import {
   GetDefaultSpeechToTextIfInvalid,
   ValidateSpeechToTextIfInvalid,
 } from '../provider';
-import {
-  GetAssemblyAIDefaultOptions,
-  ValidateAssemblyAIOptions,
-} from '@/app/components/providers/speech-to-text/assemblyai/constant';
-import {
-  GetAWSDefaultOptions,
-  ValidateAWSOptions,
-} from '@/app/components/providers/speech-to-text/aws/constant';
-import {
-  GetAzureDefaultOptions,
-  ValidateAzureOptions,
-} from '@/app/components/providers/speech-to-text/azure-speech-service/constant';
-import {
-  GetCartesiaDefaultOptions,
-  ValidateCartesiaOptions,
-} from '@/app/components/providers/speech-to-text/cartesia/constant';
-import {
-  GetDeepgramDefaultOptions,
-  ValidateDeepgramOptions,
-} from '@/app/components/providers/speech-to-text/deepgram/constant';
-import {
-  GetGoogleDefaultOptions,
-  ValidateGoogleOptions,
-} from '@/app/components/providers/speech-to-text/google-speech-service/constant';
-import {
-  GetGroqDefaultOptions,
-  ValidateGroqOptions,
-} from '@/app/components/providers/speech-to-text/groq/constant';
-import {
-  GetNvidiaDefaultOptions,
-  ValidateNvidiaOptions,
-} from '@/app/components/providers/speech-to-text/nvidia/constant';
-import {
-  GetOpenAIDefaultOptions,
-  ValidateOpenAIOptions,
-} from '@/app/components/providers/speech-to-text/openai/constant';
-import {
-  GetSarvamDefaultOptions,
-  ValidateSarvamOptions,
-} from '@/app/components/providers/speech-to-text/sarvam/constant';
-import {
-  GetSpeechmaticsDefaultOptions,
-  ValidateSpeechmaticsOptions,
-} from '@/app/components/providers/speech-to-text/speechmatics/constant';
+import { SPEECH_TO_TEXT_PROVIDER } from '@/providers';
+import { loadProviderConfig, loadProviderData } from '@/providers/config-loader';
 
 jest.mock('@/app/components/providers', () => ({}));
 jest.mock('@/app/components/providers/config-renderer', () => ({
   ConfigRenderer: () => null,
 }));
-jest.mock('@/app/components/providers/speech-to-text/assemblyai', () => {
-  const constants = jest.requireActual(
-    '@/app/components/providers/speech-to-text/assemblyai/constant',
-  );
-  return {
-    ConfigureAssemblyAISpeechToText: () => null,
-    ...constants,
-  };
-});
-jest.mock('@/app/components/providers/speech-to-text/aws', () => {
-  const constants = jest.requireActual(
-    '@/app/components/providers/speech-to-text/aws/constant',
-  );
-  return {
-    ConfigureAWSSpeechToText: () => null,
-    ...constants,
-  };
-});
-jest.mock('@/app/components/providers/speech-to-text/azure-speech-service', () => {
-  const constants = jest.requireActual(
-    '@/app/components/providers/speech-to-text/azure-speech-service/constant',
-  );
-  return {
-    ConfigureAzureSpeechToText: () => null,
-    ...constants,
-  };
-});
-jest.mock('@/app/components/providers/speech-to-text/cartesia', () => {
-  const constants = jest.requireActual(
-    '@/app/components/providers/speech-to-text/cartesia/constant',
-  );
-  return {
-    ConfigureCartesiaSpeechToText: () => null,
-    ...constants,
-  };
-});
-jest.mock('@/app/components/providers/speech-to-text/deepgram', () => {
-  const constants = jest.requireActual(
-    '@/app/components/providers/speech-to-text/deepgram/constant',
-  );
-  return {
-    ConfigureDeepgramSpeechToText: () => null,
-    ...constants,
-  };
-});
-jest.mock('@/app/components/providers/speech-to-text/google-speech-service', () => {
-  const constants = jest.requireActual(
-    '@/app/components/providers/speech-to-text/google-speech-service/constant',
-  );
-  return {
-    ConfigureGoogleSpeechToText: () => null,
-    ...constants,
-  };
-});
-jest.mock('@/app/components/providers/speech-to-text/groq', () => {
-  const constants = jest.requireActual(
-    '@/app/components/providers/speech-to-text/groq/constant',
-  );
-  return {
-    ConfigureGroqSpeechToText: () => null,
-    ...constants,
-  };
-});
-jest.mock('@/app/components/providers/speech-to-text/nvidia', () => {
-  const constants = jest.requireActual(
-    '@/app/components/providers/speech-to-text/nvidia/constant',
-  );
-  return {
-    ConfigureNvidiaSpeechToText: () => null,
-    ...constants,
-  };
-});
-jest.mock('@/app/components/providers/speech-to-text/openai', () => ({
-  ConfigureOpenAISpeechToText: () => null,
-}));
-jest.mock('@/app/components/providers/speech-to-text/sarvam', () => {
-  const constants = jest.requireActual(
-    '@/app/components/providers/speech-to-text/sarvam/constant',
-  );
-  return {
-    ConfigureSarvamSpeechToText: () => null,
-    ...constants,
-  };
-});
-jest.mock('@/app/components/providers/speech-to-text/speechmatics', () => {
-  const constants = jest.requireActual(
-    '@/app/components/providers/speech-to-text/speechmatics/constant',
-  );
-  return {
-    ConfigureSpeechmaticsSpeechToText: () => null,
-    ...constants,
-  };
-});
-
-type LegacyFns = {
-  getDefault: (current: Metadata[]) => Metadata[];
-  validate: (options: Metadata[]) => string | undefined;
-};
-
-const legacyByProvider: Record<string, LegacyFns> = {
-  'google-speech-service': {
-    getDefault: GetGoogleDefaultOptions,
-    validate: ValidateGoogleOptions,
-  },
-  deepgram: {
-    getDefault: GetDeepgramDefaultOptions,
-    validate: ValidateDeepgramOptions,
-  },
-  'azure-speech-service': {
-    getDefault: GetAzureDefaultOptions,
-    validate: ValidateAzureOptions,
-  },
-  assemblyai: {
-    getDefault: GetAssemblyAIDefaultOptions,
-    validate: ValidateAssemblyAIOptions,
-  },
-  cartesia: {
-    getDefault: GetCartesiaDefaultOptions,
-    validate: ValidateCartesiaOptions,
-  },
-  sarvamai: {
-    getDefault: GetSarvamDefaultOptions,
-    validate: ValidateSarvamOptions,
-  },
-  groq: {
-    getDefault: GetGroqDefaultOptions,
-    validate: ValidateGroqOptions,
-  },
-  speechmatics: {
-    getDefault: GetSpeechmaticsDefaultOptions,
-    validate: ValidateSpeechmaticsOptions,
-  },
-  nvidia: {
-    getDefault: GetNvidiaDefaultOptions,
-    validate: ValidateNvidiaOptions,
-  },
-  openai: {
-    getDefault: GetOpenAIDefaultOptions,
-    validate: (options: Metadata[]) =>
-      ValidateOpenAIOptions(options) ? undefined : 'invalid-openai-options',
-  },
-  aws: {
-    getDefault: GetAWSDefaultOptions,
-    validate: ValidateAWSOptions,
-  },
-};
 
 const createMetadata = (key: string, value: string): Metadata => {
   const m = new Metadata();
@@ -225,52 +37,145 @@ const withCredential = (source: Metadata[]): Metadata[] => {
   return cloned;
 };
 
-describe('Speech-to-text provider runtime parity', () => {
-  const providers = Object.keys(legacyByProvider);
+const withMetadataValue = (
+  source: Metadata[],
+  key: string,
+  value: string,
+): Metadata[] => {
+  const cloned = cloneMetadata(source);
+  const item = cloned.find(m => m.getKey() === key);
+  if (item) {
+    item.setValue(value);
+    return cloned;
+  }
+  cloned.push(createMetadata(key, value));
+  return cloned;
+};
 
-  it.each(providers)(
-    '%s defaults remain parity with legacy switch behavior',
-    provider => {
-      const seed = [
-        createMetadata('rapida.credential_id', 'seed-cred'),
-        createMetadata('microphone.eos.timeout', '900'),
-        createMetadata('custom.key', 'custom'),
-      ];
-      const legacy = legacyByProvider[provider].getDefault(cloneMetadata(seed));
-      const current = GetDefaultSpeechToTextIfInvalid(provider, cloneMetadata(seed));
-      expect(normalizeMetadata(current)).toEqual(normalizeMetadata(legacy));
-    },
+const getMetadataValue = (
+  source: Metadata[],
+  key: string,
+): string | undefined => source.find(m => m.getKey() === key)?.getValue();
+
+describe('Speech-to-text provider runtime standard', () => {
+  const configuredSttProviders = SPEECH_TO_TEXT_PROVIDER.filter(p =>
+    Boolean(loadProviderConfig(p.code)?.stt),
   );
 
-  it.each(providers)(
-    '%s validation keeps same pass/fail status as legacy',
-    provider => {
-      const legacyDefaults = legacyByProvider[provider].getDefault([]);
-      const options = withCredential(legacyDefaults);
-      const legacyHasError = Boolean(legacyByProvider[provider].validate(options));
-      const currentHasError = Boolean(
-        ValidateSpeechToTextIfInvalid(provider, cloneMetadata(options)),
-      );
-      expect(currentHasError).toBe(legacyHasError);
-    },
-  );
-
-  it('deepgram keeps threshold optional', () => {
-    const opts = [
-      createMetadata('rapida.credential_id', 'cred'),
-      createMetadata('listen.model', 'nova-3'),
-      createMetadata('listen.language', 'multi'),
-    ];
-    expect(ValidateSpeechToTextIfInvalid('deepgram', opts)).toBeUndefined();
+  it('all active speech-to-text providers are config-driven', () => {
+    expect(configuredSttProviders.length).toBeGreaterThan(0);
+    for (const provider of configuredSttProviders) {
+      expect(loadProviderConfig(provider.code)?.stt).toBeDefined();
+    }
   });
 
-  it('assemblyai keeps threshold optional', () => {
-    const opts = [
-      createMetadata('rapida.credential_id', 'cred'),
-      createMetadata('listen.model', 'slam-1'),
-      createMetadata('listen.language', 'en'),
-    ];
-    expect(ValidateSpeechToTextIfInvalid('assemblyai', opts)).toBeUndefined();
+  it.each(configuredSttProviders.map(p => p.code))(
+    '%s stt config is model-driven with speech-to-text-models catalog',
+    provider => {
+      const sttConfig = loadProviderConfig(provider)?.stt;
+      expect(sttConfig).toBeDefined();
+      expect(sttConfig?.parameters.length).toBe(1);
+      expect(sttConfig?.parameters[0].key).toBe('listen.model');
+      expect(sttConfig?.parameters[0].type).toBe('dropdown');
+      expect(sttConfig?.parameters[0].data).toBe('speech-to-text-models.json');
+    },
+  );
+
+  it.each(configuredSttProviders.map(p => p.code))(
+    '%s model catalog carries per-model stt parameter config',
+    provider => {
+      const sttConfig = loadProviderConfig(provider)?.stt;
+      const dataFile = sttConfig?.parameters[0]?.data;
+      expect(dataFile).toBeDefined();
+
+      const modelCatalog = loadProviderData(provider, dataFile!);
+      expect(modelCatalog.length).toBeGreaterThan(0);
+      for (const model of modelCatalog) {
+        expect(Array.isArray(model?.config?.parameters)).toBe(true);
+        expect(model.config.parameters.length).toBeGreaterThan(0);
+      }
+    },
+  );
+
+  it.each(configuredSttProviders.map(p => p.code))(
+    '%s defaults + validation are stable with model-level parameters',
+    provider => {
+      const seed = [
+        createMetadata('custom.key', 'custom'),
+        createMetadata('rapida.credential_id', 'seed-cred'),
+      ];
+      const defaults = GetDefaultSpeechToTextIfInvalid(provider, cloneMetadata(seed));
+
+      expect(defaults.some(m => m.getKey() === 'listen.model')).toBe(true);
+      expect(defaults.some(m => m.getKey() === 'rapida.credential_id')).toBe(
+        true,
+      );
+
+      const validated = ValidateSpeechToTextIfInvalid(
+        provider,
+        withCredential(defaults),
+        ['test-credential'],
+      );
+      expect(validated).toBeUndefined();
+    },
+  );
+
+  it('rejects stale credential ids that do not belong to selected provider', () => {
+    const defaults = GetDefaultSpeechToTextIfInvalid('deepgram', [
+      createMetadata('rapida.credential_id', 'cred-from-other-provider'),
+    ]);
+    const err = ValidateSpeechToTextIfInvalid('deepgram', defaults, [
+      'cred-deepgram-1',
+      'cred-deepgram-2',
+    ]);
+
+    expect(err).toBe('Please select a valid deepgram credential.');
+  });
+
+  it('validates model ids against stt model catalog', () => {
+    const defaults = GetDefaultSpeechToTextIfInvalid('deepgram', [
+      createMetadata('rapida.credential_id', 'cred-deepgram'),
+    ]);
+    const invalidModel = withMetadataValue(
+      defaults,
+      'listen.model',
+      'invalid-model-id',
+    );
+    const err = ValidateSpeechToTextIfInvalid('deepgram', invalidModel, [
+      'cred-deepgram',
+    ]);
+
+    expect(err).toBe('Please provide a valid deepgram model for speech to text.');
+  });
+
+  it('supports deepgram model switch with parameter changes', () => {
+    const defaults = GetDefaultSpeechToTextIfInvalid('deepgram', [
+      createMetadata('rapida.credential_id', 'cred-deepgram'),
+    ]);
+    const defaultModel = getMetadataValue(defaults, 'listen.model');
+
+    const modelCatalog = loadProviderData('deepgram', 'speech-to-text-models.json');
+    const alternateModel = modelCatalog.find(
+      m => m?.id && m.id !== defaultModel,
+    )?.id as string | undefined;
+    expect(alternateModel).toBeDefined();
+
+    const updated = GetDefaultSpeechToTextIfInvalid(
+      'deepgram',
+      withMetadataValue(
+        withMetadataValue(defaults, 'listen.model', alternateModel!),
+        'listen.threshold',
+        '0.8',
+      ),
+    );
+
+    expect(getMetadataValue(updated, 'listen.model')).toBe(alternateModel);
+    expect(getMetadataValue(updated, 'listen.threshold')).toBe('0.8');
+
+    const err = ValidateSpeechToTextIfInvalid('deepgram', updated, [
+      'cred-deepgram',
+    ]);
+    expect(err).toBeUndefined();
   });
 
   it('unknown provider remains no-op when no config exists', () => {

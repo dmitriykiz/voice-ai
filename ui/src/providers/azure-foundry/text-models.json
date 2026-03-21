@@ -1,42 +1,622 @@
 [
-    {
-        "id": "azure/gpt-4o",
-        "name": "gpt-4o",
-        "pricing": {
-            "prompt_per_1m": 2.5,
-            "completion_per_1m": 10.0
-        }
+  {
+    "id": "azure/gpt-4o",
+    "name": "gpt-4o",
+    "pricing": {
+      "prompt_per_1m": 2.5,
+      "completion_per_1m": 10
     },
-    {
-        "id": "azure/gpt-4o-mini",
-        "name": "gpt-4o-mini",
-        "pricing": {
-            "prompt_per_1m": 0.16,
-            "completion_per_1m": 0.66
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "helpText": "Number between -2.0 and 2.0. Penalizes new tokens based on their existing frequency."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "helpText": "What sampling temperature to use. Higher values make output more random."
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "helpText": "Alternative to sampling with temperature, for nucleus sampling."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "helpText": "Number between -2.0 and 2.0. Penalizes new tokens based on whether they've appeared in the text so far."
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "helpText": "Upper bound for tokens generated in the completion.",
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.user",
+          "label": "User",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "User identifier"
         }
-    },
-    {
-        "id": "azure/gpt-4.1-nano",
-        "name": "gpt-4.1-nano",
-        "pricing": {
-            "prompt_per_1m": 0.1,
-            "completion_per_1m": 0.4
-        }
-    },
-    {
-        "id": "azure/gpt-5-nano",
-        "name": "gpt-5-nano",
-        "pricing": {
-            "prompt_per_1m": 0.05,
-            "completion_per_1m": 0.4
-        }
-    },
-    {
-        "id": "azure/gpt-5-mini",
-        "name": "gpt-5-mini",
-        "pricing": {
-            "prompt_per_1m": 0.25,
-            "completion_per_1m": 2.0
-        }
+      ]
     }
+  },
+  {
+    "id": "azure/gpt-4o-mini",
+    "name": "gpt-4o-mini",
+    "pricing": {
+      "prompt_per_1m": 0.16,
+      "completion_per_1m": 0.66
+    },
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "helpText": "Number between -2.0 and 2.0. Penalizes new tokens based on their existing frequency."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "helpText": "What sampling temperature to use. Higher values make output more random."
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "helpText": "Alternative to sampling with temperature, for nucleus sampling."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "helpText": "Number between -2.0 and 2.0. Penalizes new tokens based on whether they've appeared in the text so far."
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "helpText": "Upper bound for tokens generated in the completion.",
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.user",
+          "label": "User",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "User identifier"
+        }
+      ]
+    }
+  },
+  {
+    "id": "azure/gpt-4.1-nano",
+    "name": "gpt-4.1-nano",
+    "pricing": {
+      "prompt_per_1m": 0.1,
+      "completion_per_1m": 0.4
+    },
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "helpText": "Number between -2.0 and 2.0. Penalizes new tokens based on their existing frequency."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "helpText": "What sampling temperature to use. Higher values make output more random."
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "helpText": "Alternative to sampling with temperature, for nucleus sampling."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "helpText": "Number between -2.0 and 2.0. Penalizes new tokens based on whether they've appeared in the text so far."
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "helpText": "Upper bound for tokens generated in the completion.",
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.user",
+          "label": "User",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "User identifier"
+        }
+      ]
+    }
+  },
+  {
+    "id": "azure/gpt-5-nano",
+    "name": "gpt-5-nano",
+    "pricing": {
+      "prompt_per_1m": 0.05,
+      "completion_per_1m": 0.4
+    },
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "helpText": "Number between -2.0 and 2.0. Penalizes new tokens based on their existing frequency."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "helpText": "What sampling temperature to use. Higher values make output more random."
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "helpText": "Alternative to sampling with temperature, for nucleus sampling."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "helpText": "Number between -2.0 and 2.0. Penalizes new tokens based on whether they've appeared in the text so far."
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "helpText": "Upper bound for tokens generated in the completion.",
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.user",
+          "label": "User",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "User identifier"
+        }
+      ]
+    }
+  },
+  {
+    "id": "azure/gpt-5-mini",
+    "name": "gpt-5-mini",
+    "pricing": {
+      "prompt_per_1m": 0.25,
+      "completion_per_1m": 2
+    },
+    "config": {
+      "parameters": [
+        {
+          "key": "model.frequency_penalty",
+          "label": "Frequency Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "helpText": "Number between -2.0 and 2.0. Penalizes new tokens based on their existing frequency."
+        },
+        {
+          "key": "model.temperature",
+          "label": "Temperature",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.1,
+          "helpText": "What sampling temperature to use. Higher values make output more random."
+        },
+        {
+          "key": "model.top_p",
+          "label": "Top P",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "helpText": "Alternative to sampling with temperature, for nucleus sampling."
+        },
+        {
+          "key": "model.metadata",
+          "label": "Metadata",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Optional metadata about the request. Enter as JSON object."
+        },
+        {
+          "key": "model.tool_choice",
+          "label": "Tool Choices",
+          "type": "select",
+          "advanced": true,
+          "required": false,
+          "choices": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Auto",
+              "value": "auto"
+            },
+            {
+              "label": "Required",
+              "value": "required"
+            }
+          ],
+          "helpText": "How the model should select which tool (or tools) to use when generating a response."
+        },
+        {
+          "key": "model.presence_penalty",
+          "label": "Presence Penalty",
+          "type": "slider",
+          "advanced": true,
+          "required": false,
+          "min": -2,
+          "max": 2,
+          "step": 0.1,
+          "helpText": "Number between -2.0 and 2.0. Penalizes new tokens based on whether they've appeared in the text so far."
+        },
+        {
+          "key": "model.max_completion_tokens",
+          "label": "Max Completion Tokens",
+          "type": "number",
+          "advanced": true,
+          "required": true,
+          "default": "2048",
+          "min": 1,
+          "helpText": "Upper bound for tokens generated in the completion.",
+          "errorMessage": "Please check and provide a correct value for max_completion_tokens it should be greater then 1."
+        },
+        {
+          "key": "model.response_format",
+          "label": "Response Format",
+          "type": "json",
+          "advanced": true,
+          "required": false,
+          "colSpan": 2,
+          "helpText": "Specifies the format for model output. Enter as JSON."
+        },
+        {
+          "key": "model.stop",
+          "label": "Stop Sequences",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "Comma-separated sequences",
+          "helpText": "Up to 4 sequences where the API will stop generating tokens."
+        },
+        {
+          "key": "model.user",
+          "label": "User",
+          "type": "input",
+          "advanced": true,
+          "required": false,
+          "placeholder": "User identifier"
+        }
+      ]
+    }
+  }
 ]

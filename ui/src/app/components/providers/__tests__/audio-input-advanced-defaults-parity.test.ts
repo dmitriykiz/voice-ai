@@ -1,7 +1,12 @@
 import { Metadata } from '@rapidaai/react';
 import { SetMetadata } from '@/utils/metadata';
+import { EndOfSpeech, VAD } from '@/providers';
+import { loadProviderConfig } from '@/providers/config-loader';
 
 jest.mock('@/app/components/providers', () => ({}));
+jest.mock('@/app/components/providers/config-renderer', () => ({
+  ConfigRenderer: () => null,
+}));
 jest.mock('@/app/components/providers/vad/silero-vad', () => ({
   ConfigureSileroVAD: () => null,
 }));
@@ -75,6 +80,9 @@ const normalizeMetadata = (source: Metadata[]): string[] =>
     .map(m => `${m.getKey()}=${m.getValue()}`)
     .sort((a, b) => a.localeCompare(b));
 
+const getMetadataValue = (source: Metadata[], key: string): string =>
+  source.find(m => m.getKey() === key)?.getValue() ?? '';
+
 const legacyGetDefaultVADConfig = (
   provider: string,
   current: Metadata[],
@@ -117,25 +125,21 @@ const legacyGetDefaultEosConfig = (
   return [...nonEos, ...eosParams];
 };
 
-const legacyUpdateNoiseProvider = (
-  provider: string,
-  current: Metadata[],
-): Metadata[] => {
-  const updatedParams = current.map(param => {
-    if (param.getKey() === 'microphone.denoising.provider') {
-      return createMetadata('microphone.denoising.provider', provider);
+describe('Audio input advanced defaults parity', () => {
+  it('all active VAD providers are config-driven', () => {
+    expect(VAD().length).toBeGreaterThan(0);
+    for (const provider of VAD()) {
+      expect(loadProviderConfig(provider.code)?.vad).toBeDefined();
     }
-    return createMetadata(param.getKey(), param.getValue());
   });
 
-  if (!updatedParams.some(param => param.getKey() === 'microphone.denoising.provider')) {
-    updatedParams.push(createMetadata('microphone.denoising.provider', provider));
-  }
+  it('all active end-of-speech providers are config-driven', () => {
+    expect(EndOfSpeech().length).toBeGreaterThan(0);
+    for (const provider of EndOfSpeech()) {
+      expect(loadProviderConfig(provider.code)?.eos).toBeDefined();
+    }
+  });
 
-  return updatedParams;
-};
-
-describe('Audio input advanced defaults parity', () => {
   it.each(['silero_vad', 'ten_vad', 'firered_vad'])(
     '%s VAD defaults stay parity with legacy behavior',
     provider => {
@@ -174,16 +178,47 @@ describe('Audio input advanced defaults parity', () => {
     },
   );
 
-  it('noise provider update remains parity and preserves unknown denoising params', () => {
+  it('VAD provider key is always updated to the selected provider', () => {
+    const seed = [
+      createMetadata('microphone.vad.provider', 'ten_vad'),
+      createMetadata('microphone.vad.threshold', '0.3'),
+    ];
+    const updated = GetDefaultVADConfig('silero_vad', cloneMetadata(seed));
+
+    expect(getMetadataValue(updated, 'microphone.vad.provider')).toBe(
+      'silero_vad',
+    );
+  });
+
+  it('EOS provider key is always updated to the selected provider', () => {
+    const seed = [
+      createMetadata('microphone.eos.provider', 'livekit_eos'),
+      createMetadata('microphone.eos.timeout', '1200'),
+    ];
+    const updated = GetDefaultEOSConfig(
+      'pipecat_smart_turn_eos',
+      cloneMetadata(seed),
+    );
+
+    expect(getMetadataValue(updated, 'microphone.eos.provider')).toBe(
+      'pipecat_smart_turn_eos',
+    );
+  });
+
+  it('noise provider update clears stale denoising params and keeps only provider', () => {
     const seed = [
       createMetadata('listen.model', 'nova-3'),
       createMetadata('microphone.denoising.provider', 'legacy_noise'),
       createMetadata('microphone.denoising.level', 'high'),
     ];
 
-    const legacy = legacyUpdateNoiseProvider('rn_noise', cloneMetadata(seed));
     const current = GetDefaultNoiseCancellationConfig('rn_noise', cloneMetadata(seed));
-    expect(normalizeMetadata(current)).toEqual(normalizeMetadata(legacy));
+    expect(normalizeMetadata(current)).toEqual(
+      normalizeMetadata([
+        createMetadata('listen.model', 'nova-3'),
+        createMetadata('microphone.denoising.provider', 'rn_noise'),
+      ]),
+    );
   });
 
   it('unknown providers are no-op for config-only defaults', () => {

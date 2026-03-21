@@ -1,0 +1,76 @@
+{
+  "preservePrefix": "speaker.",
+  "parameters": [
+    {
+      "key": "speak.model",
+      "label": "Model",
+      "type": "dropdown",
+      "required": true,
+      "data": "text-to-speech-models.json",
+      "valueField": "id",
+      "errorMessage": "Please select a valid model for text to speech."
+    },
+    {
+      "key": "speak.voice.id",
+      "label": "Voice",
+      "type": "dropdown",
+      "required": true,
+      "data": "voices.json",
+      "valueField": "id",
+      "searchable": true,
+      "strict": false,
+      "customValue": true,
+      "errorMessage": "Please select a valid voice for text to speech."
+    },
+    {
+      "key": "speak.language",
+      "label": "Language",
+      "type": "dropdown",
+      "required": true,
+      "data": "languages.json",
+      "valueField": "code",
+      "errorMessage": "Please select a valid language for text to speech."
+    },
+    {
+      "key": "speak.voice.__experimental_controls.speed",
+      "label": "Speed (Experimental)",
+      "type": "select",
+      "required": false,
+      "advanced": true,
+      "choices": [
+        {
+          "label": "Provider Default",
+          "value": ""
+        },
+        {
+          "label": "Slowest",
+          "value": "slowest"
+        },
+        {
+          "label": "Slow",
+          "value": "slow"
+        },
+        {
+          "label": "Normal",
+          "value": "normal"
+        },
+        {
+          "label": "Fast",
+          "value": "fast"
+        },
+        {
+          "label": "Fastest",
+          "value": "fastest"
+        }
+      ]
+    },
+    {
+      "key": "speak.voice.__experimental_controls.emotion",
+      "label": "Emotion (Experimental)",
+      "type": "input",
+      "required": false,
+      "advanced": true,
+      "placeholder": "e.g. curiosity:high<|||>positivity:low"
+    }
+  ]
+}

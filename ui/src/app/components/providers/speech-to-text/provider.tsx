@@ -17,10 +17,31 @@ export const GetDefaultSpeechToTextIfInvalid = (
 export const ValidateSpeechToTextIfInvalid = (
   provider: string,
   parameters: Metadata[],
+  providerCredentialIds?: string[],
 ): string | undefined => {
   const config = loadProviderConfig(provider);
   if (!config?.stt) return undefined;
-  return validateFromConfig(config, 'stt', provider, parameters);
+  const validationError = validateFromConfig(
+    config,
+    'stt',
+    provider,
+    parameters,
+  );
+  if (validationError) return validationError;
+
+  if (!providerCredentialIds) return undefined;
+
+  const credentialID = parameters.find(
+    opt => opt.getKey() === 'rapida.credential_id',
+  )?.getValue();
+  if (!credentialID) {
+    return `Please provide a valid ${provider} credential.`;
+  }
+  if (!providerCredentialIds.includes(credentialID)) {
+    return `Please select a valid ${provider} credential.`;
+  }
+
+  return undefined;
 };
 
 /**

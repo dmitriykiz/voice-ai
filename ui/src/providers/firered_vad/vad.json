@@ -1,0 +1,31 @@
+{
+  "parameters": [
+    {
+      "key": "microphone.vad.threshold",
+      "label": "Speech Threshold",
+      "type": "slider",
+      "default": "0.5",
+      "min": 0.3,
+      "max": 1,
+      "step": 0.05
+    },
+    {
+      "key": "microphone.vad.min_silence_frame",
+      "label": "Min Silence Frames",
+      "type": "slider",
+      "default": "10",
+      "min": 1,
+      "max": 30,
+      "step": 1
+    },
+    {
+      "key": "microphone.vad.min_speech_frame",
+      "label": "Min Speech Frames",
+      "type": "slider",
+      "default": "3",
+      "min": 1,
+      "max": 20,
+      "step": 1
+    }
+  ]
+}

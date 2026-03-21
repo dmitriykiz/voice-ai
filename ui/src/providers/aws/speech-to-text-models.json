@@ -1,0 +1,20 @@
+[
+  {
+    "id": "aws-transcribe",
+    "name": "AWS Transcribe",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "en-US",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid aws language for speech to text."
+        }
+      ]
+    }
+  }
+]

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Metadata } from '@rapidaai/react';
 import { Dropdown } from '@/app/components/dropdown';
+import { CustomValueDropdown } from '@/app/components/dropdown/custom-value-dropdown';
 import { FormLabel } from '@/app/components/form-label';
 import { FieldSet } from '@/app/components/form/fieldset';
 import { Input } from '@/app/components/form/input';
@@ -15,8 +16,12 @@ import { cn } from '@/utils';
 import {
   CategoryConfig,
   ParameterConfig,
+  ProviderConfig,
+  isModelSelectorParameter,
   loadProviderData,
+  resolveCategoryParameters,
 } from '@/providers/config-loader';
+import { getDefaultsFromConfig } from '@/providers/config-defaults';
 
 const renderOption = (c: { name: string }) => (
   <span className="inline-flex items-center gap-2 sm:gap-2.5 max-w-full text-sm font-medium">
@@ -26,32 +31,32 @@ const renderOption = (c: { name: string }) => (
 
 export const ConfigRenderer: React.FC<{
   provider: string;
-  category: 'stt' | 'tts' | 'text';
+  category: 'stt' | 'tts' | 'text' | 'vad' | 'eos' | 'noise';
   config: CategoryConfig;
   parameters: Metadata[] | null;
   onParameterChange: (parameters: Metadata[]) => void;
 }> = ({ provider, category, config, parameters, onParameterChange }) => {
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
+  const effectiveParameters = useMemo(
+    () =>
+      resolveCategoryParameters(provider, category, config, parameters || []),
+    [provider, category, config, parameters],
+  );
+
   const getParamValue = (key: string) =>
     parameters?.find(p => p.getKey() === key)?.getValue() ?? '';
 
-  const updateParameter = (key: string, value: string) => {
+  const applyUpdates = (
+    updates: { key: string; value: string }[],
+    sourceParam?: ParameterConfig,
+  ) => {
     const updatedParams = [...(parameters || [])];
-    const existingIndex = updatedParams.findIndex(p => p.getKey() === key);
-    const newParam = new Metadata();
-    newParam.setKey(key);
-    newParam.setValue(value);
-    if (existingIndex >= 0) {
-      updatedParams[existingIndex] = newParam;
-    } else {
-      updatedParams.push(newParam);
-    }
-    onParameterChange(updatedParams);
-  };
+    const currentModelValue =
+      sourceParam && isModelSelectorParameter(sourceParam)
+        ? getParamValue(sourceParam.key)
+        : '';
 
-  const updateMultipleParameters = (updates: { key: string; value: string }[]) => {
-    const updatedParams = [...(parameters || [])];
     for (const { key, value } of updates) {
       const existingIndex = updatedParams.findIndex(p => p.getKey() === key);
       const newParam = new Metadata();
@@ -63,7 +68,46 @@ export const ConfigRenderer: React.FC<{
         updatedParams.push(newParam);
       }
     }
-    onParameterChange(updatedParams);
+
+    if (!sourceParam || !isModelSelectorParameter(sourceParam)) {
+      onParameterChange(updatedParams);
+      return;
+    }
+    const nextModelValue = updates.find(
+      update => update.key === sourceParam.key,
+    )?.value;
+    if (nextModelValue === undefined || nextModelValue === currentModelValue) {
+      onParameterChange(updatedParams);
+      return;
+    }
+
+    const includeCredential = updatedParams.some(
+      p => p.getKey() === 'rapida.credential_id',
+    );
+    const wrappedConfig = { [category]: config } as ProviderConfig;
+    const hydrated = getDefaultsFromConfig(
+      wrappedConfig,
+      category,
+      updatedParams,
+      provider,
+      { includeCredential },
+    );
+    onParameterChange(hydrated);
+  };
+
+  const updateParameter = (
+    key: string,
+    value: string,
+    sourceParam?: ParameterConfig,
+  ) => {
+    applyUpdates([{ key, value }], sourceParam);
+  };
+
+  const updateMultipleParameters = (
+    updates: { key: string; value: string }[],
+    sourceParam?: ParameterConfig,
+  ) => {
+    applyUpdates(updates, sourceParam);
   };
 
   const isVisible = (param: ParameterConfig): boolean => {
@@ -72,8 +116,9 @@ export const ConfigRenderer: React.FC<{
     return new RegExp(param.showWhen.pattern).test(refValue);
   };
 
-  const regularParams = config.parameters.filter(p => !p.advanced);
-  const advancedParams = config.parameters.filter(p => p.advanced);
+  const visibleParameters = effectiveParameters.filter(isVisible);
+  const regularParams = visibleParameters.filter(p => !p.advanced);
+  const advancedParams = visibleParameters.filter(p => p.advanced);
   const hasAdvanced = advancedParams.length > 0;
 
   const renderField = (param: ParameterConfig) => {
@@ -91,15 +136,18 @@ export const ConfigRenderer: React.FC<{
             value={getParamValue(param.key)}
             onChange={(value, selectedItem) => {
               if (param.linkedField && selectedItem) {
-                updateMultipleParameters([
-                  { key: param.key, value },
-                  {
-                    key: param.linkedField.key,
-                    value: selectedItem[param.linkedField.sourceField] ?? '',
-                  },
-                ]);
+                updateMultipleParameters(
+                  [
+                    { key: param.key, value },
+                    {
+                      key: param.linkedField.key,
+                      value: selectedItem[param.linkedField.sourceField] ?? '',
+                    },
+                  ],
+                  param,
+                );
               } else {
-                updateParameter(param.key, value);
+                updateParameter(param.key, value, param);
               }
             }}
             colSpanClass={colSpanClass}
@@ -107,6 +155,11 @@ export const ConfigRenderer: React.FC<{
         );
 
       case 'slider':
+        const sliderRawValue = getParamValue(param.key);
+        const sliderParsedValue = Number.parseFloat(sliderRawValue);
+        const sliderValue = Number.isNaN(sliderParsedValue)
+          ? (param.min ?? 0)
+          : sliderParsedValue;
         return (
           <FieldSet className={cn(colSpanClass, 'h-fit')} key={param.key}>
             <FormLabel>{param.label}</FormLabel>
@@ -115,7 +168,7 @@ export const ConfigRenderer: React.FC<{
                 min={param.min ?? 0}
                 max={param.max ?? 1}
                 step={param.step ?? 0.1}
-                value={parseFloat(getParamValue(param.key)) || param.min || 0}
+                value={sliderValue}
                 onSlide={c => {
                   updateParameter(param.key, c.toString());
                 }}
@@ -191,9 +244,7 @@ export const ConfigRenderer: React.FC<{
               className="bg-light-background"
               placeholder={param.placeholder}
             />
-            {param.helpText && (
-              <InputHelper>{param.helpText}</InputHelper>
-            )}
+            {param.helpText && <InputHelper>{param.helpText}</InputHelper>}
           </FieldSet>
         );
 
@@ -206,12 +257,10 @@ export const ConfigRenderer: React.FC<{
               placeholder={`Select ${param.label.toLowerCase()}`}
               className="text-sm! h-9 pl-3"
               value={getParamValue(param.key)}
-              options={
-                (param.choices ?? []).map(c => ({
-                  name: c.label,
-                  value: c.value,
-                }))
-              }
+              options={(param.choices ?? []).map(c => ({
+                name: c.label,
+                value: c.value,
+              }))}
             />
             {param.helpText && (
               <InputHelper className="text-xs">{param.helpText}</InputHelper>
@@ -245,7 +294,14 @@ export const ConfigRenderer: React.FC<{
     const mainParam = regularParams[0];
     return (
       <div className="flex-1 flex items-center divide-x">
-        {mainParam && renderTextMainDropdown(mainParam, provider, getParamValue, updateMultipleParameters, updateParameter)}
+        {mainParam?.type === 'dropdown' &&
+          renderTextMainDropdown(
+            mainParam,
+            provider,
+            getParamValue,
+            updateMultipleParameters,
+            updateParameter,
+          )}
         <div>
           <IButton onClick={() => setAdvancedOpen(!advancedOpen)}>
             {advancedOpen ? (
@@ -267,7 +323,7 @@ export const ConfigRenderer: React.FC<{
     );
   }
 
-  return <>{config.parameters.map(renderField)}</>;
+  return <>{effectiveParameters.map(renderField)}</>;
 };
 
 const DropdownField: React.FC<{
@@ -279,26 +335,51 @@ const DropdownField: React.FC<{
 }> = ({ param, provider, value, onChange, colSpanClass }) => {
   const data = param.data ? loadProviderData(provider, param.data) : [];
   const valueField = param.valueField || 'id';
+  const nameField = param.linkedField?.sourceField || 'name';
   const currentValue = data.find((item: any) => item[valueField] === value);
+  const fallbackCurrentValue =
+    param.customValue && value
+      ? {
+          [valueField]: value,
+          [nameField]: value,
+          id: value,
+          name: value,
+        }
+      : undefined;
 
   return (
     <FieldSet className={cn(colSpanClass, 'h-fit')} key={param.key}>
       <FormLabel>{param.label}</FormLabel>
-      <Dropdown
-        className="bg-light-background max-w-full dark:bg-gray-950"
-        searchable={param.searchable}
-        currentValue={currentValue}
-        setValue={(v: any) => {
-          onChange(v[valueField], v);
-        }}
-        allValue={data}
-        placeholder={`Select ${param.label.toLowerCase()}`}
-        option={renderOption}
-        label={renderOption}
-      />
-      {param.helpText && (
-        <InputHelper>{param.helpText}</InputHelper>
+      {param.customValue ? (
+        <CustomValueDropdown
+          customValue
+          className="bg-light-background max-w-full dark:bg-gray-950"
+          searchable={param.searchable}
+          currentValue={currentValue || fallbackCurrentValue}
+          setValue={(v: any) => {
+            onChange(v[valueField], v);
+          }}
+          onAddCustomValue={vl => onChange(vl)}
+          allValue={data}
+          placeholder={`Select ${param.label.toLowerCase()}`}
+          option={renderOption}
+          label={renderOption}
+        />
+      ) : (
+        <Dropdown
+          className="bg-light-background max-w-full dark:bg-gray-950"
+          searchable={param.searchable}
+          currentValue={currentValue}
+          setValue={(v: any) => {
+            onChange(v[valueField], v);
+          }}
+          allValue={data}
+          placeholder={`Select ${param.label.toLowerCase()}`}
+          option={renderOption}
+          label={renderOption}
+        />
       )}
+      {param.helpText && <InputHelper>{param.helpText}</InputHelper>}
     </FieldSet>
   );
 };
@@ -307,29 +388,95 @@ function renderTextMainDropdown(
   param: ParameterConfig,
   provider: string,
   getParamValue: (key: string) => string,
-  updateMultipleParameters: (updates: { key: string; value: string }[]) => void,
-  updateParameter: (key: string, value: string) => void,
+  updateMultipleParameters: (
+    updates: { key: string; value: string }[],
+    sourceParam?: ParameterConfig,
+  ) => void,
+  updateParameter: (
+    key: string,
+    value: string,
+    sourceParam?: ParameterConfig,
+  ) => void,
 ) {
   const data = param.data ? loadProviderData(provider, param.data) : [];
   const valueField = param.valueField || 'id';
+  const nameField = param.linkedField?.sourceField || 'name';
+  const currentValue = getParamValue(param.key);
+  const linkedValue = param.linkedField ? getParamValue(param.linkedField.key) : '';
+  const fallbackCurrentValue =
+    param.customValue && currentValue
+      ? {
+          [valueField]: currentValue,
+          [nameField]: linkedValue || currentValue,
+          id: currentValue,
+          name: linkedValue || currentValue,
+        }
+      : undefined;
+
+  if (param.customValue) {
+    return (
+      <CustomValueDropdown
+        customValue
+        className="max-w-full focus-within:border-none! focus-within:outline-hidden! border-none!"
+        currentValue={
+          data.find((x: any) => x[valueField] === currentValue) ||
+          fallbackCurrentValue
+        }
+        setValue={(v: any) => {
+          if (param.linkedField) {
+            updateMultipleParameters(
+              [
+                { key: param.key, value: v[valueField] },
+                {
+                  key: param.linkedField.key,
+                  value: v[param.linkedField.sourceField] ?? v[valueField],
+                },
+              ],
+              param,
+            );
+          } else {
+            updateParameter(param.key, v[valueField], param);
+          }
+        }}
+        onAddCustomValue={vl => {
+          if (param.linkedField) {
+            updateMultipleParameters(
+              [
+                { key: param.key, value: vl },
+                { key: param.linkedField.key, value: vl },
+              ],
+              param,
+            );
+          } else {
+            updateParameter(param.key, vl, param);
+          }
+        }}
+        allValue={data}
+        placeholder="Select model"
+        option={renderOption}
+        label={renderOption}
+      />
+    );
+  }
 
   return (
     <Dropdown
       className="max-w-full focus-within:border-none! focus-within:outline-hidden! border-none!"
-      currentValue={data.find(
-        (x: any) => x[valueField] === getParamValue(param.key),
-      )}
+      currentValue={data.find((x: any) => x[valueField] === currentValue)}
       setValue={(v: any) => {
         if (param.linkedField) {
-          updateMultipleParameters([
-            { key: param.key, value: v[valueField] },
-            {
-              key: param.linkedField.key,
-              value: v[param.linkedField.sourceField] ?? '',
-            },
-          ]);
+          updateMultipleParameters(
+            [
+              { key: param.key, value: v[valueField] },
+              {
+                key: param.linkedField.key,
+                value: v[param.linkedField.sourceField] ?? '',
+              },
+            ],
+            param,
+          );
         } else {
-          updateParameter(param.key, v[valueField]);
+          updateParameter(param.key, v[valueField], param);
         }
       }}
       allValue={data}

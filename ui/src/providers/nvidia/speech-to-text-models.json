@@ -1,0 +1,20 @@
+[
+  {
+    "id": "nvidia-parakeet",
+    "name": "NVIDIA Parakeet",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "en-US",
+          "data": "languages.json",
+          "valueField": "language_id",
+          "errorMessage": "Please provide a valid nvidia language for speech to text."
+        }
+      ]
+    }
+  }
+]

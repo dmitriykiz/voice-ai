@@ -1,0 +1,35 @@
+{
+  "preservePrefix": "speaker.",
+  "parameters": [
+    {
+      "key": "speak.model",
+      "label": "Model",
+      "type": "dropdown",
+      "required": true,
+      "default": "gpt-4o-mini-tts",
+      "data": "text-to-speech-models.json",
+      "valueField": "id",
+      "errorMessage": "Please select valid model for text to speech."
+    },
+    {
+      "key": "speak.voice.id",
+      "label": "Voice",
+      "type": "dropdown",
+      "required": true,
+      "default": "alloy",
+      "data": "text-to-speech-voices.json",
+      "valueField": "id",
+      "errorMessage": "Please select valid voice for text to speech."
+    },
+    {
+      "key": "speak.language",
+      "label": "Language",
+      "type": "dropdown",
+      "required": true,
+      "default": "en",
+      "data": "text-to-speech-languages.json",
+      "valueField": "code",
+      "errorMessage": "Please select valid language option for text to speech."
+    }
+  ]
+}

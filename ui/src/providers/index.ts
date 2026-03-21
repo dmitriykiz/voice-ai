@@ -139,10 +139,6 @@ export const AZURE_SPEECH_TO_TEXT_LANGUAGE = () => {
   return require('./azure-speech-service/speech-to-text-language.json');
 };
 
-export const AZURE_FOUNDRY_TEXT_MODEL = () => {
-  return require('./azure-foundry/text-models.json');
-};
-
 /**
  *
  * @returns
@@ -284,10 +280,6 @@ export const CARTESIA_EMOTION_LEVEL_COMBINATION = [
  *
  */
 
-export const GEMINI_MODEL = () => {
-  return require('./gemini/text-models.json');
-};
-
 export const GEMINI_EMBEDDING_MODEL = () => {
   return require('./gemini/text-embedding-models.json');
 };
@@ -295,10 +287,6 @@ export const GEMINI_EMBEDDING_MODEL = () => {
 /**
  *
  */
-export const VERTEXAI_MODEL = () => {
-  return require('./vertexai/models.json');
-};
-
 /**
  * sarvam
  */

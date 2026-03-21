@@ -1,6 +1,9 @@
 import { Metadata } from '@rapidaai/react';
 import { loadProviderConfig } from '@/providers/config-loader';
 import { getDefaultsFromConfig } from '@/providers/config-defaults';
+import { ProviderComponentProps } from '@/app/components/providers';
+import { ConfigRenderer } from '@/app/components/providers/config-renderer';
+import { FC } from 'react';
 
 const updateProviderOnly = (
   current: Metadata[],
@@ -32,15 +35,28 @@ export const GetDefaultNoiseCancellationConfig = (
 ): Metadata[] => {
   const config = loadProviderConfig(provider);
   if (!config?.noise) return current;
-  const hasNoiseParamsBeyondProvider = config.noise.parameters.some(
-    p => p.key !== 'microphone.denoising.provider',
-  );
-  if (!hasNoiseParamsBeyondProvider) {
-    return updateProviderOnly(current, provider);
-  }
-
-  return getDefaultsFromConfig(config, 'noise', current, provider, {
+  const defaults = getDefaultsFromConfig(config, 'noise', current, provider, {
     includeCredential: false,
     replacePrefix: 'microphone.denoising.',
   });
+  return updateProviderOnly(defaults, provider);
+};
+
+export const NoiseCancellationConfigComponent: FC<ProviderComponentProps> = ({
+  provider,
+  parameters,
+  onChangeParameter,
+}) => {
+  const config = loadProviderConfig(provider);
+  if (!config?.noise || config.noise.parameters.length === 0) return null;
+
+  return (
+    <ConfigRenderer
+      provider={provider}
+      category="noise"
+      config={config.noise}
+      parameters={parameters}
+      onParameterChange={onChangeParameter}
+    />
+  );
 };

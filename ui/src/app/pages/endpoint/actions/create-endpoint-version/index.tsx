@@ -9,6 +9,7 @@ import { TabForm } from '@/app/components/form/tab-form';
 import ConfirmDialog from '@/app/components/base/modal/confirm-ui';
 import { useCurrentCredential } from '@/hooks/use-credential';
 import { useRapidaStore } from '@/hooks';
+import { useAllProviderCredentials } from '@/hooks/use-model';
 import {
   GetDefaultTextProviderConfigIfInvalid,
   TextProvider,
@@ -68,6 +69,7 @@ export const CreateNewVersionEndpointPage: FC = () => {
    * global loading
    */
   const { loading, showLoader, hideLoader } = useRapidaStore();
+  const { providerCredentials } = useAllProviderCredentials();
 
   /**
    * form
@@ -86,15 +88,18 @@ export const CreateNewVersionEndpointPage: FC = () => {
     provider: string;
     parameters: Metadata[];
   }>({
-    provider: 'azure-openai',
-    parameters: GetDefaultTextProviderConfigIfInvalid('azure-openai', []),
+    provider: 'azure-foundry',
+    parameters: GetDefaultTextProviderConfigIfInvalid('azure-foundry', []),
   });
   const onChangeTextProvider = (providerName: string) => {
+    const parametersWithoutCredential = textProviderModel.parameters.filter(
+      p => p.getKey() !== 'rapida.credential_id',
+    );
     setTextProviderModel({
       provider: providerName,
       parameters: GetDefaultTextProviderConfigIfInvalid(
         providerName,
-        textProviderModel.parameters,
+        parametersWithoutCredential,
       ),
     });
   };
@@ -143,6 +148,9 @@ export const CreateNewVersionEndpointPage: FC = () => {
     const error = ValidateTextProviderDefaultOptions(
       textProviderModel.provider,
       textProviderModel.parameters,
+      providerCredentials
+        .filter(c => c.getProvider() === textProviderModel.provider)
+        .map(c => c.getId()),
     );
     if (error) {
       setErrorMessage(error);

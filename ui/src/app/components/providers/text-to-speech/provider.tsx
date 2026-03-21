@@ -171,45 +171,82 @@ export const GetDefaultTextToSpeechIfInvalid = (
 export const ValidateTextToSpeechIfInvalid = (
   provider: string,
   parameters: Metadata[],
+  providerCredentialIds?: string[],
 ): string | undefined => {
   const config = loadProviderConfig(provider);
-  if (config?.tts) return validateFromConfig(config, 'tts', provider, parameters);
-  switch (provider) {
-    case 'google-speech-service':
-      return ValidateGoogleOptions(parameters);
-    case 'elevenlabs':
-      return ValidateElevanLabOptions(parameters);
-    case 'playht':
-      return ValidatePlayHTOptions(parameters);
-    case 'deepgram':
-      return ValidateDeepgramOptions(parameters);
-    case 'openai':
-      return ValidateOpenAIOptions(parameters);
-    case 'azure-speech-service':
-      return ValidateAzureOptions(parameters);
-    case 'cartesia':
-      return ValidateCartesiaOptions(parameters);
-    case 'sarvamai':
-      return ValidateSarvamOptions(parameters);
-    case 'rime':
-      return ValidateRimeOptions(parameters);
-    case 'resembleai':
-      return ValidateResembleAIOptions(parameters);
-    case 'neuphonic':
-      return ValidateNeuPhonicOptions(parameters);
-    case 'minimax':
-      return ValidateMiniMaxOptions(parameters);
-    case 'groq':
-      return ValidateGroqOptions(parameters);
-    case 'speechmatics':
-      return ValidateSpeechmaticsOptions(parameters);
-    case 'nvidia':
-      return ValidateNvidiaOptions(parameters);
-    case 'aws':
-      return ValidateAWSOptions(parameters);
-    default:
-      return undefined;
+  let validationError: string | undefined;
+  if (config?.tts) {
+    validationError = validateFromConfig(config, 'tts', provider, parameters);
+  } else {
+    switch (provider) {
+      case 'google-speech-service':
+        validationError = ValidateGoogleOptions(parameters);
+        break;
+      case 'elevenlabs':
+        validationError = ValidateElevanLabOptions(parameters);
+        break;
+      case 'playht':
+        validationError = ValidatePlayHTOptions(parameters);
+        break;
+      case 'deepgram':
+        validationError = ValidateDeepgramOptions(parameters);
+        break;
+      case 'openai':
+        validationError = ValidateOpenAIOptions(parameters);
+        break;
+      case 'azure-speech-service':
+        validationError = ValidateAzureOptions(parameters);
+        break;
+      case 'cartesia':
+        validationError = ValidateCartesiaOptions(parameters);
+        break;
+      case 'sarvamai':
+        validationError = ValidateSarvamOptions(parameters);
+        break;
+      case 'rime':
+        validationError = ValidateRimeOptions(parameters);
+        break;
+      case 'resembleai':
+        validationError = ValidateResembleAIOptions(parameters);
+        break;
+      case 'neuphonic':
+        validationError = ValidateNeuPhonicOptions(parameters);
+        break;
+      case 'minimax':
+        validationError = ValidateMiniMaxOptions(parameters);
+        break;
+      case 'groq':
+        validationError = ValidateGroqOptions(parameters);
+        break;
+      case 'speechmatics':
+        validationError = ValidateSpeechmaticsOptions(parameters);
+        break;
+      case 'nvidia':
+        validationError = ValidateNvidiaOptions(parameters);
+        break;
+      case 'aws':
+        validationError = ValidateAWSOptions(parameters);
+        break;
+      default:
+        return undefined;
+    }
   }
+
+  if (validationError) return validationError;
+
+  if (!providerCredentialIds) return undefined;
+
+  const credentialID = parameters.find(
+    opt => opt.getKey() === 'rapida.credential_id',
+  )?.getValue();
+  if (!credentialID) {
+    return `Please provide a valid ${provider} credential.`;
+  }
+  if (!providerCredentialIds.includes(credentialID)) {
+    return `Please select a valid ${provider} credential.`;
+  }
+
+  return undefined;
 };
 
 export const TextToSpeechConfigComponent: FC<ProviderComponentProps> = ({

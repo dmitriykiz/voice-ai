@@ -1,0 +1,82 @@
+[
+  {
+    "id": "latest_long",
+    "name": "latest_long",
+    "regions": [
+      "global",
+      "asia-south1"
+    ],
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.region",
+          "label": "Region",
+          "type": "input",
+          "required": false,
+          "advanced": true,
+          "helpText": "Optional region hint for Google Speech-to-Text routing."
+        },
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": false,
+          "data": "speech-to-text-language.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid google language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        }
+      ]
+    }
+  },
+  {
+    "id": "telephony",
+    "name": "telephony (only for phone call audio)",
+    "regions": [
+      "global",
+      "asia-south1"
+    ],
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.region",
+          "label": "Region",
+          "type": "input",
+          "required": false,
+          "advanced": true,
+          "helpText": "Optional region hint for Google Speech-to-Text routing."
+        },
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": false,
+          "data": "speech-to-text-language.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid google language for speech to text."
+        },
+        {
+          "key": "listen.threshold",
+          "label": "Transcript Confidence Threshold",
+          "type": "slider",
+          "required": false,
+          "default": "0.5",
+          "min": 0.1,
+          "max": 0.9,
+          "step": 0.1,
+          "helpText": "Transcripts with a confidence score below this threshold will be filtered out."
+        }
+      ]
+    }
+  }
+]

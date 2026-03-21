@@ -1,5 +1,56 @@
 [
-  { "id": "gpt4o-transcribe", "name": "GPT-4o Transcribe" },
-  { "id": "gpt4o-mini-transcribe", "name": "GPT-4o mini Transcribe" },
-  { "id": "whisper", "name": "Whisper" }
+  {
+    "id": "gpt4o-transcribe",
+    "name": "GPT-4o Transcribe",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "en",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid openai language for speech to text."
+        }
+      ]
+    }
+  },
+  {
+    "id": "gpt4o-mini-transcribe",
+    "name": "GPT-4o mini Transcribe",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "en",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid openai language for speech to text."
+        }
+      ]
+    }
+  },
+  {
+    "id": "whisper",
+    "name": "Whisper",
+    "config": {
+      "parameters": [
+        {
+          "key": "listen.language",
+          "label": "Language",
+          "type": "dropdown",
+          "required": true,
+          "default": "en",
+          "data": "speech-to-text-languages.json",
+          "valueField": "code",
+          "errorMessage": "Please provide a valid openai language for speech to text."
+        }
+      ]
+    }
+  }
 ]

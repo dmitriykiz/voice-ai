@@ -5,6 +5,7 @@ import {
 import { ConfigureAudioOutputProvider } from '@/app/pages/assistant/actions/create-deployment/commons/configure-audio-output';
 import { ConfigureAudioInputProvider } from '@/app/pages/assistant/actions/create-deployment/commons/configure-audio-input';
 import { useRapidaStore } from '@/hooks';
+import { useAllProviderCredentials } from '@/hooks/use-model';
 import { useCurrentCredential } from '@/hooks/use-credential';
 import { useGlobalNavigation } from '@/hooks/use-global-navigator';
 import { Code } from 'lucide-react';
@@ -77,6 +78,7 @@ const ConfigureAssistantApiDeployment: FC<{ assistantId: string }> = ({
 }) => {
   const { goToDeploymentAssistant } = useGlobalNavigation();
   const { loading, showLoader, hideLoader } = useRapidaStore();
+  const { providerCredentials } = useAllProviderCredentials();
   const { authId, projectId, token } = useCurrentCredential();
   const { showDialog, ConfirmDialogComponent } = useConfirmDialog({});
 
@@ -182,6 +184,11 @@ const ConfigureAssistantApiDeployment: FC<{ assistantId: string }> = ({
       });
   }, [assistantId, token, authId, projectId]);
 
+  const getProviderCredentialIds = (provider: string) =>
+    providerCredentials
+      .filter(c => c.getProvider() === provider)
+      .map(c => c.getId());
+
   const handleTabChange = (code: string) => {
     const clickedIndex = STEPS.findIndex(s => s.code === code);
     const currentIndex = STEPS.findIndex(s => s.code === activeTab);
@@ -203,6 +210,7 @@ const ConfigureAssistantApiDeployment: FC<{ assistantId: string }> = ({
       const err = ValidateSpeechToTextIfInvalid(
         audioInputConfig.provider,
         audioInputConfig.parameters,
+        getProviderCredentialIds(audioInputConfig.provider),
       );
       if (err) {
         setErrorMessage(err);
@@ -239,6 +247,7 @@ const ConfigureAssistantApiDeployment: FC<{ assistantId: string }> = ({
       const err = ValidateSpeechToTextIfInvalid(
         audioInputConfig.provider,
         audioInputConfig.parameters,
+        getProviderCredentialIds(audioInputConfig.provider),
       );
       if (err) {
         hideLoader();
@@ -258,6 +267,7 @@ const ConfigureAssistantApiDeployment: FC<{ assistantId: string }> = ({
       const err = ValidateTextToSpeechIfInvalid(
         audioOutputConfig.provider,
         audioOutputConfig.parameters,
+        getProviderCredentialIds(audioOutputConfig.provider),
       );
       if (err) {
         hideLoader();

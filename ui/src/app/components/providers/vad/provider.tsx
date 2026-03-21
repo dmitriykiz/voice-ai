@@ -1,11 +1,9 @@
 import { ProviderComponentProps } from '@/app/components/providers';
-import { ConfigureSileroVAD } from '@/app/components/providers/vad/silero-vad';
-import { ConfigureTenVAD } from '@/app/components/providers/vad/ten-vad';
-import { ConfigureFireRedVAD } from '@/app/components/providers/vad/firered-vad';
 import { loadProviderConfig } from '@/providers/config-loader';
 import { getDefaultsFromConfig } from '@/providers/config-defaults';
 import { Metadata } from '@rapidaai/react';
 import { FC } from 'react';
+import { ConfigRenderer } from '@/app/components/providers/config-renderer';
 
 const upsertScopedProvider = (
   parameters: Metadata[],
@@ -48,29 +46,16 @@ export const VADConfigComponent: FC<ProviderComponentProps> = ({
   parameters,
   onChangeParameter,
 }) => {
-  switch (provider) {
-    case 'silero_vad':
-      return (
-        <ConfigureSileroVAD
-          parameters={parameters}
-          onParameterChange={onChangeParameter}
-        />
-      );
-    case 'ten_vad':
-      return (
-        <ConfigureTenVAD
-          parameters={parameters}
-          onParameterChange={onChangeParameter}
-        />
-      );
-    case 'firered_vad':
-      return (
-        <ConfigureFireRedVAD
-          parameters={parameters}
-          onParameterChange={onChangeParameter}
-        />
-      );
-    default:
-      return null;
-  }
+  const config = loadProviderConfig(provider);
+  if (!config?.vad) return null;
+
+  return (
+    <ConfigRenderer
+      provider={provider}
+      category="vad"
+      config={config.vad}
+      parameters={parameters}
+      onParameterChange={onChangeParameter}
+    />
+  );
 };

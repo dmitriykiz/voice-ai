@@ -2,7 +2,7 @@
  * Component tests for ConfigRenderer.
  *
  * Tests that the generic UI renderer correctly renders fields based on
- * config.json parameter types and calls onParameterChange appropriately.
+ * category JSON parameter types and calls onParameterChange appropriately.
  */
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
@@ -72,25 +72,152 @@ jest.mock('@/app/components/dropdown', () => {
   };
 });
 
+jest.mock('@/app/components/dropdown/custom-value-dropdown', () => {
+  const React = require('react');
+  return {
+    CustomValueDropdown: ({ currentValue, setValue, allValue, placeholder }: any) =>
+      React.createElement(
+        'div',
+        null,
+        placeholder ? React.createElement('span', null, placeholder) : null,
+        React.createElement(
+          'select',
+          {
+            value:
+              currentValue?.id ??
+              currentValue?.code ??
+              currentValue?.value ??
+              currentValue?.model_id ??
+              currentValue?.voice_id ??
+              currentValue?.language_id ??
+              '',
+            onChange: (e: any) => {
+              const selected = (allValue || []).find(
+                (item: any) =>
+                  item.id === e.target.value ||
+                  item.code === e.target.value ||
+                  item.value === e.target.value ||
+                  item.model_id === e.target.value ||
+                  item.voice_id === e.target.value ||
+                  item.language_id === e.target.value,
+              );
+              if (selected) setValue(selected);
+            },
+          },
+          React.createElement(
+            'option',
+            { value: '' },
+            placeholder || 'Select option',
+          ),
+          ...(allValue || []).map((item: any) => {
+            const value =
+              item.id ??
+              item.code ??
+              item.value ??
+              item.model_id ??
+              item.voice_id ??
+              item.language_id;
+            const label = item.name ?? item.label ?? String(value);
+            return React.createElement(
+              'option',
+              { key: String(value), value: String(value) },
+              label,
+            );
+          }),
+        ),
+      ),
+  };
+});
+
 // Mock the loadProviderData to return controlled test data
 jest.mock('@/providers/config-loader', () => {
   const actual = jest.requireActual('@/providers/config-loader');
+  const mockedLoadProviderData = (provider: string, filename: string) => {
+    if (filename === 'models.json') {
+      return [
+        {
+          id: 'model-a',
+          name: 'Model A',
+          config: {
+            parameters: [
+              {
+                key: 'model.temperature',
+                label: 'Temperature',
+                type: 'number',
+                required: true,
+                default: '0.2',
+              },
+            ],
+          },
+        },
+        {
+          id: 'model-b',
+          name: 'Model B',
+          config: {
+            parameters: [
+              {
+                key: 'model.temperature',
+                label: 'Temperature',
+                type: 'number',
+                required: true,
+                default: '0.9',
+              },
+            ],
+          },
+        },
+        {
+          id: 'model-c',
+          name: 'Model C',
+          config: {
+            parameters: [
+              {
+                key: 'model.top_p',
+                label: 'Top P',
+                type: 'number',
+                required: true,
+                default: '0.42',
+              },
+            ],
+          },
+        },
+      ];
+    }
+    if (filename === 'languages.json') {
+      return [
+        { code: 'en', name: 'English' },
+        { code: 'fr', name: 'French' },
+      ];
+    }
+    return [];
+  };
+
   return {
     ...actual,
-    loadProviderData: (provider: string, filename: string) => {
-      if (filename === 'models.json') {
-        return [
-          { id: 'model-a', name: 'Model A' },
-          { id: 'model-b', name: 'Model B' },
-        ];
+    loadProviderData: mockedLoadProviderData,
+    resolveCategoryParameters: (
+      provider: string,
+      _category: string,
+      config: any,
+      currentMetadata: any[] = [],
+    ) => {
+      const modelParam = (config.parameters || []).find(
+        (p: any) => p.key === 'model.id' && p.type === 'dropdown' && p.data,
+      );
+      if (!modelParam) return config.parameters || [];
+
+      const selectedId =
+        currentMetadata.find((m: any) => m.getKey() === modelParam.key)?.getValue() ||
+        modelParam.default ||
+        '';
+      const models = mockedLoadProviderData(provider, modelParam.data);
+      const selected = models.find(
+        (model: any) => model.id === selectedId || model.name === selectedId,
+      );
+      const modelParams = selected?.config?.parameters;
+      if (!Array.isArray(modelParams) || modelParams.length === 0) {
+        return config.parameters || [];
       }
-      if (filename === 'languages.json') {
-        return [
-          { code: 'en', name: 'English' },
-          { code: 'fr', name: 'French' },
-        ];
-      }
-      return [];
+      return [modelParam, ...modelParams];
     },
   };
 });
@@ -221,6 +348,35 @@ describe('ConfigRenderer', () => {
       const updatedParams = mockOnChange.mock.calls[0][0] as Metadata[];
       const threshold = updatedParams.find(m => m.getKey() === 'listen.threshold');
       expect(threshold?.getValue()).toBe('0.7');
+    });
+
+    it('keeps explicit 0 value instead of falling back to min', () => {
+      const zeroConfig: CategoryConfig = {
+        parameters: [
+          {
+            key: 'model.penalty',
+            label: 'Penalty',
+            type: 'slider',
+            min: -2,
+            max: 2,
+            step: 0.1,
+          },
+        ],
+      };
+      const params = [createMetadata('model.penalty', '0')];
+
+      render(
+        <ConfigRenderer
+          provider="test"
+          category="text"
+          config={zeroConfig}
+          parameters={params}
+          onParameterChange={mockOnChange}
+        />,
+      );
+
+      const slider = screen.getByRole('slider') as HTMLInputElement;
+      expect(slider.value).toBe('0');
     });
   });
 
@@ -413,6 +569,73 @@ describe('ConfigRenderer', () => {
       expect(screen.getByText('Response Format')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('Enter as JSON')).toBeInTheDocument();
     });
+
+    it('updates json field as raw string without parsing', () => {
+      render(
+        <ConfigRenderer
+          provider="test"
+          category="text"
+          config={jsonConfig}
+          parameters={[createMetadata('model.response_format', '')]}
+          onParameterChange={mockOnChange}
+        />,
+      );
+
+      const input = screen.getByPlaceholderText('Enter as JSON');
+      fireEvent.change(input, { target: { value: '{' } });
+
+      expect(mockOnChange).toHaveBeenCalled();
+      const updated = mockOnChange.mock.calls[
+        mockOnChange.mock.calls.length - 1
+      ][0] as Metadata[];
+      const responseFormat = updated.find(m => m.getKey() === 'model.response_format');
+      expect(responseFormat?.getValue()).toBe('{');
+    });
+
+    it('updates target json key without mutating sibling json parameter', () => {
+      const thinkingConfig: CategoryConfig = {
+        parameters: [
+          {
+            key: 'model.response_format',
+            label: 'Response Format',
+            type: 'json',
+            required: false,
+          },
+          {
+            key: 'model.thinking',
+            label: 'Thinking',
+            type: 'json',
+            required: false,
+          },
+        ],
+      };
+      render(
+        <ConfigRenderer
+          provider="test"
+          category="text"
+          config={thinkingConfig}
+          parameters={[
+            createMetadata('model.response_format', '{"type":"json_object"}'),
+            createMetadata('model.thinking', '{"budget_tokens":100}'),
+          ]}
+          onParameterChange={mockOnChange}
+        />,
+      );
+
+      const jsonTextareas = screen.getAllByPlaceholderText('Enter as JSON');
+      fireEvent.change(jsonTextareas[1], {
+        target: { value: '{"budget_tokens":250}' },
+      });
+
+      expect(mockOnChange).toHaveBeenCalled();
+      const updated = mockOnChange.mock.calls[
+        mockOnChange.mock.calls.length - 1
+      ][0] as Metadata[];
+      const thinking = updated.find(m => m.getKey() === 'model.thinking');
+      const responseFormat = updated.find(m => m.getKey() === 'model.response_format');
+      expect(thinking?.getValue()).toBe('{"budget_tokens":250}');
+      expect(responseFormat?.getValue()).toBe('{"type":"json_object"}');
+    });
   });
 
   describe('showWhen conditional visibility', () => {
@@ -509,6 +732,158 @@ describe('ConfigRenderer', () => {
       // Should render the bolt/x toggle button
       const button = screen.getByRole('button');
       expect(button).toBeInTheDocument();
+    });
+  });
+
+  describe('model-level overrides', () => {
+    const modelAwareConfig: CategoryConfig = {
+      parameters: [
+        {
+          key: 'model.id',
+          label: 'Model',
+          type: 'dropdown',
+          required: true,
+          default: 'model-a',
+          data: 'models.json',
+          valueField: 'id',
+          linkedField: {
+            key: 'model.name',
+            sourceField: 'name',
+          },
+        },
+        {
+          key: 'model.temperature',
+          label: 'Temperature',
+          type: 'number',
+          required: true,
+          default: '0.7',
+        },
+        {
+          key: 'model.seed',
+          label: 'Seed',
+          type: 'number',
+          required: false,
+        },
+      ],
+    };
+
+    it('renders only selector + model-defined parameters for selected model', () => {
+      render(
+        <ConfigRenderer
+          provider="test"
+          category="text"
+          config={modelAwareConfig}
+          parameters={[
+            createMetadata('model.id', 'model-a'),
+            createMetadata('model.name', 'Model A'),
+          ]}
+          onParameterChange={mockOnChange}
+        />,
+      );
+
+      expect(screen.getByText('Model')).toBeInTheDocument();
+      expect(screen.queryByText('Seed')).not.toBeInTheDocument();
+    });
+
+    it('hydrates model-specific defaults when model dropdown changes', () => {
+      render(
+        <ConfigRenderer
+          provider="test"
+          category="text"
+          config={modelAwareConfig}
+          parameters={[
+            createMetadata('model.id', 'model-a'),
+            createMetadata('model.name', 'Model A'),
+          ]}
+          onParameterChange={mockOnChange}
+        />,
+      );
+
+      const dropdown = screen.getAllByRole('combobox')[0];
+      fireEvent.change(dropdown, { target: { value: 'model-b' } });
+
+      expect(mockOnChange).toHaveBeenCalled();
+      const lastCall = mockOnChange.mock.calls[mockOnChange.mock.calls.length - 1][0] as Metadata[];
+      const temperature = lastCall.find(m => m.getKey() === 'model.temperature');
+      const modelId = lastCall.find(m => m.getKey() === 'model.id');
+      expect(modelId?.getValue()).toBe('model-b');
+      expect(temperature?.getValue()).toBe('0.9');
+    });
+
+    it('drops stale model-specific keys when switched model exposes a different schema', () => {
+      render(
+        <ConfigRenderer
+          provider="test"
+          category="text"
+          config={modelAwareConfig}
+          parameters={[
+            createMetadata('model.id', 'model-a'),
+            createMetadata('model.name', 'Model A'),
+            createMetadata('model.temperature', '0.55'),
+          ]}
+          onParameterChange={mockOnChange}
+        />,
+      );
+
+      const dropdown = screen.getAllByRole('combobox')[0];
+      fireEvent.change(dropdown, { target: { value: 'model-c' } });
+
+      expect(mockOnChange).toHaveBeenCalled();
+      const lastCall = mockOnChange.mock.calls[
+        mockOnChange.mock.calls.length - 1
+      ][0] as Metadata[];
+
+      expect(lastCall.find(m => m.getKey() === 'model.id')?.getValue()).toBe(
+        'model-c',
+      );
+      expect(lastCall.find(m => m.getKey() === 'model.top_p')?.getValue()).toBe(
+        '0.42',
+      );
+      expect(lastCall.find(m => m.getKey() === 'model.temperature')).toBeUndefined();
+    });
+
+    it('supports model switch followed by parameter edit', () => {
+      const { rerender } = render(
+        <ConfigRenderer
+          provider="test"
+          category="text"
+          config={modelAwareConfig}
+          parameters={[
+            createMetadata('model.id', 'model-a'),
+            createMetadata('model.name', 'Model A'),
+          ]}
+          onParameterChange={mockOnChange}
+        />,
+      );
+
+      const dropdown = screen.getAllByRole('combobox')[0];
+      fireEvent.change(dropdown, { target: { value: 'model-b' } });
+
+      const switchedParams = mockOnChange.mock.calls[
+        mockOnChange.mock.calls.length - 1
+      ][0] as Metadata[];
+      rerender(
+        <ConfigRenderer
+          provider="test"
+          category="text"
+          config={modelAwareConfig}
+          parameters={switchedParams}
+          onParameterChange={mockOnChange}
+        />,
+      );
+
+      const numberInput = screen.getByRole('spinbutton') as HTMLInputElement;
+      fireEvent.change(numberInput, { target: { value: '1.1' } });
+
+      const updated = mockOnChange.mock.calls[
+        mockOnChange.mock.calls.length - 1
+      ][0] as Metadata[];
+      expect(updated.find(m => m.getKey() === 'model.id')?.getValue()).toBe(
+        'model-b',
+      );
+      expect(
+        updated.find(m => m.getKey() === 'model.temperature')?.getValue(),
+      ).toBe('1.1');
     });
   });
 
