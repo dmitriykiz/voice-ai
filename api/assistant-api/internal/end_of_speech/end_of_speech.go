@@ -39,7 +39,7 @@ func GetEndOfSpeech(ctx context.Context, logger commons.Logger, onCallback func(
 		// Removed: LiveKit turn-detector license restricts usage to LiveKit Agents only.
 		// Falling back to silence-based EOS.
 		logger.Warnf("livekit_eos is no longer available due to license restrictions, falling back to silence_based_eos")
-		return internal_silence_based.NewSilenceBasedEndOfSpeech(logger, onCallback, opts)
+		return internal_pipecat.NewPipecatEndOfSpeech(logger, onCallback, opts)
 	default:
 		return internal_silence_based.NewSilenceBasedEndOfSpeech(logger, onCallback, opts)
 	}
