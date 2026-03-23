@@ -1,0 +1,45 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/post_tool_test_hint.py"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/validate_changed_tests.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/run_required_tests.py"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/validate_changed_tests.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/run_required_tests.py"
+          }
+        ]
+      }
+    ]
+  }
+}

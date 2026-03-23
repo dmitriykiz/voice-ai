@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rapida.ai/schemas/orchestrator/post-verification-input.schema.json",
+  "title": "Post Verification Hook Input",
+  "type": "object",
+  "required": ["task", "task_plan", "verification", "meta"],
+  "properties": {
+    "task": { "type": "object" },
+    "task_plan": { "type": "object" },
+    "verification": {
+      "type": "object",
+      "required": ["commands"],
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["cmd", "exit_code"],
+            "properties": {
+              "cmd": { "type": "string" },
+              "exit_code": { "type": "integer" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "coverage": {
+          "type": "object",
+          "properties": {
+            "unit_tests_present": { "type": "boolean" },
+            "required_categories_passed": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "meta": { "type": "object" }
+  },
+  "additionalProperties": true
+}

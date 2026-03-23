@@ -9,18 +9,20 @@ Codex can load skills from:
 - repo-local: `.codex/skills/`
 - user-global: `~/.codex/skills/`
 
-Install into repo-local path (recommended for this repo):
+For this repository, skills are already installed at `.codex/skills/`.
+
+Install into repo-local path in another repository:
 
 ```bash
-mkdir -p .codex/skills
-rsync -a skills/ .codex/skills/
+mkdir -p /path/to/other-repo/.codex/skills
+rsync -a /path/to/voice-ai/.codex/skills/ /path/to/other-repo/.codex/skills/
 ```
 
 Install into user-global path:
 
 ```bash
 mkdir -p ~/.codex/skills/voice-ai
-rsync -a skills/ ~/.codex/skills/voice-ai/
+rsync -a .codex/skills/ ~/.codex/skills/voice-ai/
 ```
 
 Verify installation:
@@ -81,4 +83,4 @@ Notes:
 
 ## Security
 
-Read and follow `skills/SECURITY_GUIDELINES.md` before editing or publishing skill changes.
+Read and follow `.codex/skills/SECURITY_GUIDELINES.md` before editing or publishing skill changes.

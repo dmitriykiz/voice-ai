@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rapida.ai/schemas/orchestrator/envelope.schema.json",
+  "title": "Orchestrator Envelope",
+  "type": "object",
+  "required": ["version", "run_id", "repo_root", "task", "meta"],
+  "properties": {
+    "version": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "repo_root": { "type": "string", "minLength": 1 },
+    "task": {
+      "type": "object",
+      "required": ["id", "type", "skill"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "skill": { "type": "string", "minLength": 1 },
+        "provider": { "type": "string" },
+        "service": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "agents": {
+      "type": "object",
+      "properties": {
+        "planner": { "type": "string" },
+        "implementer": { "type": "string" },
+        "verifier": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "artifacts": {
+      "type": "object",
+      "properties": {
+        "plan_file": { "type": "string" },
+        "impl_report_file": { "type": "string" },
+        "verify_report_file": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "git": {
+      "type": "object",
+      "properties": {
+        "base_ref": { "type": "string" },
+        "changed_files": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "task_plan": { "type": "object" },
+    "implementation": { "type": "object" },
+    "verification": { "type": "object" },
+    "meta": {
+      "type": "object",
+      "required": ["triggered_by", "timestamp"],
+      "properties": {
+        "triggered_by": { "type": "string", "minLength": 1 },
+        "timestamp": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

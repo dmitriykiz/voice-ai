@@ -5,6 +5,8 @@
 !api/assistant-api/internal/vad/internal/firered_vad/models/*.onnx
 .DS_Store
 .venv/
+__pycache__/
+*.pyc
 license-check-and-add.json
 .claude/settings.local.json
 

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rapida.ai/schemas/orchestrator/post-implementation-input.schema.json",
+  "title": "Post Implementation Hook Input",
+  "type": "object",
+  "required": ["task", "task_plan", "implementation", "meta"],
+  "properties": {
+    "task": { "type": "object" },
+    "task_plan": { "type": "object" },
+    "implementation": {
+      "type": "object",
+      "required": ["changed_files"],
+      "properties": {
+        "changed_files": { "type": "array", "items": { "type": "string" } },
+        "test_files_added": { "type": "array", "items": { "type": "string" } },
+        "tests_covered": { "type": "array", "items": { "type": "string" } },
+        "summary": { "type": "string" }
+      }
+    },
+    "meta": { "type": "object" }
+  },
+  "additionalProperties": true
+}
