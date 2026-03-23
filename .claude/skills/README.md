@@ -48,7 +48,7 @@ Strict diff scope checks:
 ```
 
 Notes:
-- `--provider` is required for integration skills (`telephony`, `stt`, `tts`, `llm`, `telemetry`, `vad`, `end-of-speech`).
+- `--provider` is required for integration skills (`telephony`, `stt`, `tts`, `llm`, `telemetry`, `vad`, `end-of-speech`, `noise-reduction`).
 - `local-setup-and-run` uses `--check-diff` without `--provider`.
 - strict mode allows only skill files, factory files, contract files, and the specified provider folder scope.
 - EOS strict mode rejects edits under VAD internals; VAD strict mode rejects edits under EOS internals.
@@ -63,4 +63,5 @@ Notes:
 - telemetry-integration
 - vad-integration
 - end-of-speech-integration
+- noise-reduction-integration
 - local-setup-and-run

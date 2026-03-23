@@ -45,6 +45,7 @@ Each skill folder should include:
 - `telephony-integration`
 - `stt-integration`
 - `tts-integration`
+- `noise-reduction-integration`
 - `llm-integration`
 - `telemetry-integration`
 - `vad-integration`
@@ -73,7 +74,7 @@ Strict scope validation:
 ```
 
 Notes:
-- `--provider` is required for integration skills.
+- `--provider` is required for integration skills (`telephony`, `stt`, `tts`, `llm`, `telemetry`, `vad`, `end-of-speech`, `noise-reduction`).
 - strict mode enforces provider/factory/contract boundaries.
 - strict mode should be run when working in an isolated/clean diff for best signal.
 - `local-setup-and-run` uses `--check-diff` without `--provider`.
