@@ -1,0 +1,3 @@
+display_name: Telemetry Integration
+short_description: Schema-safe telemetry extension across integration and assistant provider flows.
+default_prompt: Use the telemetry-integration skill. Add metrics/events without breaking existing key contracts, ensure success/failure symmetry, keep sensitive data out, and run strict validation with --provider.

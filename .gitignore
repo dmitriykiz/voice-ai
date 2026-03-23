@@ -6,8 +6,7 @@
 .DS_Store
 .venv/
 license-check-and-add.json
-.claude/
-CLAUDE.md
+.claude/settings.local.json
 
 # Integration test credentials (never commit real API keys)
 **/integration_config.yaml

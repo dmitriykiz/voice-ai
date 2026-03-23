@@ -137,17 +137,27 @@ Use typed gRPC clients from `pkg/clients/` for service-to-service calls (never d
 
 ## Developer Docs
 
-Detailed step-by-step guides for common development tasks live in `.claude/developer/`. Always check these before starting work on a new integration:
+Detailed step-by-step guides for common development tasks live in `.claude/developer/`, `claude-skills/`, and `.claude/skills/`. Codex skill bundles live in `skills/`. Always check these before starting work on a new integration:
 
 | Guide | File | Covers |
 |-------|------|--------|
-| Adding STT/TTS Provider | `.claude/developer/adding-stt-tts-provider.md` | Full frontend-to-backend walkthrough: provider registry, UI config components, backend transformer, factory wiring, required events/metrics, checklist |
-| Adding LLM Provider | `.claude/developer/adding-llm-provider.md` | Full frontend-to-backend walkthrough: provider registry, model constants, UI config component, backend caller, gRPC API handler, router + integration client wiring, metrics, checklist |
-| Adding Telephony Provider | `.claude/developer/adding-telephony-provider.md` | Full frontend-to-backend walkthrough: provider registry, UI config component, WebSocket streamer, telephony webhook handler, factory wiring, audio format/resampling, required events, checklist |
+| Adding STT/TTS Provider | `claude-skills/adding-stt-tts-provider.md` | Full frontend-to-backend walkthrough: provider registry, UI config components, backend transformer, factory wiring, required events/metrics, checklist |
+| Adding STT Provider | `claude-skills/adding-stt-provider.md` | Focused STT integration guide: provider metadata, STT option mapping (`listen.*`), transformer wiring, and validation checklist |
+| Adding TTS Provider | `claude-skills/adding-tts-provider.md` | Focused TTS integration guide: voice/model metadata, `speak.*` mapping, transformer wiring, and output audio checks |
+| Adding LLM Provider | `claude-skills/adding-llm-provider.md` | Full frontend-to-backend walkthrough: provider registry, model constants, UI config component, backend caller, gRPC API handler, router + integration client wiring, metrics, checklist |
+| Adding Telephony Provider | `claude-skills/adding-telephony-provider.md` | Full frontend-to-backend walkthrough: provider registry, UI config component, WebSocket streamer, telephony webhook handler, factory wiring, audio format/resampling, required events, checklist |
+| Adding Telemetry | `claude-skills/adding-telemetry-instrumentation.md` | Instrumentation guide for metrics/event additions, audit post-hook compatibility, and failure-path observability checks |
+| Adding VAD Provider | `claude-skills/adding-vad-provider.md` | VAD provider integration guide: factory registration, `microphone.vad.*` options, callback behavior, and tests |
+| Adding End-of-Speech | `claude-skills/adding-end-of-speech-provider.md` | EOS configuration guide: `microphone.eos.*` schema, VAD interplay, timeout tuning, and compatibility checks |
+| Understanding System | `claude-skills/understanding-system.md` | Fast architecture ramp-up: service map, execution-path tracing, extension-point checklist, risk mapping, pre-coding test plan |
 
 ## Adding New Integrations
 
-- **New STT/TTS provider**: Follow `.claude/developer/adding-stt-tts-provider.md` for the complete guide
-- **New LLM provider**: Follow `.claude/developer/adding-llm-provider.md` for the complete guide
+- **New STT/TTS provider**: Follow `claude-skills/adding-stt-tts-provider.md` for the complete guide
+- **New LLM provider**: Follow `claude-skills/adding-llm-provider.md` for the complete guide
+- **New telephony provider**: Follow `claude-skills/adding-telephony-provider.md` for the complete guide
+- **Telemetry changes**: Follow `claude-skills/adding-telemetry-instrumentation.md`
+- **VAD provider changes**: Follow `claude-skills/adding-vad-provider.md`
+- **End-of-speech changes**: Follow `claude-skills/adding-end-of-speech-provider.md`
 - **New telephony channel**: Add under `api/assistant-api/internal/channel/`
 - **New OAuth connector**: Add under `api/web-api/internal/connect/`

@@ -1,0 +1,3 @@
+display_name: STT Integration
+short_description: Transport-aware STT provider integration with packet contract enforcement.
+default_prompt: Use the stt-integration skill. Determine STT transport mode (WS/SDK/HTTP), implement provider-specific STT flow, preserve interim/final packet semantics and stt_latency_ms, and run strict validation with --provider.

@@ -1,0 +1,3 @@
+display_name: VAD Integration
+short_description: Provider-scoped VAD integration with strict separation from EOS internals.
+default_prompt: Use the vad-integration skill. Confirm detector type and frame thresholds, implement under VAD provider folder and factory only, keep EOS internals untouched, and run strict validation with --provider.

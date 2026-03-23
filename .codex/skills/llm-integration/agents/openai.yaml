@@ -1,0 +1,3 @@
+display_name: LLM Integration
+short_description: Integration-api provider integration with caller factory and unified routing compatibility.
+default_prompt: Use the llm-integration skill. Confirm required capabilities (chat/stream/verify/embedding/reranking), implement provider caller package and factory wiring, preserve metric/audit semantics, and run strict validation with --provider.
