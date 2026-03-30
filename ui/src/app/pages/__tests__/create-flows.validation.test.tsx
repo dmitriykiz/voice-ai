@@ -173,10 +173,14 @@ jest.mock('@/utils/prompt', () => ({
   Prompt: () => ({ prompt: [], variables: [] }),
 }));
 
-jest.mock('@/utils', () => ({
-  randomMeaningfullName: () => 'assistant-default',
-  randomString: () => 'seed',
-}));
+jest.mock('@/utils', () => {
+  const actual = jest.requireActual('@/utils');
+  return {
+    ...actual,
+    randomMeaningfullName: () => 'assistant-default',
+    randomString: () => 'seed',
+  };
+});
 
 jest.mock('@/app/components/error-container', () => ({
   ErrorContainer: ({ title, code }: any) => (

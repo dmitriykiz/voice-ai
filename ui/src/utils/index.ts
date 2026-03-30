@@ -1,4 +1,3 @@
-import { generate } from 'random-words';
 import { ResourceRole } from '@/models/common';
 import { RETRIEVE_METHOD } from '@/models/datasets';
 import { ClassValue, clsx } from 'clsx';
@@ -10,6 +9,24 @@ export function cn(...inputs: ClassValue[]) {
 
 const chars =
   '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_';
+const nameWords = [
+  'rapid',
+  'bright',
+  'silent',
+  'amber',
+  'lunar',
+  'silver',
+  'echo',
+  'summit',
+  'river',
+  'atlas',
+  'vector',
+  'nova',
+  'comet',
+  'zenith',
+  'cobalt',
+  'harbor',
+];
 
 /**
  *
@@ -154,7 +171,8 @@ export function mergeProps<T extends Props[]>(
  * @returns
  */
 export const randomMeaningfullName = (prefix?: string): string => {
-  const name = generate({ exactly: 3, join: '-' });
+  const name = Array.from({ length: 3 })
+    .map(() => nameWords[Math.floor(Math.random() * nameWords.length)])
+    .join('-');
   return prefix ? `${prefix}-${name}` : name;
 };
-

@@ -250,7 +250,7 @@ describe('Authentication pages', () => {
       expect(emailInput.value).toBe('prefilled@rapida.ai');
     });
 
-    fireEvent.change(screen.getByPlaceholderText('eg: John deo'), {
+    fireEvent.change(screen.getByPlaceholderText('eg: John Doe'), {
       target: { value: 'John Doe' },
     });
     fireEvent.change(screen.getByPlaceholderText('********'), {
@@ -281,7 +281,7 @@ describe('Authentication pages', () => {
 
     renderWithAuth(<SignUpPage />);
 
-    fireEvent.change(screen.getByPlaceholderText('eg: John deo'), {
+    fireEvent.change(screen.getByPlaceholderText('eg: John Doe'), {
       target: { value: 'John Doe' },
     });
     fireEvent.change(screen.getByPlaceholderText('eg: john@rapida.ai'), {

@@ -1,5 +1,5 @@
 import { FC } from 'react';
-import ShapeIndicator from '@carbon/react/es/components/ShapeIndicator';
+import { unstable__ShapeIndicator as ShapeIndicatorModule } from '@carbon/react';
 
 // ─── Status mapping to Carbon ShapeIndicator kinds ───────────────────────────
 // failed     — red X (error, failure)
@@ -66,6 +66,9 @@ const statusMap: Record<string, { kind: string; label: string }> = {
 };
 
 const defaultStatus = { kind: 'undefined', label: 'Unknown' };
+const ShapeIndicator =
+  (ShapeIndicatorModule as unknown as { default?: FC<any> }).default ||
+  (ShapeIndicatorModule as unknown as FC<any>);
 
 // ─── Component ───────────────────────────────────────────────────────────────
 

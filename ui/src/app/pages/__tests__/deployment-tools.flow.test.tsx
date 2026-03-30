@@ -194,7 +194,7 @@ describe('Deployment and tool flows', () => {
     render(<ConfigureAssistantDeploymentPage />);
 
     fireEvent.click(screen.getAllByRole('button', { name: /Add deployment/i })[0]);
-    fireEvent.click(screen.getByRole('button', { name: /Web Widget/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Web Widget/i }));
 
     expect(mockGlobalNavigation.goToConfigureWeb).toHaveBeenCalledWith('assistant-1');
   });
