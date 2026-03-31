@@ -8,7 +8,6 @@ import {
   Application,
   LogoReact,
   LogoPython,
-  Coffee,
 } from '@carbon/icons-react';
 import { WhatsappIcon } from '@/app/components/Icon/whatsapp';
 
@@ -26,7 +25,7 @@ const sourceConfig: Record<string, { tagType: string; icon: React.ReactNode; lab
   'node-sdk': { tagType: 'green', icon: <Code size={16} />, label: 'Node SDK' },
   'go-sdk': { tagType: 'cyan', icon: <Code size={16} />, label: 'Go SDK' },
   'typescript-sdk': { tagType: 'blue', icon: <Code size={16} />, label: 'TypeScript SDK' },
-  'java-sdk': { tagType: 'warm-gray', icon: <Coffee size={16} />, label: 'Java SDK' },
+  'java-sdk': { tagType: 'warm-gray', icon: <Code size={16} />, label: 'Java SDK' },
   'php-sdk': { tagType: 'purple', icon: <Code size={16} />, label: 'PHP SDK' },
   'rust-sdk': { tagType: 'warm-gray', icon: <Code size={16} />, label: 'Rust SDK' },
   'python-sdk': { tagType: 'warm-gray', icon: <LogoPython size={16} />, label: 'Python SDK' },

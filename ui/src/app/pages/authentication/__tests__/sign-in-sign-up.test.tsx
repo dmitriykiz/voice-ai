@@ -122,15 +122,6 @@ jest.mock('@/app/components/form/fieldset', () => ({
   FieldSet: ({ children, ...props }: any) => <fieldset {...props}>{children}</fieldset>,
 }));
 
-jest.mock('@/app/components/heading/action-heading/form-action-heading', () => ({
-  FormActionHeading: ({ heading, action }: any) => (
-    <div>
-      <h2>{heading}</h2>
-      {action}
-    </div>
-  ),
-}));
-
 const renderWithAuth = (
   ui: React.ReactElement,
   setAuthentication = jest.fn(),

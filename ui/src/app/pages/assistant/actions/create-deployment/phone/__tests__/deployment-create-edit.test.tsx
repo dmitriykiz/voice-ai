@@ -196,9 +196,6 @@ jest.mock('@/app/components/providers/text-to-speech/provider', () => ({
   ValidateTextToSpeechIfInvalid: (...args: any[]) =>
     mockValidateTextToSpeechIfInvalid(...args),
 }));
-jest.mock('@/app/components/providers/text-to-speech/cartesia', () => ({
-  GetCartesiaDefaultOptions: () => [],
-}));
 
 jest.mock('@/app/components/form/button', () => ({
   IBlueBGArrowButton: ({ children, isLoading, ...props }: any) => <button {...props}>{children}</button>,

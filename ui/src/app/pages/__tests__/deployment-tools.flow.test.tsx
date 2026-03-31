@@ -196,15 +196,10 @@ jest.mock('@/app/components/container/message/actionable-empty-message', () => (
   ),
 }));
 
-jest.mock('@/app/components/indicators/revision', () => ({
-  RevisionIndicator: () => null,
-}));
-
 jest.mock('@/app/components/input-helper', () => ({ InputHelper: () => null }));
 jest.mock('@/app/components/form-label', () => ({ FormLabel: ({ children }: any) => <label>{children}</label> }));
 jest.mock('@/app/components/form/fieldset', () => ({ FieldSet: ({ children }: any) => <div>{children}</div> }));
 jest.mock('@/app/components/form/button/copy-button', () => ({ CopyButton: () => null }));
-jest.mock('@/app/components/Icon/plus', () => ({ PlusIcon: () => <span>+</span> }));
 
 jest.mock('@/utils/date', () => ({
   toHumanReadableDateTime: () => 'date-time',

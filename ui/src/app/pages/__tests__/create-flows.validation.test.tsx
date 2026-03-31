@@ -242,14 +242,8 @@ jest.mock('@/app/components/form/input', () => ({
 jest.mock('@/app/components/form/error-message', () => ({
   ErrorMessage: ({ message }: any) => (message ? <div>{message}</div> : null),
 }));
-jest.mock('@/app/components/form/success-message', () => ({
-  SuccessMessage: ({ message }: any) => (message ? <div>{message}</div> : null),
-}));
 jest.mock('@/app/components/form/fieldset', () => ({ FieldSet: ({ children }: any) => <div>{children}</div> }));
 jest.mock('@/app/components/form-label', () => ({ FormLabel: ({ children }: any) => <label>{children}</label> }));
-jest.mock('@/app/components/heading/action-heading/form-action-heading', () => ({
-  FormActionHeading: ({ heading }: any) => <h2>{heading}</h2>,
-}));
 
 const getLatestConfigPromptProps = () =>
   mockConfigPrompt.mock.calls[mockConfigPrompt.mock.calls.length - 1]?.[0];

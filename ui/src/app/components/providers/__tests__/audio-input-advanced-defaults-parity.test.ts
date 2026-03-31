@@ -7,24 +7,6 @@ jest.mock('@/app/components/providers', () => ({}));
 jest.mock('@/app/components/providers/config-renderer', () => ({
   ConfigRenderer: () => null,
 }));
-jest.mock('@/app/components/providers/vad/silero-vad', () => ({
-  ConfigureSileroVAD: () => null,
-}));
-jest.mock('@/app/components/providers/vad/ten-vad', () => ({
-  ConfigureTenVAD: () => null,
-}));
-jest.mock('@/app/components/providers/vad/firered-vad', () => ({
-  ConfigureFireRedVAD: () => null,
-}));
-jest.mock('@/app/components/providers/end-of-speech/silence-based', () => ({
-  ConfigureSilenceBasedEOS: () => null,
-}));
-jest.mock('@/app/components/providers/end-of-speech/livekit-eos', () => ({
-  ConfigureLivekitEOS: () => null,
-}));
-jest.mock('@/app/components/providers/end-of-speech/pipecat-smart-turn', () => ({
-  ConfigurePipecatSmartTurnEOS: () => null,
-}));
 
 const { GetDefaultVADConfig } = require('@/app/components/providers/vad/provider');
 const { GetDefaultEOSConfig } = require('@/app/components/providers/end-of-speech/provider');
