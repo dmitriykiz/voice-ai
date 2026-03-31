@@ -30,7 +30,7 @@ const SidebarProvider = React.forwardRef<
 >(
   (
     {
-      defaultOpen = localStorage.getItem(SIDEBAR_COOKIE_NAME) === 'true',
+      defaultOpen = localStorage.getItem(SIDEBAR_COOKIE_NAME) !== 'false',
       open: openProp,
       onOpenChange: setOpenProp,
       className,
@@ -44,7 +44,7 @@ const SidebarProvider = React.forwardRef<
     const open = openProp ?? _open;
 
     const [locked, setLockedState] = React.useState(() => {
-      return localStorage.getItem(SIDEBAR_COOKIE_NAME) === 'true';
+      return localStorage.getItem(SIDEBAR_COOKIE_NAME) !== 'false';
     });
 
     const setLocked = React.useCallback((value: boolean) => {

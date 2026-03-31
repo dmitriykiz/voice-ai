@@ -26,6 +26,7 @@ import (
 )
 
 const sipProvider = "sip"
+const defaultOutboundSIPPort = 5090
 
 // sipTelephony implements the Telephony interface for native SIP
 type sipTelephony struct {
@@ -77,6 +78,34 @@ func (t *sipTelephony) parseConfig(vaultCredential *protos.VaultCredential) (*si
 	if server, ok := credMap["sip_server"].(string); ok && server != "" {
 		cfg.Server = server
 	}
+	if cfg.Port <= 0 {
+		switch v := credMap["sip_port"].(type) {
+		case float64:
+			port := int(v)
+			if port > 0 && port <= 65535 {
+				cfg.Port = port
+			}
+		case int:
+			if v > 0 && v <= 65535 {
+				cfg.Port = v
+			}
+		case int32:
+			port := int(v)
+			if port > 0 && port <= 65535 {
+				cfg.Port = port
+			}
+		case int64:
+			port := int(v)
+			if port > 0 && port <= 65535 {
+				cfg.Port = port
+			}
+		case string:
+			port, err := strconv.Atoi(v)
+			if err == nil && port > 0 && port <= 65535 {
+				cfg.Port = port
+			}
+		}
+	}
 	if username, ok := credMap["sip_username"].(string); ok {
 		cfg.Username = username
 	}
@@ -88,6 +117,13 @@ func (t *sipTelephony) parseConfig(vaultCredential *protos.VaultCredential) (*si
 	}
 	if domain, ok := credMap["sip_domain"].(string); ok {
 		cfg.Domain = domain
+	}
+
+	// Outbound SIP dialing should use provider port semantics.
+	// Default to 5090 when provider config omits a port, and keep app SIP__PORT
+	// only for local SIP server listen/bind concerns.
+	if cfg.Port <= 0 {
+		cfg.Port = defaultOutboundSIPPort
 	}
 
 	// --- Platform operational settings (from app config) ---

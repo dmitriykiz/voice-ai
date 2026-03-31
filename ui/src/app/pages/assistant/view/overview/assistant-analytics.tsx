@@ -35,7 +35,8 @@ import { useAssistantTracePageStore } from '@/hooks/use-assistant-trace-page-sto
 import { FC, useEffect, useState } from 'react';
 import { cn } from '@/utils';
 import { useCurrentCredential } from '@/hooks/use-credential';
-import { Dropdown, Tile } from '@carbon/react';
+import { Dropdown } from '@/app/components/carbon/dropdown';
+import { Tile } from '@/app/components/carbon/tile';
 
 const CHART_COLORS = [
   'var(--cds-interactive, #1e40af)',
@@ -295,11 +296,7 @@ export const AssistantAnalytics: FC<{ assistant: Assistant }> = props => {
         </div>
       </div>
 
-      {loading && !hasData ? (
-        <div className="flex items-center justify-center h-64 text-sm text-gray-500 dark:text-gray-400">
-          Loading analytics…
-        </div>
-      ) : !hasData ? (
+      {!loading && !hasData ? (
         <div className="flex items-center justify-center h-64 text-sm text-gray-500 dark:text-gray-400">
           No data available for the selected period.
         </div>
@@ -310,7 +307,7 @@ export const AssistantAnalytics: FC<{ assistant: Assistant }> = props => {
             {/* Left — two grouped tiles */}
             <div className="space-y-4">
               {/* Row 1: Session counts */}
-              <Tile className="!rounded-none !p-0 !bg-white dark:!bg-transparent border border-gray-200 dark:border-gray-800">
+              <Tile isLoading={loading} className="!rounded-none !p-0 !bg-white dark:!bg-transparent border border-gray-200 dark:border-gray-800">
                 <div className="px-4 pt-4 pb-1">
                   <h3 className="text-sm font-semibold">Sessions</h3>
                 </div>
@@ -322,7 +319,7 @@ export const AssistantAnalytics: FC<{ assistant: Assistant }> = props => {
                 </div>
               </Tile>
               {/* Row 2: Averages */}
-              <Tile className="!rounded-none !p-0 !bg-white dark:!bg-transparent border border-gray-200 dark:border-gray-800">
+              <Tile isLoading={loading} className="!rounded-none !p-0 !bg-white dark:!bg-transparent border border-gray-200 dark:border-gray-800">
                 <div className="px-4 pt-4 pb-1">
                   <h3 className="text-sm font-semibold">Average Latency</h3>
                 </div>
@@ -336,7 +333,7 @@ export const AssistantAnalytics: FC<{ assistant: Assistant }> = props => {
             </div>
 
             {/* Right — totals block */}
-            <Tile className="!rounded-none !p-0 !bg-white dark:!bg-transparent border border-gray-200 dark:border-gray-800 flex flex-col justify-between">
+            <Tile isLoading={loading} className="!rounded-none !p-0 !bg-white dark:!bg-transparent border border-gray-200 dark:border-gray-800 flex flex-col justify-between">
               <CompactMetricCell label="Tokens" value={totalTokens} />
               <CompactMetricCell label="STT Duration" value={Math.round(totalSttDurationSec)} unit="s" />
               <CompactMetricCell label="TTS Duration" value={Math.round(totalTtsDurationSec)} unit="s" />
@@ -347,7 +344,7 @@ export const AssistantAnalytics: FC<{ assistant: Assistant }> = props => {
           {/* ── Charts row — language + latency + source ── */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Language gauge — user messages only */}
-            <ChartTile title="Languages" subtitle="User messages">
+            <ChartTile title="Languages" subtitle="User messages" isLoading={loading}>
               <div className="flex flex-col items-center py-4">
                 <div className="relative h-[140px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
@@ -389,7 +386,7 @@ export const AssistantAnalytics: FC<{ assistant: Assistant }> = props => {
             </ChartTile>
 
             {/* Latency sparkline — STT, TTS & LLM */}
-            <ChartTile title="Latency">
+            <ChartTile title="Latency" isLoading={loading}>
               <div className="flex items-center gap-6 px-4 pt-2 pb-1">
                 <div>
                   <p className="text-[10px] text-gray-400 uppercase">STT</p>
@@ -453,13 +450,13 @@ export const AssistantAnalytics: FC<{ assistant: Assistant }> = props => {
             </ChartTile>
 
             {/* Source donut */}
-            <ChartTile title="Sources">
+            <ChartTile title="Sources" isLoading={loading}>
               <DonutContent data={sourceData} dataKey="count" nameKey="source" total={totalMessages} />
             </ChartTile>
           </div>
 
           {/* ── Full-width sessions chart ── */}
-          <ChartTile title="Sessions">
+          <ChartTile title="Sessions" isLoading={loading}>
             <div className="h-[260px] px-2 py-4">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={activeSessionsData} margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
@@ -530,10 +527,10 @@ const CompactMetricCell: FC<{ label: string; value: number; unit?: string }> = (
 
 // ─── Chart tile wrapper ─────────────────────────────────────────────────────
 
-const ChartTile: FC<{ title: string; subtitle?: string; className?: string; children: React.ReactNode }> = ({
-  title, subtitle, className, children,
+const ChartTile: FC<{ title: string; subtitle?: string; className?: string; isLoading?: boolean; children: React.ReactNode }> = ({
+  title, subtitle, className, isLoading = false, children,
 }) => (
-  <Tile className={cn('!rounded-none !p-0 !bg-white dark:!bg-transparent border border-gray-200 dark:border-gray-800', className)}>
+  <Tile isLoading={isLoading} className={cn('!rounded-none !p-0 !bg-white dark:!bg-transparent border border-gray-200 dark:border-gray-800', className)}>
     <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
       <h3 className="text-sm font-semibold">{title}</h3>
       {subtitle && (

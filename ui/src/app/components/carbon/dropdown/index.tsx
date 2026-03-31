@@ -1,6 +1,7 @@
 import type { FC, ReactNode } from 'react';
 import {
   Dropdown as CarbonDropdown,
+  DropdownSkeleton as CarbonDropdownSkeleton,
   MultiSelect as CarbonMultiSelect,
 } from '@carbon/react';
 import { cn } from '@/utils';
@@ -33,6 +34,7 @@ export interface CarbonDropdownProps<T> {
   helperText?: ReactNode;
   hideLabel?: boolean;
   type?: 'default' | 'inline';
+  isLoading?: boolean;
 }
 
 /** Carbon Dropdown — single-select dropdown list. */
@@ -57,7 +59,18 @@ export function Dropdown<T>({
   helperText,
   hideLabel = false,
   type = 'default',
+  isLoading = false,
 }: CarbonDropdownProps<T>) {
+  if (isLoading) {
+    return (
+      <CarbonDropdownSkeleton
+        size={size}
+        hideLabel={hideLabel}
+        className={cn(className)}
+      />
+    );
+  }
+
   return (
     <CarbonDropdown
       id={id}

@@ -1512,13 +1512,12 @@ func (s *Server) MakeCall(ctx context.Context, cfg *Config, toURI, fromURI strin
 		fromDomain = cfg.Server
 	}
 
-	// Resolve the From header user identity:
-	// 1. Explicit CallerID from config (cloud providers set their DID here)
-	// 2. Auth username (correct for Asterisk/FreeSWITCH — matches PJSIP endpoint)
-	// 3. fromURI as last resort
-	fromUser := cfg.Username
-	if cfg.CallerID != "" {
-		fromUser = cfg.CallerID
+	// Use only assistant-resolved fromPhone as SIP From user.
+	fromUser := strings.TrimSpace(fromURI)
+	if fromUser == "" {
+		rtpHandler.Stop()
+		s.rtpAllocator.Release(rtpPort)
+		return nil, fmt.Errorf("from URI is required for outbound SIP call")
 	}
 
 	fromHDR := &sip.FromHeader{
