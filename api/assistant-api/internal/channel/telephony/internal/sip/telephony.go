@@ -45,10 +45,8 @@ func NewSIPTelephony(cfg *config.AssistantConfig, logger commons.Logger, sipServ
 	}, nil
 }
 
-// parseConfig parses SIP provider credentials from vault, then overlays
-// platform operational settings (port, transport, RTP range) from app config.
-// Twilio/providers only give: sip_uri, sip_username, sip_password, sip_realm, sip_domain
-// Our platform provides: port, transport, rtp_port_range from app config
+// parseConfig extracts SIP credentials from vault and overlays platform
+// operational settings (port, transport, RTP range) from app config.
 func (t *sipTelephony) parseConfig(vaultCredential *protos.VaultCredential) (*sip_infra.Config, error) {
 	if vaultCredential == nil || vaultCredential.GetValue() == nil {
 		return nil, fmt.Errorf("vault credential is required")
@@ -57,9 +55,7 @@ func (t *sipTelephony) parseConfig(vaultCredential *protos.VaultCredential) (*si
 	credMap := vaultCredential.GetValue().AsMap()
 	cfg := &sip_infra.Config{}
 
-	// --- Provider credentials (from vault / Twilio) ---
-
-	// Parse sip_uri to extract server and port (e.g. "sip:192.168.1.5:5060")
+	// Extract server and port from sip_uri (e.g. "sip:192.168.1.5:5060")
 	if sipURI, ok := credMap["sip_uri"].(string); ok && sipURI != "" {
 		uri := strings.TrimPrefix(strings.TrimPrefix(sipURI, "sips:"), "sip:")
 		host, portStr, err := net.SplitHostPort(uri)
@@ -74,36 +70,13 @@ func (t *sipTelephony) parseConfig(vaultCredential *protos.VaultCredential) (*si
 		}
 	}
 
-	// Explicit sip_server overrides sip_uri
+	// sip_server overrides sip_uri
 	if server, ok := credMap["sip_server"].(string); ok && server != "" {
 		cfg.Server = server
 	}
 	if cfg.Port <= 0 {
-		switch v := credMap["sip_port"].(type) {
-		case float64:
-			port := int(v)
-			if port > 0 && port <= 65535 {
-				cfg.Port = port
-			}
-		case int:
-			if v > 0 && v <= 65535 {
-				cfg.Port = v
-			}
-		case int32:
-			port := int(v)
-			if port > 0 && port <= 65535 {
-				cfg.Port = port
-			}
-		case int64:
-			port := int(v)
-			if port > 0 && port <= 65535 {
-				cfg.Port = port
-			}
-		case string:
-			port, err := strconv.Atoi(v)
-			if err == nil && port > 0 && port <= 65535 {
-				cfg.Port = port
-			}
+		if port := t.parsePort(credMap["sip_port"]); port > 0 {
+			cfg.Port = port
 		}
 	}
 	if username, ok := credMap["sip_username"].(string); ok {
@@ -119,7 +92,7 @@ func (t *sipTelephony) parseConfig(vaultCredential *protos.VaultCredential) (*si
 		cfg.Domain = domain
 	}
 
-	// Parse custom SIP headers from vault (stored as JSON string, e.g. '{"X-Custom":"value"}')
+	// Custom SIP headers are stored as a JSON string in vault
 	if headersRaw, ok := credMap["sip_headers"].(string); ok && headersRaw != "" {
 		parsed := make(map[string]string)
 		if err := json.Unmarshal([]byte(headersRaw), &parsed); err == nil {
@@ -129,9 +102,7 @@ func (t *sipTelephony) parseConfig(vaultCredential *protos.VaultCredential) (*si
 		}
 	}
 
-	// Outbound SIP dialing should use provider port semantics.
-	// Default to 5090 when provider config omits a port, and keep app SIP__PORT
-	// only for local SIP server listen/bind concerns.
+	// Default outbound port — distinct from SIP__PORT (local server bind)
 	if cfg.Port <= 0 {
 		cfg.Port = defaultOutboundSIPPort
 	}
@@ -153,6 +124,23 @@ func (t *sipTelephony) parseConfig(vaultCredential *protos.VaultCredential) (*si
 	return cfg, nil
 }
 
+// parsePort normalizes a loosely-typed port value (JSON float64 or string) into a valid TCP port or 0.
+func (t *sipTelephony) parsePort(v any) int {
+	var port int
+	switch p := v.(type) {
+	case float64:
+		port = int(p)
+	case string:
+		port, _ = strconv.Atoi(p)
+	default:
+		return 0
+	}
+	if port > 0 && port <= 65535 {
+		return port
+	}
+	return 0
+}
+
 // StatusCallback handles status callbacks from SIP events
 func (t *sipTelephony) StatusCallback(
 	c *gin.Context,
@@ -172,7 +160,6 @@ func (t *sipTelephony) StatusCallback(
 		return nil, fmt.Errorf("failed to parse request body")
 	}
 
-	// Extract event type
 	eventType, _ := payload["event"].(string)
 	callID, _ := payload["call_id"].(string)
 
@@ -286,21 +273,18 @@ func (t *sipTelephony) InboundCall(
 
 // ReceiveCall processes incoming call webhook data
 func (t *sipTelephony) ReceiveCall(c *gin.Context) (*internal_type.CallInfo, error) {
-	queryParams := make(map[string]string)
-	for key, values := range c.Request.URL.Query() {
-		if len(values) > 0 {
-			queryParams[key] = values[0]
-		}
+	clientNumber := c.Query("from")
+	if clientNumber == "" {
+		clientNumber = c.Query("caller")
+	}
+	if clientNumber == "" {
+		return nil, fmt.Errorf("missing caller information")
 	}
 
-	// Extract caller information
-	clientNumber, ok := queryParams["from"]
-	if !ok || clientNumber == "" {
-		// Try alternative parameter names
-		clientNumber, ok = queryParams["caller"]
-		if !ok || clientNumber == "" {
-			return nil, fmt.Errorf("missing caller information")
-		}
+	// Snapshot query params for the status payload
+	queryParams := make(map[string]string, len(c.Request.URL.Query()))
+	for key, values := range c.Request.URL.Query() {
+		queryParams[key] = values[0]
 	}
 
 	info := &internal_type.CallInfo{
@@ -309,7 +293,7 @@ func (t *sipTelephony) ReceiveCall(c *gin.Context) (*internal_type.CallInfo, err
 		Status:       "SUCCESS",
 		StatusInfo:   internal_type.StatusInfo{Event: "webhook", Payload: queryParams},
 	}
-	if callID, ok := queryParams["call_id"]; ok && callID != "" {
+	if callID := c.Query("call_id"); callID != "" {
 		info.ChannelUUID = callID
 	}
 	return info, nil
