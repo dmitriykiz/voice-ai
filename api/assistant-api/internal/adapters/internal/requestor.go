@@ -104,9 +104,9 @@ type genericRequestor struct {
 	queryEmbedder internal_agent_embeddings.QueryEmbedding
 	textReranker  internal_agent_rerankers.TextReranking
 
-	// observe collectors — fan out events and metrics to external APM backends
-	events  observe.EventCollector
-	metrics observe.MetricCollector
+	// observe — shared observability infrastructure (DB + exporters)
+	observer *observe.ConversationObserver
+	hooks    *observe.ConversationHooks
 
 	// integration client
 	integrationClient integration_client.IntegrationServiceClient
@@ -192,8 +192,7 @@ func NewGenericRequestor(
 		deploymentClient:  endpoint_client.NewDeploymentServiceClientGRPC(&config.AppConfig, logger, redis),
 		vaultClient:       web_client.NewVaultClientGRPC(&config.AppConfig, logger, redis),
 
-		events:  observe.NewEventCollector(logger, observe.SessionMeta{}),
-		metrics: observe.NewMetricCollector(logger, observe.SessionMeta{}),
+		// observer and hooks are initialized after session creation in initializeCollectors
 
 		contextID:         uuid.NewString(),
 		interactionState:  Unknown,
@@ -481,16 +480,74 @@ func (r *genericRequestor) initializeCollectors(ctx context.Context) {
 		metricExporters = append(metricExporters, metExp)
 	}
 
-	r.events = observe.NewEventCollector(r.logger, meta, eventExporters...)
-	r.metrics = observe.NewMetricCollector(r.logger, meta, metricExporters...)
+	r.observer = observe.NewConversationObserver(&observe.ConversationObserverConfig{
+		Logger:         r.logger,
+		Auth:           r.auth,
+		AssistantID:    r.assistant.Id,
+		ConversationID: r.assistantConversation.Id,
+		ProjectID:      projectID,
+		OrganizationID: orgID,
+		Persist: observe.PersistFunc{
+			ApplyMetrics: func(ctx context.Context, auth types.SimplePrinciple, assistantID, conversationID uint64, metrics []*types.Metric) error {
+				dbCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				_, err := r.conversationService.ApplyConversationMetrics(dbCtx, auth, assistantID, conversationID, metrics)
+				return err
+			},
+			ApplyMetadata: func(ctx context.Context, auth types.SimplePrinciple, assistantID, conversationID uint64, metadata []*types.Metadata) error {
+				dbCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				_, err := r.conversationService.ApplyConversationMetadata(dbCtx, auth, assistantID, conversationID, metadata)
+				return err
+			},
+		},
+		Events:  observe.NewEventCollector(r.logger, meta, eventExporters...),
+		Metrics: observe.NewMetricCollector(r.logger, meta, metricExporters...),
+	})
+
+	// Initialize hooks for webhook/analysis execution
+	r.hooks = observe.NewConversationHooks(&observe.ConversationHooksConfig{
+		Logger:   r.logger,
+		Snapshot: r.buildSnapshot(),
+		InvokeEndpoint: func(ctx context.Context, auth types.SimplePrinciple, endpointID uint64, endpointVersion string, arguments map[string]interface{}) (*protos.InvokeResponse, error) {
+			return r.invokeEndpoint(ctx, &protos.EndpointDefinition{
+				EndpointId: endpointID,
+				Version:    endpointVersion,
+			}, arguments, nil, nil)
+		},
+		CreateLog: func(ctx context.Context, webhookID uint64, url, method, event string, statusCode, timeTaken int64, retryCount uint32, status type_enums.RecordState, request, response []byte) error {
+			return r.CreateWebhookLog(ctx, webhookID, url, method, event, statusCode, timeTaken, retryCount, status, request, response)
+		},
+		SetMetadata: func(ctx context.Context, auth types.SimplePrinciple, metadata map[string]interface{}) error {
+			r.onSetMetadata(ctx, auth, metadata)
+			return nil
+		},
+	})
+}
+
+// buildSnapshot creates a ConversationSnapshot from the current requestor state.
+// Used to feed ConversationHooks with conversation data for webhook/analysis execution.
+func (r *genericRequestor) buildSnapshot() *observe.ConversationSnapshot {
+	histories := make([]observe.MessageEntry, 0, len(r.histories))
+	for _, m := range r.histories {
+		histories = append(histories, observe.MessageEntry{Role: m.Role(), Content: m.Content()})
+	}
+	return &observe.ConversationSnapshot{
+		Assistant:    r.assistant,
+		Conversation: &observe.ConversationRef{ID: r.assistantConversation.Id},
+		Histories:    histories,
+		Metadata:     r.GetMetadata(),
+		Arguments:    r.GetArgs(),
+		Options:      r.GetOptions(),
+		Auth:         r.auth,
+	}
 }
 
 // shutdownCollectors waits for in-flight exports and shuts down all exporters.
-// Uses a background context so shutdown completes even if the session context
-// is already cancelled at disconnect time.
 func (r *genericRequestor) shutdownCollectors(_ context.Context) {
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	r.events.Shutdown(shutdownCtx)
-	r.metrics.Shutdown(shutdownCtx)
+	if r.observer != nil {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		r.observer.Shutdown(shutdownCtx)
+	}
 }

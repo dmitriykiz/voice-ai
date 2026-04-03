@@ -32,17 +32,13 @@ const (
 )
 
 // SIPRequestContext contains information about an incoming SIP request.
-// Used by the middleware chain to authenticate and resolve config for every
-// SIP request (INVITE, REGISTER, BYE, etc.), not just INVITE.
-//
-// URI format: sip:{assistantID}:{apiKey}@aws.ap-south-east-01.rapida.ai
+// Used by the middleware chain to resolve config for every SIP request.
 //
 // Middleware enriches this context as it flows through the chain:
 //
-//	CredentialMiddleware → parses URI, sets APIKey + AssistantID
-//	AuthMiddleware       → validates API key, sets Extra["auth"]
-//	AssistantMiddleware  → loads assistant, sets Extra["assistant"]
-//	VaultConfigMiddleware→ fetches SIP config, sets Extra["sip_config"]
+//	routingMiddleware   → resolves assistant by DID lookup, sets Extra["auth"]
+//	assistantMiddleware → loads assistant entity, sets Extra["assistant"]
+//	vaultConfigResolver → fetches SIP config from vault, sets Extra["sip_config"]
 type SIPRequestContext struct {
 	Method  string // SIP method (INVITE, REGISTER, BYE, etc.)
 	CallID  string
@@ -120,10 +116,7 @@ type ConfigResolver func(ctx *SIPRequestContext) (*InviteResult, error)
 //
 // Example chain for INVITE:
 //
-//	CredentialMiddleware → AuthMiddleware → AssistantMiddleware → VaultConfigMiddleware
-//
-// For non-INVITE requests (BYE, REGISTER, OPTIONS), only credential parsing
-// and auth validation are needed.
+//	routingMiddleware → assistantMiddleware → vaultConfigResolver
 type Middleware func(ctx *SIPRequestContext, next func() (*InviteResult, error)) (*InviteResult, error)
 
 // MiddlewareChain composes a slice of Middleware into a single ConfigResolver.
@@ -472,8 +465,8 @@ func (s *Server) SetConfigResolver(resolver ConfigResolver) {
 // Example:
 //
 //	server.SetMiddlewares(
-//	    []Middleware{CredentialMiddleware, authMiddleware, assistantMiddleware},
-//	    vaultConfigFinalHandler,
+//	    []Middleware{routingMiddleware, assistantMiddleware},
+//	    vaultConfigResolver,
 //	)
 func (s *Server) SetMiddlewares(middlewares []Middleware, final ConfigResolver) {
 	s.SetConfigResolver(MiddlewareChain(middlewares, final))
@@ -493,6 +486,16 @@ func (s *Server) AllocateRTPPort() (int, error) {
 // ReleaseRTPPort returns an RTP port to the shared pool.
 func (s *Server) ReleaseRTPPort(port int) {
 	s.rtpAllocator.Release(port)
+}
+
+// Client returns the underlying sipgo client for outbound requests (e.g., REGISTER).
+func (s *Server) Client() *sipgo.Client {
+	return s.client
+}
+
+// ListenConfig returns the shared server listen configuration.
+func (s *Server) GetListenConfig() *ListenConfig {
+	return s.listenConfig
 }
 
 // SessionCount returns the number of active sessions
@@ -560,8 +563,8 @@ func (s *Server) handleInvite(req *sip.Request, tx sip.ServerTransaction) {
 		sdpInfo = &SDPMediaInfo{PreferredCodec: &CodecPCMU}
 	}
 
-	// Authenticate and resolve tenant-specific config via middleware chain.
-	// The chain: CredentialMiddleware → AuthMiddleware → AssistantMiddleware → VaultConfigMiddleware
+	// Resolve tenant-specific config via middleware chain.
+	// The chain: routingMiddleware → assistantMiddleware → vaultConfigResolver
 	// Each middleware enriches the SIPRequestContext; the final handler returns the InviteResult.
 	s.mu.RLock()
 	resolver := s.configResolver

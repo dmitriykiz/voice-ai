@@ -13,7 +13,6 @@ import (
 	internal_assistant_entity "github.com/rapidaai/api/assistant-api/internal/entity/assistants"
 	internal_conversation_entity "github.com/rapidaai/api/assistant-api/internal/entity/conversations"
 	internal_message_gorm "github.com/rapidaai/api/assistant-api/internal/entity/messages"
-	observe "github.com/rapidaai/api/assistant-api/internal/observe"
 	internal_services "github.com/rapidaai/api/assistant-api/internal/services"
 	internal_type "github.com/rapidaai/api/assistant-api/internal/type"
 	"github.com/rapidaai/pkg/commons"
@@ -259,8 +258,7 @@ func newTestRequestor(t *testing.T, ctx context.Context) *genericRequestor {
 		inputCh:               make(chan packetEnvelope, 4096),
 		outputCh:              make(chan packetEnvelope, 2048),
 		lowCh:                 make(chan packetEnvelope, 2048),
-		events:                observe.NewEventCollector(logger, observe.SessionMeta{}),
-		metrics:               observe.NewMetricCollector(logger, observe.SessionMeta{}),
+		// observer is nil in tests — handlers nil-check before use
 	}
 }
 

@@ -250,7 +250,7 @@ func (h *RTPHandler) sendInitialSilence() {
 	data := h.serializeRTPPacket(packet)
 
 	// LOG BEFORE WRITE: exact socket + destination + packet size
-	h.logger.Infow("sendInitialSilence: ABOUT TO send RTP",
+	h.logger.Debugw("sendInitialSilence: sending RTP",
 		"conn_local_addr", h.conn.LocalAddr().String(),
 		"dest_addr", remoteAddr.String(),
 		"dest_ip", remoteAddr.IP.String(),
@@ -275,7 +275,7 @@ func (h *RTPHandler) sendInitialSilence() {
 	h.packetsSent.Add(1)
 	h.bytesSent.Add(uint64(len(chunk)))
 	if h.logger != nil {
-		h.logger.Infow("sendInitialSilence: send SUCCESS",
+		h.logger.Debugw("sendInitialSilence: sent",
 			"bytes_written", n,
 			"dest", remoteAddr.String(),
 			"conn_local", h.conn.LocalAddr().String(),

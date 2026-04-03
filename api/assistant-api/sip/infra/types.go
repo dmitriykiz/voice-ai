@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	internal_type "github.com/rapidaai/api/assistant-api/internal/type"
@@ -311,4 +312,31 @@ type SIPSession struct {
 	Config      *Config
 	Streamer    internal_type.Streamer
 	Cancel      context.CancelFunc
+}
+
+// ExtractDIDFromURI extracts the user part from a SIP URI as a phone number (DID).
+//
+//	"sip:+15551234567@provider.com" → "+15551234567"
+//	"sip:15551234567@provider.com"  → "+15551234567"
+//	"sip:user:pass@host"            → "" (credential pair, not a DID)
+func ExtractDIDFromURI(uri string) string {
+	raw := strings.TrimPrefix(strings.TrimPrefix(uri, "sip:"), "sips:")
+
+	parts := strings.SplitN(raw, "@", 2)
+	if len(parts) == 0 || parts[0] == "" {
+		return ""
+	}
+	user := parts[0]
+
+	// Skip credential pairs (assistantID:apiKey)
+	if strings.Contains(user, ":") {
+		return ""
+	}
+
+	// Normalize to E.164: add "+" prefix for phone numbers
+	if len(user) > 5 && user[0] != '+' {
+		user = "+" + user
+	}
+
+	return user
 }

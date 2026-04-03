@@ -57,11 +57,13 @@ func (t *genericRequestor) Talk(_ context.Context, auth types.SimplePrinciple) e
 				if err := t.onAddMetrics(context.Background(), completionMetrics...); err != nil {
 					t.logger.Errorf("talk: failed to persist completion metrics: %v", err)
 				}
-				t.metrics.Collect(context.Background(), observe.ConversationMetricRecord{
-					ConversationID: fmt.Sprintf("%d", t.Conversation().Id),
-					Metrics:        completionMetrics,
-					Time:           time.Now(),
-				})
+				if t.observer != nil {
+					t.observer.MetricCollectors().Collect(context.Background(), observe.ConversationMetricRecord{
+						ConversationID: fmt.Sprintf("%d", t.Conversation().Id),
+						Metrics:        completionMetrics,
+						Time:           time.Now(),
+					})
+				}
 				t.Disconnect(context.Background())
 			}
 			return nil

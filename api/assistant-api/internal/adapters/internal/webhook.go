@@ -7,248 +7,46 @@ package adapter_internal
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"slices"
-	"strconv"
-	"strings"
-	"time"
 
-	internal_assistant_entity "github.com/rapidaai/api/assistant-api/internal/entity/assistants"
-	internal_type "github.com/rapidaai/api/assistant-api/internal/type"
 	endpoint_client_builders "github.com/rapidaai/pkg/clients/endpoint/builders"
-	"github.com/rapidaai/pkg/clients/rest"
-	type_enums "github.com/rapidaai/pkg/types/enums"
-	"github.com/rapidaai/pkg/utils"
 	"github.com/rapidaai/protos"
 )
 
+// OnBeginConversation fires webhooks subscribed to ConversationBegin.
+// Delegates to the shared ConversationHooks infrastructure.
 func (md *genericRequestor) OnBeginConversation(ctx context.Context) error {
-
-	for _, webhook := range md.assistant.AssistantWebhooks {
-		if slices.Contains(webhook.AssistantEvents, utils.ConversationBegin.Get()) {
-			arguments := md.Parse(utils.ConversationBegin, webhook.GetBody())
-			md.Webhook(ctx, utils.ConversationBegin.Get(), arguments, webhook)
-		}
+	if md.hooks != nil {
+		md.hooks.OnBegin(ctx)
 	}
 	return nil
 }
 
+// OnResumeConversation fires webhooks subscribed to ConversationResume.
 func (md *genericRequestor) OnResumeConversation(ctx context.Context) error {
-	for _, webhook := range md.assistant.AssistantWebhooks {
-		if slices.Contains(webhook.AssistantEvents, utils.ConversationBegin.Get()) {
-			arguments := md.Parse(utils.ConversationResume, webhook.GetBody())
-			md.Webhook(ctx, utils.ConversationBegin.Get(), arguments, webhook)
-		}
+	if md.hooks != nil {
+		md.hooks.OnResume(ctx)
 	}
 	return nil
 }
 
+// OnErrorConversation fires webhooks subscribed to ConversationFailed.
 func (md *genericRequestor) OnErrorConversation(ctx context.Context) error {
-	for _, webhook := range md.assistant.AssistantWebhooks {
-		if slices.Contains(webhook.AssistantEvents, utils.ConversationFailed.Get()) {
-			arguments := md.Parse(utils.ConversationFailed, webhook.GetBody())
-			md.Webhook(ctx, utils.ConversationFailed.Get(), arguments, webhook)
-		}
+	if md.hooks != nil {
+		md.hooks.OnError(ctx)
 	}
 	return nil
 }
 
+// OnEndConversation runs analyses then fires webhooks for ConversationCompleted.
+// Refreshes the snapshot before execution so analysis/webhooks see the latest
+// conversation state (messages, metadata accumulated during the call).
 func (md *genericRequestor) OnEndConversation(ctx context.Context) error {
-	utils.Go(ctx, func() {
-		if len(md.assistant.AssistantAnalyses) > 0 {
-			output := make(map[string]interface{})
-			for _, a := range md.assistant.AssistantAnalyses {
-				aArgs := md.Parse(utils.ConversationCompleted, a.GetParameters())
-				o, err := md.Analysis(ctx, a.GetEndpointId(), a.GetEndpointVersion(), aArgs)
-				if err != nil {
-					md.logger.Errorf("error while executing analysis, check the config")
-					continue
-				}
-				output[fmt.Sprintf("analysis.%s", a.GetName())] = o
-			}
-			md.onSetMetadata(ctx, md.Auth(), output)
-		}
-		for _, webhook := range md.assistant.AssistantWebhooks {
-			if slices.Contains(webhook.AssistantEvents, utils.ConversationCompleted.Get()) {
-				arguments := md.Parse(utils.ConversationCompleted, webhook.GetBody())
-				md.Webhook(ctx, utils.ConversationCompleted.Get(), arguments, webhook)
-			}
-		}
-	})
+	if md.hooks != nil {
+		// Refresh snapshot with current state (histories, metadata may have changed during call)
+		md.hooks.RefreshSnapshot(md.buildSnapshot())
+		md.hooks.OnEnd(ctx)
+	}
 	return nil
-}
-
-func (hk *genericRequestor) Analysis(ctx context.Context, endpointId uint64, endpointVersion string, arguments map[string]interface{}) (map[string]interface{}, error) {
-	ivk, err := hk.invokeEndpoint(
-		ctx,
-		&protos.EndpointDefinition{
-			EndpointId: endpointId,
-			Version:    endpointVersion,
-		},
-		arguments,
-		nil, nil,
-	)
-	if err != nil {
-		hk.logger.Errorf("error while calling analysis %v", err)
-		return nil, err
-	}
-	if ivk.GetSuccess() {
-		if data := ivk.GetData(); len(data) > 0 {
-			var contentData map[string]interface{}
-			if err := json.Unmarshal([]byte(data[0]), &contentData); err != nil {
-				return map[string]interface{}{
-					"result": data[0],
-				}, nil
-			}
-			return contentData, nil
-		}
-	}
-	return nil, fmt.Errorf("empty response from endpoint")
-}
-
-func (md *genericRequestor) Webhook(ctx context.Context, event string, arguments map[string]interface{}, webhook *internal_assistant_entity.AssistantWebhook) {
-	utils.Go(ctx, func() {
-		startTime := time.Now()
-		var res *rest.APIResponse
-		var err error
-		var statusCode int
-
-		retryCount := uint32(0)
-		maxRetryCount := webhook.GetMaxRetryCount()
-		retryStatusCodes := webhook.GetRetryStatusCode()
-
-		for retryCount <= maxRetryCount {
-			res, err = md.executeWebhook(ctx,
-				webhook.GetTimeoutSecond(),
-				webhook.GetUrl(),
-				webhook.GetMethod(),
-				webhook.GetHeaders(),
-				arguments,
-			)
-
-			if err != nil {
-				md.logger.Error("Webhook execution failed", "error", err)
-				statusCode = 500
-			} else {
-				statusCode = res.StatusCode
-				if !slices.Contains(retryStatusCodes, strconv.Itoa(statusCode)) {
-					break
-				}
-			}
-
-			retryCount++
-			if retryCount <= maxRetryCount {
-				time.Sleep(time.Second * 2)
-			}
-		}
-
-		c, serializeErr := utils.Serialize(arguments)
-		if serializeErr != nil {
-			md.logger.Error("Failed to serialize arguments", "error", serializeErr)
-		}
-
-		v, err := res.ToJSON()
-		if err != nil {
-			md.logger.Error("Failed to convert response to JSON", "error", err)
-		}
-		logErr := md.CreateWebhookLog(
-			ctx,
-			webhook.Id,
-			webhook.HttpUrl,
-			webhook.HttpMethod,
-			event,
-			int64(statusCode),
-			int64(time.Since(startTime)),
-			uint32(retryCount),
-			type_enums.RECORD_COMPLETE,
-			c,
-			v,
-		)
-		if logErr != nil {
-			md.logger.Error("Failed to create webhook log", "error", logErr)
-		}
-	})
-}
-
-func (md *genericRequestor) SimplifyHistory(msgs []internal_type.MessagePacket) []map[string]string {
-	out := make([]map[string]string, 0)
-	for _, msg := range msgs {
-		out = append(out, map[string]string{
-			"role":    msg.Role(),
-			"message": msg.Content(),
-		})
-	}
-	return out
-}
-
-func (md *genericRequestor) Parse(event utils.AssistantWebhookEvent, mapping map[string]string) map[string]interface{} {
-	arguments := make(map[string]interface{})
-	for key, value := range mapping {
-		if k, ok := strings.CutPrefix(key, "event."); ok {
-			switch k {
-			case "type":
-				arguments[value] = event.Get()
-			case "data":
-				analysisData := make(map[string]interface{})
-				for k, v := range md.GetMetadata() {
-					if analysisKey, ok := strings.CutPrefix(k, "analysis."); ok {
-						analysisData[analysisKey] = v
-					}
-				}
-				arguments[value] = map[string]interface{}{
-					"assistant": map[string]interface{}{
-						"id":      fmt.Sprintf("%d", md.assistant.Id),
-						"version": fmt.Sprintf("vrsn_%d", md.assistant.AssistantProviderId),
-					},
-					"conversation": map[string]interface{}{
-						"id":       fmt.Sprintf("%d", md.assistantConversation.Id),
-						"messages": md.SimplifyHistory(md.GetHistories()),
-					},
-					"analysis": analysisData,
-				}
-			}
-		}
-		if k, ok := strings.CutPrefix(key, "assistant."); ok {
-			switch k {
-			case "id":
-				arguments[value] = fmt.Sprintf("%d", md.assistant.Id)
-			case "version":
-				arguments[value] = fmt.Sprintf("vrsn_%d", md.assistant.AssistantProviderId)
-			}
-		}
-		if k, ok := strings.CutPrefix(key, "conversation."); ok {
-			switch k {
-			case "id":
-				arguments[value] = fmt.Sprintf("%d", md.assistantConversation.Id)
-			case "messages":
-				arguments[value] = md.SimplifyHistory(md.GetHistories())
-			}
-		}
-		if k, ok := strings.CutPrefix(key, "argument."); ok {
-			if aArg, ok := md.GetArgs()[k]; ok {
-				arguments[value] = aArg
-			}
-		}
-		if k, ok := strings.CutPrefix(key, "metadata."); ok {
-			if mtd, ok := md.GetMetadata()[k]; ok {
-				arguments[value] = mtd
-			}
-		}
-		if k, ok := strings.CutPrefix(key, "option."); ok {
-			if ot, ok := md.GetOptions()[k]; ok {
-				arguments[value] = ot
-			}
-		}
-
-		if ok := strings.HasPrefix(key, "analysis."); ok {
-			if ot, ok := md.GetMetadata()[key]; ok {
-				arguments[value] = ot
-			}
-		}
-
-	}
-	return arguments
 }
 
 // invokeEndpoint calls a configured endpoint via the deployment client.
@@ -264,19 +62,4 @@ func (ae *genericRequestor) invokeEndpoint(ctx context.Context, endpointDef *pro
 			inputBuilder.Options(opts, nil),
 		),
 	)
-}
-
-// executeWebhook performs the actual HTTP request for a webhook call.
-func (aw *genericRequestor) executeWebhook(ctx context.Context, timeout uint32, baseUrl string, method string, headers map[string]string, body map[string]interface{}) (*rest.APIResponse, error) {
-	client := rest.NewRestClientWithConfig(baseUrl, headers, timeout)
-	switch method {
-	case "POST":
-		return client.Post(ctx, "", body, headers)
-	case "PUT":
-		return client.Put(ctx, "", body, headers)
-	case "PATCH":
-		return client.Patch(ctx, "", body, headers)
-	default:
-		return client.Get(ctx, "", body, headers)
-	}
 }

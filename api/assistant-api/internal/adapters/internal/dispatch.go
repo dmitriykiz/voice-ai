@@ -863,14 +863,9 @@ func (talking *genericRequestor) handleConversationMetric(ctx context.Context, v
 			AssistantConversationId: talking.Conversation().Id,
 			Metrics:                 vl.Metrics,
 		})
-		if err := talking.onAddMetrics(ctx, vl.Metrics...); err != nil {
-			talking.logger.Errorf("Error in onAddMetrics: %v", err)
+		if talking.observer != nil {
+			talking.observer.EmitMetric(ctx, vl.Metrics)
 		}
-		talking.metrics.Collect(ctx, observe.ConversationMetricRecord{
-			ConversationID: fmt.Sprintf("%d", talking.Conversation().Id),
-			Metrics:        vl.Metrics,
-			Time:           time.Now(),
-		})
 	}
 }
 
@@ -891,12 +886,14 @@ func (talking *genericRequestor) handleAssistantMessageMetric(ctx context.Contex
 		if err := talking.onAddMessageMetric(ctx, "assistant", vl.ContextID, vl.Metrics); err != nil {
 			talking.logger.Errorf("Error in onMessageMetric: %v", err)
 		}
-		talking.metrics.Collect(ctx, observe.MessageMetricRecord{
-			MessageID:      vl.ContextID,
-			ConversationID: fmt.Sprintf("%d", talking.Conversation().Id),
-			Metrics:        vl.Metrics,
-			Time:           time.Now(),
-		})
+		if talking.observer != nil {
+			talking.observer.MetricCollectors().Collect(ctx, observe.MessageMetricRecord{
+				MessageID:      vl.ContextID,
+				ConversationID: fmt.Sprintf("%d", talking.Conversation().Id),
+				Metrics:        vl.Metrics,
+				Time:           time.Now(),
+			})
+		}
 	}
 }
 
@@ -912,12 +909,14 @@ func (talking *genericRequestor) handleUserMessageMetric(ctx context.Context, vl
 		if err := talking.onAddMessageMetric(ctx, "user", vl.ContextID, vl.Metrics); err != nil {
 			talking.logger.Errorf("Error in onMessageMetric: %v", err)
 		}
-		talking.metrics.Collect(ctx, observe.MessageMetricRecord{
-			MessageID:      vl.ContextID,
-			ConversationID: fmt.Sprintf("%d", talking.Conversation().Id),
-			Metrics:        vl.Metrics,
-			Time:           time.Now(),
-		})
+		if talking.observer != nil {
+			talking.observer.MetricCollectors().Collect(ctx, observe.MessageMetricRecord{
+				MessageID:      vl.ContextID,
+				ConversationID: fmt.Sprintf("%d", talking.Conversation().Id),
+				Metrics:        vl.Metrics,
+				Time:           time.Now(),
+			})
+		}
 	}
 }
 
@@ -1025,10 +1024,12 @@ func (talking *genericRequestor) handleConversationEvent(ctx context.Context, vl
 		Data: vl.Data,
 		Time: timestamppb.New(vl.Time),
 	})
-	talking.events.Collect(ctx, observe.EventRecord{
-		MessageID: contextID,
-		Name:      vl.Name,
-		Data:      vl.Data,
-		Time:      vl.Time,
-	})
+	if talking.observer != nil {
+		talking.observer.EventCollectors().Collect(ctx, observe.EventRecord{
+			MessageID: contextID,
+			Name:      vl.Name,
+			Data:      vl.Data,
+			Time:      vl.Time,
+		})
+	}
 }

@@ -49,9 +49,9 @@ func NewOutboundDispatcher(deps TelephonyDispatcherDeps) *OutboundDispatcher {
 // outbound call. It should be called in a goroutine so the caller does not
 // block on telephony provider latency.
 func (d *OutboundDispatcher) Dispatch(ctx context.Context, contextID string) error {
-	cc, err := d.store.Get(ctx, contextID)
+	cc, err := d.store.Claim(ctx, contextID)
 	if err != nil {
-		d.logger.Errorf("outbound dispatcher: failed to resolve call context %s: %v", contextID, err)
+		d.logger.Errorf("outbound dispatcher: failed to claim call context %s: %v", contextID, err)
 		return err
 	}
 

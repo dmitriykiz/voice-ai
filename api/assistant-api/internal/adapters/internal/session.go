@@ -110,12 +110,14 @@ func (r *genericRequestor) Disconnect(ctx context.Context) {
 	// because the dispatcher goroutine runs on the streamer context, which is
 	// already cancelled by the time Disconnect() is called. drainChannels() will
 	// have already returned, so any packet enqueued here would be silently lost.
-	r.events.Collect(context.Background(), observe.EventRecord{
-		MessageID: r.GetID(),
-		Name:      "session",
-		Data:      map[string]string{"type": "disconnected", "total_messages": fmt.Sprintf("%d", len(r.GetHistories()))},
-		Time:      time.Now(),
-	})
+	if r.observer != nil {
+		r.observer.EventCollectors().Collect(context.Background(), observe.EventRecord{
+			MessageID: r.GetID(),
+			Name:      "session",
+			Data:      map[string]string{"type": "disconnected", "total_messages": fmt.Sprintf("%d", len(r.GetHistories()))},
+			Time:      time.Now(),
+		})
+	}
 	r.shutdownCollectors(ctx)
 
 	// Phase 5: Close assistant executor and stop timers
@@ -396,11 +398,13 @@ func (r *genericRequestor) initSessionBackground(ctx context.Context, isNew bool
 			Description: "Conversation is currently in progress",
 		}}
 		r.onAddMetrics(ctx, metrics...)
-		r.metrics.Collect(ctx, observe.ConversationMetricRecord{
-			ConversationID: fmt.Sprintf("%d", r.Conversation().Id),
-			Metrics:        metrics,
-			Time:           time.Now(),
-		})
+		if r.observer != nil {
+			r.observer.MetricCollectors().Collect(ctx, observe.ConversationMetricRecord{
+				ConversationID: fmt.Sprintf("%d", r.Conversation().Id),
+				Metrics:        metrics,
+				Time:           time.Now(),
+			})
+		}
 	})
 
 	utils.Go(ctx, func() {

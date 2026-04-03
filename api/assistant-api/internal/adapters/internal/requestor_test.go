@@ -58,13 +58,15 @@ func TestInitializeCollectors_NoProvidersConfigured_UsesNoopCollectors(t *testin
 
 	r.initializeCollectors(context.Background())
 
-	assert.True(t, strings.Contains(fmt.Sprintf("%T", r.events), "noopEventCollector"))
-	assert.True(t, strings.Contains(fmt.Sprintf("%T", r.metrics), "noopMetricCollector"))
+	assert.NotNil(t, r.observer)
+	evtCollector := r.observer.EventCollectors()
+	metCollector := r.observer.MetricCollectors()
+	assert.True(t, strings.Contains(fmt.Sprintf("%T", evtCollector), "noopEventCollector"))
+	assert.True(t, strings.Contains(fmt.Sprintf("%T", metCollector), "noopMetricCollector"))
 	assert.NotPanics(t, func() {
-		r.events.Collect(context.Background(), sessionEventRecord("connected"))
-		r.metrics.Collect(context.Background(), conversationMetricRecord("202"))
-		r.events.Shutdown(context.Background())
-		r.metrics.Shutdown(context.Background())
+		evtCollector.Collect(context.Background(), sessionEventRecord("connected"))
+		metCollector.Collect(context.Background(), conversationMetricRecord("202"))
+		r.observer.Shutdown(context.Background())
 	})
 }
 
@@ -76,13 +78,15 @@ func TestInitializeCollectors_LoggingProvider_UsesFanoutCollectors(t *testing.T)
 		},
 	})
 	r.initializeCollectors(context.Background())
-	assert.True(t, strings.Contains(fmt.Sprintf("%T", r.events), "fanoutEventCollector"))
-	assert.True(t, strings.Contains(fmt.Sprintf("%T", r.metrics), "fanoutMetricCollector"))
+	assert.NotNil(t, r.observer)
+	evtCollector := r.observer.EventCollectors()
+	metCollector := r.observer.MetricCollectors()
+	assert.True(t, strings.Contains(fmt.Sprintf("%T", evtCollector), "fanoutEventCollector"))
+	assert.True(t, strings.Contains(fmt.Sprintf("%T", metCollector), "fanoutMetricCollector"))
 	assert.NotPanics(t, func() {
-		r.events.Collect(context.Background(), sessionEventRecord("connected"))
-		r.metrics.Collect(context.Background(), conversationMetricRecord("202"))
-		r.events.Shutdown(context.Background())
-		r.metrics.Shutdown(context.Background())
+		evtCollector.Collect(context.Background(), sessionEventRecord("connected"))
+		metCollector.Collect(context.Background(), conversationMetricRecord("202"))
+		r.observer.Shutdown(context.Background())
 	})
 }
 
@@ -96,8 +100,9 @@ func TestInitializeCollectors_OTLPMissingEndpoint_SkipsToNoopCollectors(t *testi
 
 	r.initializeCollectors(context.Background())
 
-	assert.True(t, strings.Contains(fmt.Sprintf("%T", r.events), "noopEventCollector"))
-	assert.True(t, strings.Contains(fmt.Sprintf("%T", r.metrics), "noopMetricCollector"))
+	assert.NotNil(t, r.observer)
+	assert.True(t, strings.Contains(fmt.Sprintf("%T", r.observer.EventCollectors()), "noopEventCollector"))
+	assert.True(t, strings.Contains(fmt.Sprintf("%T", r.observer.MetricCollectors()), "noopMetricCollector"))
 }
 
 func sessionEventRecord(eventType string) observe.EventRecord {
@@ -124,6 +129,7 @@ func TestInitializeCollectors_UnknownProvider_SkipsToNoopCollectors(t *testing.T
 		},
 	})
 	r.initializeCollectors(context.Background())
-	assert.True(t, strings.Contains(fmt.Sprintf("%T", r.events), "noopEventCollector"))
-	assert.True(t, strings.Contains(fmt.Sprintf("%T", r.metrics), "noopMetricCollector"))
+	assert.NotNil(t, r.observer)
+	assert.True(t, strings.Contains(fmt.Sprintf("%T", r.observer.EventCollectors()), "noopEventCollector"))
+	assert.True(t, strings.Contains(fmt.Sprintf("%T", r.observer.MetricCollectors()), "noopMetricCollector"))
 }

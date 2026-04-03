@@ -556,6 +556,13 @@ func (s *Session) ByeReceived() <-chan struct{} {
 	return s.byeReceived
 }
 
+// GetConfig returns the SIP configuration for this session.
+func (s *Session) GetConfig() *Config {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.config
+}
+
 // GetState returns the current session state
 func (s *Session) GetState() CallState {
 	s.mu.RLock()
