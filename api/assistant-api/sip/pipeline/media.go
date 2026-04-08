@@ -20,7 +20,8 @@ func (d *Dispatcher) handleSessionEstablished(ctx context.Context, v sip_infra.S
 	d.logger.Infow("Pipeline: SessionEstablished",
 		"call_id", v.ID,
 		"direction", v.Direction,
-		"assistant_id", v.AssistantID)
+		"assistant_id", v.AssistantID,
+		"conversation_id", v.ConversationID)
 
 	if d.onCallSetup == nil || d.onCallStart == nil {
 		d.logger.Error("Pipeline: callbacks not configured", "call_id", v.ID)
@@ -28,7 +29,26 @@ func (d *Dispatcher) handleSessionEstablished(ctx context.Context, v sip_infra.S
 		return
 	}
 
-	setup, err := d.onCallSetup(ctx, v.Session, v.Auth, v.AssistantID, v.FromURI, string(v.Direction))
+	// Resolve conversation ID:
+	// - Outbound: already created by channel pipeline, passed in ConversationID
+	// - Inbound: create now via onCreateConversation
+	conversationID := v.ConversationID
+	if conversationID == 0 {
+		if d.onCreateConversation == nil {
+			d.logger.Error("Pipeline: onCreateConversation not configured", "call_id", v.ID)
+			v.Session.End()
+			return
+		}
+		var err error
+		conversationID, err = d.onCreateConversation(ctx, v.Auth, v.AssistantID, v.FromURI, string(v.Direction))
+		if err != nil {
+			d.logger.Error("Pipeline: create conversation failed", "call_id", v.ID, "error", err)
+			v.Session.End()
+			return
+		}
+	}
+
+	setup, err := d.onCallSetup(ctx, v.Session, v.Auth, v.AssistantID, conversationID)
 	if err != nil {
 		d.logger.Error("Pipeline: call setup failed", "call_id", v.ID, "error", err)
 		v.Session.End()

@@ -41,17 +41,20 @@ type Dispatcher struct {
 	server             *sip_infra.Server
 	registrationClient *sip_infra.RegistrationClient
 
-	didResolver      DIDResolverFunc
-	onCallSetup      OnCallSetupFunc
-	onCallStart      OnCallStartFunc
-	onCallEnd        OnCallEndFunc
-	onCreateObserver OnCreateObserverFunc
-	onCreateHooks    OnCreateHooksFunc
+	didResolver          DIDResolverFunc
+	onCreateConversation OnCreateConversationFunc
+	onCallSetup          OnCallSetupFunc
+	onCallStart          OnCallStartFunc
+	onCallEnd            OnCallEndFunc
+	onCreateObserver     OnCreateObserverFunc
+	onCreateHooks        OnCreateHooksFunc
 }
 
 type DIDResolverFunc func(did string) (assistantID uint64, auth types.SimplePrinciple, err error)
 
-type OnCallSetupFunc func(ctx context.Context, session *sip_infra.Session, auth types.SimplePrinciple, assistantID uint64, fromURI string, direction string) (*CallSetupResult, error)
+type OnCreateConversationFunc func(ctx context.Context, auth types.SimplePrinciple, assistantID uint64, fromURI string, direction string) (conversationID uint64, err error)
+
+type OnCallSetupFunc func(ctx context.Context, session *sip_infra.Session, auth types.SimplePrinciple, assistantID uint64, conversationID uint64) (*CallSetupResult, error)
 
 type CallSetupResult struct {
 	AssistantID         uint64
@@ -72,28 +75,30 @@ type OnCreateObserverFunc func(ctx context.Context, setup *CallSetupResult, auth
 type OnCreateHooksFunc func(ctx context.Context, auth types.SimplePrinciple, assistantID, conversationID uint64) *observe.ConversationHooks
 
 type DispatcherConfig struct {
-	Logger             commons.Logger
-	Server             *sip_infra.Server
-	RegistrationClient *sip_infra.RegistrationClient
-	DIDResolver        DIDResolverFunc
-	OnCallSetup        OnCallSetupFunc
-	OnCallStart        OnCallStartFunc
-	OnCallEnd          OnCallEndFunc
-	OnCreateObserver   OnCreateObserverFunc
-	OnCreateHooks      OnCreateHooksFunc
+	Logger               commons.Logger
+	Server               *sip_infra.Server
+	RegistrationClient   *sip_infra.RegistrationClient
+	DIDResolver          DIDResolverFunc
+	OnCreateConversation OnCreateConversationFunc
+	OnCallSetup          OnCallSetupFunc
+	OnCallStart          OnCallStartFunc
+	OnCallEnd            OnCallEndFunc
+	OnCreateObserver     OnCreateObserverFunc
+	OnCreateHooks        OnCreateHooksFunc
 }
 
 func NewDispatcher(cfg *DispatcherConfig) *Dispatcher {
 	return &Dispatcher{
-		logger:             cfg.Logger,
-		server:             cfg.Server,
-		registrationClient: cfg.RegistrationClient,
-		didResolver:        cfg.DIDResolver,
-		onCallSetup:        cfg.OnCallSetup,
-		onCallStart:        cfg.OnCallStart,
-		onCallEnd:          cfg.OnCallEnd,
-		onCreateObserver:   cfg.OnCreateObserver,
-		onCreateHooks:      cfg.OnCreateHooks,
+		logger:               cfg.Logger,
+		server:               cfg.Server,
+		registrationClient:   cfg.RegistrationClient,
+		didResolver:          cfg.DIDResolver,
+		onCreateConversation: cfg.OnCreateConversation,
+		onCallSetup:          cfg.OnCallSetup,
+		onCallStart:          cfg.OnCallStart,
+		onCallEnd:            cfg.OnCallEnd,
+		onCreateObserver:     cfg.OnCreateObserver,
+		onCreateHooks:        cfg.OnCreateHooks,
 		signalCh:           make(chan callEnvelope, signalChSize),
 		setupCh:            make(chan callEnvelope, setupChSize),
 		mediaCh:            make(chan callEnvelope, mediaChSize),

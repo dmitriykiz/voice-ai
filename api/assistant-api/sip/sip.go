@@ -144,14 +144,15 @@ func (m *SIPEngine) Connect(ctx context.Context) error {
 	m.registrationClient = sip_infra.NewRegistrationClient(server.Client(), server.GetListenConfig(), m.logger)
 
 	m.dispatcher = sip_pipeline.NewDispatcher(&sip_pipeline.DispatcherConfig{
-		Logger:             m.logger,
-		Server:             server,
-		RegistrationClient: m.registrationClient,
-		DIDResolver:        m.resolveAssistantByDID,
-		OnCallSetup:        m.pipelineCallSetup,
-		OnCallStart:        m.pipelineCallStart,
-		OnCallEnd:        m.pipelineCallEnd,
-		OnCreateObserver: m.createObserver,
+		Logger:               m.logger,
+		Server:               server,
+		RegistrationClient:   m.registrationClient,
+		DIDResolver:          m.resolveAssistantByDID,
+		OnCreateConversation: m.pipelineCreateConversation,
+		OnCallSetup:          m.pipelineCallSetup,
+		OnCallStart:          m.pipelineCallStart,
+		OnCallEnd:            m.pipelineCallEnd,
+		OnCreateObserver:     m.createObserver,
 	})
 	m.dispatcher.Start(m.ctx)
 
@@ -280,6 +281,14 @@ func (m *SIPEngine) onInvite(session *sip_infra.Session, fromURI, toURI string) 
 		return fmt.Errorf("missing assistant context on session %s", callID)
 	}
 
+	// For outbound, pass conversation_id from session metadata (created by channel pipeline)
+	var conversationID uint64
+	if convIDVal, ok := session.GetMetadata("conversation_id"); ok {
+		if id, ok := convIDVal.(uint64); ok {
+			conversationID = id
+		}
+	}
+
 	m.dispatcher.OnPipeline(m.ctx, sip_infra.SessionEstablishedPipeline{
 		ID:              callID,
 		Session:         session,
@@ -289,6 +298,7 @@ func (m *SIPEngine) onInvite(session *sip_infra.Session, fromURI, toURI string) 
 		AssistantID:     assistantID,
 		Auth:            auth,
 		FromURI:         fromURI,
+		ConversationID:  conversationID,
 	})
 
 	return nil
@@ -309,11 +319,15 @@ func (m *SIPEngine) onCancel(session *sip_infra.Session) error {
 }
 
 func (m *SIPEngine) EndCall(callID string) error {
-	session, ok := m.server.GetSession(callID)
+	srv := m.server
+	if srv == nil {
+		return fmt.Errorf("SIP server not running")
+	}
+	session, ok := srv.GetSession(callID)
 	if !ok {
 		return fmt.Errorf("session %s not found", callID)
 	}
-	return m.server.EndCall(session)
+	return srv.EndCall(session)
 }
 
 func (m *SIPEngine) GetActiveCalls() int {
@@ -588,10 +602,40 @@ func (m *SIPEngine) UnregisterAssistant(ctx context.Context, did string) error {
 	return m.registrationClient.Unregister(ctx, did)
 }
 
-// pipelineCallSetup creates a conversation for a call. It reuses the assistant
-// entity from session metadata when available (set by onInvite), falling back to
-// a DB reload for edge cases.
-func (m *SIPEngine) pipelineCallSetup(ctx context.Context, session *sip_infra.Session, auth types.SimplePrinciple, assistantID uint64, fromURI string, direction string) (*sip_pipeline.CallSetupResult, error) {
+// pipelineCreateConversation creates a conversation for inbound calls.
+// For outbound calls, the conversation is already created by the channel pipeline.
+func (m *SIPEngine) pipelineCreateConversation(ctx context.Context, auth types.SimplePrinciple, assistantID uint64, fromURI string, direction string) (uint64, error) {
+	dirEnum := type_enums.DIRECTION_INBOUND
+	source := utils.SIP
+	if direction == "outbound" {
+		dirEnum = type_enums.DIRECTION_OUTBOUND
+		source = utils.PhoneCall
+	}
+
+	// Normalize SIP URI to phone number for caller identity
+	callerNumber := sip_infra.ExtractDIDFromURI(fromURI)
+	if callerNumber == "" {
+		callerNumber = fromURI
+	}
+
+	assistant, err := m.assistantService.Get(ctx, auth, assistantID, utils.GetVersionDefinition("latest"),
+		&internal_services.GetAssistantOption{InjectPhoneDeployment: true})
+	if err != nil {
+		return 0, fmt.Errorf("failed to load assistant %d: %w", assistantID, err)
+	}
+
+	conversation, err := m.assistantConversationService.CreateConversation(
+		ctx, auth, callerNumber, assistant.Id, assistant.AssistantProviderId, dirEnum, source,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create conversation: %w", err)
+	}
+	return conversation.Id, nil
+}
+
+// pipelineCallSetup builds the CallSetupResult from auth and IDs.
+// Pure function — conversation must already exist (created by pipeline or channel layer).
+func (m *SIPEngine) pipelineCallSetup(ctx context.Context, session *sip_infra.Session, auth types.SimplePrinciple, assistantID uint64, conversationID uint64) (*sip_pipeline.CallSetupResult, error) {
 	var assistant *internal_assistant_entity.Assistant
 	if assistantVal, ok := session.GetMetadata("assistant"); ok {
 		assistant, _ = assistantVal.(*internal_assistant_entity.Assistant)
@@ -605,23 +649,9 @@ func (m *SIPEngine) pipelineCallSetup(ctx context.Context, session *sip_infra.Se
 		}
 	}
 
-	dirEnum := type_enums.DIRECTION_INBOUND
-	source := utils.SIP
-	if direction == "outbound" {
-		dirEnum = type_enums.DIRECTION_OUTBOUND
-		source = utils.PhoneCall
-	}
-
-	conversation, err := m.assistantConversationService.CreateConversation(
-		ctx, auth, fromURI, assistant.Id, assistant.AssistantProviderId, dirEnum, source,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create conversation: %w", err)
-	}
-
 	result := &sip_pipeline.CallSetupResult{
 		AssistantID:         assistant.Id,
-		ConversationID:      conversation.Id,
+		ConversationID:      conversationID,
 		AssistantProviderId: assistant.AssistantProviderId,
 		AuthToken:           auth.GetCurrentToken(),
 		AuthType:            auth.Type(),
@@ -733,7 +763,11 @@ func (m *SIPEngine) pipelineCallStart(ctx context.Context, session *sip_infra.Se
 }
 
 func (m *SIPEngine) pipelineCallEnd(callID string) {
-	if session, ok := m.server.GetSession(callID); ok {
+	srv := m.server
+	if srv == nil {
+		return
+	}
+	if session, ok := srv.GetSession(callID); ok {
 		session.End()
 	}
 }

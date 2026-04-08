@@ -59,7 +59,7 @@ func TestHandleSessionEstablished_SetupErrorEndsSession(t *testing.T) {
 
 	d := NewDispatcher(&DispatcherConfig{
 		Logger: newPipelineTestLogger(t),
-		OnCallSetup: func(ctx context.Context, session *sip_infra.Session, auth types.SimplePrinciple, assistantID uint64, fromURI string, direction string) (*CallSetupResult, error) {
+		OnCallSetup: func(ctx context.Context, session *sip_infra.Session, auth types.SimplePrinciple, assistantID uint64, conversationID uint64) (*CallSetupResult, error) {
 			return nil, fmt.Errorf("setup failed")
 		},
 		OnCallStart: func(ctx context.Context, session *sip_infra.Session, setup *CallSetupResult, vaultCred interface{}, sipConfig *sip_infra.Config, direction string) {},
@@ -71,6 +71,7 @@ func TestHandleSessionEstablished_SetupErrorEndsSession(t *testing.T) {
 		Session:     s,
 		Direction:   sip_infra.CallDirectionInbound,
 		AssistantID: 1,
+		ConversationID: 42,
 	})
 
 	require.Eventually(t, s.IsEnded, 2*time.Second, 10*time.Millisecond)
@@ -84,8 +85,8 @@ func TestHandleSessionEstablished_PanicStillCallsOnCallEnd(t *testing.T) {
 
 	d := NewDispatcher(&DispatcherConfig{
 		Logger: newPipelineTestLogger(t),
-		OnCallSetup: func(ctx context.Context, session *sip_infra.Session, auth types.SimplePrinciple, assistantID uint64, fromURI string, direction string) (*CallSetupResult, error) {
-			return &CallSetupResult{AssistantID: assistantID, ConversationID: 42}, nil
+		OnCallSetup: func(ctx context.Context, session *sip_infra.Session, auth types.SimplePrinciple, assistantID uint64, conversationID uint64) (*CallSetupResult, error) {
+			return &CallSetupResult{AssistantID: assistantID, ConversationID: conversationID}, nil
 		},
 		OnCallStart: func(ctx context.Context, session *sip_infra.Session, setup *CallSetupResult, vaultCred interface{}, sipConfig *sip_infra.Config, direction string) {
 			panic("boom")
@@ -105,6 +106,7 @@ func TestHandleSessionEstablished_PanicStillCallsOnCallEnd(t *testing.T) {
 		Session:     s,
 		Direction:   sip_infra.CallDirectionInbound,
 		AssistantID: 1,
+		ConversationID: 42,
 	})
 
 	select {
@@ -128,8 +130,8 @@ func TestDispatcherBackpressureAndTeardownStress(t *testing.T) {
 
 	d := NewDispatcher(&DispatcherConfig{
 		Logger: logger,
-		OnCallSetup: func(ctx context.Context, session *sip_infra.Session, auth types.SimplePrinciple, assistantID uint64, fromURI string, direction string) (*CallSetupResult, error) {
-			return &CallSetupResult{AssistantID: assistantID, ConversationID: 100}, nil
+		OnCallSetup: func(ctx context.Context, session *sip_infra.Session, auth types.SimplePrinciple, assistantID uint64, conversationID uint64) (*CallSetupResult, error) {
+			return &CallSetupResult{AssistantID: assistantID, ConversationID: conversationID}, nil
 		},
 		OnCallStart: func(ctx context.Context, session *sip_infra.Session, setup *CallSetupResult, vaultCred interface{}, sipConfig *sip_infra.Config, direction string) {
 			startCount.Add(1)
@@ -165,13 +167,14 @@ func TestDispatcherBackpressureAndTeardownStress(t *testing.T) {
 
 	for i := 0; i < calls; i++ {
 		s := newPipelineTestSession(t)
-		d.OnPipeline(ctx, sip_infra.SessionEstablishedPipeline{
-			ID:          fmt.Sprintf("call-%d", i),
-			Session:     s,
-			Direction:   sip_infra.CallDirectionInbound,
-			AssistantID: 1,
-		})
-	}
+			d.OnPipeline(ctx, sip_infra.SessionEstablishedPipeline{
+				ID:          fmt.Sprintf("call-%d", i),
+				Session:     s,
+				Direction:   sip_infra.CallDirectionInbound,
+				AssistantID: 1,
+				ConversationID: uint64(i + 1),
+			})
+		}
 
 	if waitTimeout(&endedWG, 10*time.Second) {
 		t.Fatalf("timed out waiting for call teardown completion (started=%d ended=%d)", startCount.Load(), endCount.Load())
@@ -180,4 +183,3 @@ func TestDispatcherBackpressureAndTeardownStress(t *testing.T) {
 	require.Equal(t, int32(calls), startCount.Load())
 	require.Equal(t, int32(calls), endCount.Load())
 }
-

@@ -113,6 +113,7 @@ type SessionEstablishedPipeline struct {
 	AssistantID     uint64
 	Auth            types.SimplePrinciple
 	FromURI         string
+	ConversationID  uint64 // Non-zero for outbound (already created by channel pipeline)
 }
 
 func (p SessionEstablishedPipeline) CallID() string { return p.ID }

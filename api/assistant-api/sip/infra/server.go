@@ -406,7 +406,7 @@ func (s *Server) Start() error {
 	go func() {
 		err := s.server.ListenAndServe(s.ctx, transport, listenAddr)
 		if err != nil && s.state.Load() == int32(ServerStateRunning) {
-			s.logger.Error("SIP server stopped unexpectedly",
+			s.logger.Errorw("SIP server stopped unexpectedly",
 				"error", err,
 				"address", listenAddr)
 			s.state.Store(int32(ServerStateStopped))
@@ -583,7 +583,7 @@ func (s *Server) handleInvite(req *sip.Request, tx sip.ServerTransaction) {
 		}
 		result, err := resolver(reqCtx)
 		if err != nil {
-			s.logger.Error("SIP authentication/config resolution failed", "error", err, "call_id", callID)
+			s.logger.Errorw("SIP authentication/config resolution failed", "error", err, "call_id", callID)
 			s.sendResponse(tx, req, 500)
 			return
 		}
@@ -606,7 +606,7 @@ func (s *Server) handleInvite(req *sip.Request, tx sip.ServerTransaction) {
 
 	// Reject if no config was resolved — all config must be explicitly provided
 	if tenantConfig == nil {
-		s.logger.Error("No SIP config resolved for call, rejecting", "call_id", callID)
+		s.logger.Errorw("No SIP config resolved for call, rejecting", "call_id", callID)
 		s.sendResponse(tx, req, 500)
 		return
 	}
@@ -643,7 +643,7 @@ func (s *Server) handleInvite(req *sip.Request, tx sip.ServerTransaction) {
 		VaultCredential: vaultCredential,
 	})
 	if err != nil {
-		s.logger.Error("Failed to create session", "error", err, "call_id", callID)
+		s.logger.Errorw("Failed to create session", "error", err, "call_id", callID)
 		s.sendResponse(tx, req, 500)
 		return
 	}
@@ -691,7 +691,7 @@ func (s *Server) handleInvite(req *sip.Request, tx sip.ServerTransaction) {
 	// Allocate an RTP port from the shared pool
 	rtpPort, err := s.rtpAllocator.Allocate()
 	if err != nil {
-		s.logger.Error("No RTP ports available", "error", err, "call_id", callID)
+		s.logger.Errorw("No RTP ports available", "error", err, "call_id", callID)
 		s.removeSession(callID)
 		s.sendResponse(tx, req, 503) // Service Unavailable
 		return
@@ -711,7 +711,7 @@ func (s *Server) handleInvite(req *sip.Request, tx sip.ServerTransaction) {
 	})
 	if err != nil {
 		s.rtpAllocator.Release(rtpPort)
-		s.logger.Error("Failed to create RTP handler", "error", err, "call_id", callID)
+		s.logger.Errorw("Failed to create RTP handler", "error", err, "call_id", callID)
 		s.removeSession(callID)
 		s.sendResponse(tx, req, 500)
 		return
@@ -778,7 +778,7 @@ func (s *Server) handleInvite(req *sip.Request, tx sip.ServerTransaction) {
 
 	if onInvite != nil {
 		if err := onInvite(session, fromURI, toURI); err != nil {
-			s.logger.Error("INVITE handler failed", "error", err, "call_id", callID)
+			s.logger.Errorw("INVITE handler failed", "error", err, "call_id", callID)
 			s.notifyError(session, err)
 		}
 	}
@@ -1265,7 +1265,7 @@ func (s *Server) handleSubscribe(req *sip.Request, tx sip.ServerTransaction) {
 		"event", eventHdr)
 	resp := sip.NewResponseFromRequest(req, 489, "Bad Event", nil)
 	if err := tx.Respond(resp); err != nil {
-		s.logger.Error("Failed to send 489 for SUBSCRIBE", "error", err, "call_id", callID)
+		s.logger.Errorw("Failed to send 489 for SUBSCRIBE", "error", err, "call_id", callID)
 	}
 }
 
@@ -1317,7 +1317,7 @@ func (s *Server) handleUnknownRequest(req *sip.Request, tx sip.ServerTransaction
 				"from", fromUser)
 			resp := sip.NewResponseFromRequest(req, 489, "Bad Event", nil)
 			if err := tx.Respond(resp); err != nil {
-				s.logger.Error("Failed to send 489 response", "error", err)
+				s.logger.Errorw("Failed to send 489 response", "error", err)
 			}
 		} else {
 			s.logger.Warnw("Unknown SIP method received (no session) — rejecting",
@@ -1332,7 +1332,7 @@ func (s *Server) handleUnknownRequest(req *sip.Request, tx sip.ServerTransaction
 func (s *Server) sendResponse(tx sip.ServerTransaction, req *sip.Request, statusCode int) {
 	resp := sip.NewResponseFromRequest(req, statusCode, "", nil)
 	if err := tx.Respond(resp); err != nil {
-		s.logger.Error("Failed to send SIP response",
+		s.logger.Errorw("Failed to send SIP response",
 			"error", err,
 			"status", statusCode,
 			"call_id", req.CallID().Value())
@@ -1366,7 +1366,7 @@ func (s *Server) sendResponseWithSDPBody(tx sip.ServerTransaction, req *sip.Requ
 	}
 
 	if err := tx.Respond(resp); err != nil {
-		s.logger.Error("Failed to send SIP response with SDP",
+		s.logger.Errorw("Failed to send SIP response with SDP",
 			"error", err,
 			"call_id", req.CallID().Value())
 	}
@@ -1737,7 +1737,7 @@ func (s *Server) handleOutboundDialog(session *Session, rtpHandler *RTPHandler, 
 				} else if authHdr := dialogSession.InviteRequest.GetHeader("Proxy-Authorization"); authHdr != nil {
 					authSent = authHdr.Value()
 				}
-				s.logger.Error("Outbound call authentication failed — check SIP credentials in vault",
+				s.logger.Errorw("Outbound call authentication failed — check SIP credentials in vault",
 					"call_id", callID,
 					"status", dialogErr.Res.StatusCode,
 					"reason", dialogErr.Res.Reason,
@@ -1845,7 +1845,7 @@ func (s *Server) handleOutboundDialog(session *Session, rtpHandler *RTPHandler, 
 
 	// Step 3: NOW send ACK — dialog is confirmed, RTP is already flowing.
 	if err := dialogSession.Ack(session.ctx); err != nil {
-		s.logger.Error("Failed to send ACK", "error", err, "call_id", callID)
+		s.logger.Errorw("Failed to send ACK", "error", err, "call_id", callID)
 		session.SetState(CallStateFailed)
 		s.removeSession(callID)
 		rtpHandler.Stop()
@@ -1869,7 +1869,7 @@ func (s *Server) handleOutboundDialog(session *Session, rtpHandler *RTPHandler, 
 		s.logger.Infow("Starting onInvite handler for outbound call",
 			"call_id", callID)
 		if err := onInvite(session, info.LocalURI, info.RemoteURI); err != nil {
-			s.logger.Error("Outbound INVITE handler failed", "error", err, "call_id", callID)
+			s.logger.Errorw("Outbound INVITE handler failed", "error", err, "call_id", callID)
 		} else {
 			s.logger.Infow("onInvite handler completed",
 				"call_id", callID,
