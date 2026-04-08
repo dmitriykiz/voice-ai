@@ -65,9 +65,7 @@ export function CreateProviderCredentialDialog(
       return;
     }
     const missingFields = provider.configurations?.filter(
-      configOption =>
-        configOption.type !== 'key_value' &&
-        !config[configOption.name]?.trim(),
+      configOption => !config[configOption.name]?.trim(),
     );
     if (missingFields && missingFields.length > 0) {
       setError(
@@ -196,7 +194,11 @@ export function CreateProviderCredentialDialog(
         <SecondaryButton size="lg" onClick={() => props.setModalOpen(false)}>
           Cancel
         </SecondaryButton>
-        <PrimaryButton size="lg" onClick={validateAndSubmit} isLoading={loading}>
+        <PrimaryButton
+          size="lg"
+          onClick={validateAndSubmit}
+          isLoading={loading}
+        >
           Configure
         </PrimaryButton>
       </ModalFooter>
@@ -236,9 +238,13 @@ function CredentialKeyValueField({
     return Object.keys(obj).length > 0 ? JSON.stringify(obj) : '';
   };
 
-  const [entries, setEntries] = useState<{ key: string; value: string }[]>(
-    () => parseEntries(value),
+  const [entries, setEntries] = useState<{ key: string; value: string }[]>(() =>
+    parseEntries(value),
   );
+
+  useEffect(() => {
+    setEntries(parseEntries(value));
+  }, [value]);
 
   const syncEntries = (next: { key: string; value: string }[]) => {
     setEntries(next);
@@ -267,14 +273,21 @@ function CredentialKeyValueField({
       <table className="w-full border-collapse border border-gray-200 dark:border-gray-700 text-sm [&_input]:!border-none [&_.cds--text-input]:!border-none [&_.cds--text-input]:!outline-none [&_.cds--form-item]:!m-0">
         <thead>
           <tr className="bg-gray-50 dark:bg-gray-900">
-            <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-3 py-2 border-b border-r border-gray-200 dark:border-gray-700 w-1/2">Key</th>
-            <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-3 py-2 border-b border-r border-gray-200 dark:border-gray-700 w-1/2">Value</th>
+            <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-3 py-2 border-b border-r border-gray-200 dark:border-gray-700 w-1/2">
+              Key
+            </th>
+            <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-3 py-2 border-b border-r border-gray-200 dark:border-gray-700 w-1/2">
+              Value
+            </th>
             <th className="border-b border-gray-200 dark:border-gray-700 w-8" />
           </tr>
         </thead>
         <tbody>
           {entries.map((entry, index) => (
-            <tr key={index} className="border-b border-gray-200 dark:border-gray-700 last:border-b-0">
+            <tr
+              key={index}
+              className="border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+            >
               <td className="border-r border-gray-200 dark:border-gray-700 p-0">
                 <TextInput
                   id={`kv-key-${name}-${index}`}
@@ -309,6 +322,17 @@ function CredentialKeyValueField({
               </td>
             </tr>
           ))}
+          {entries.length === 0 && (
+            <tr>
+              <td
+                colSpan={3}
+                className="px-3 py-4 text-xs text-gray-500 dark:text-gray-400 text-center"
+              >
+                No {label.toLowerCase()} added yet. Add at least one key-value
+                pair.
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
       <TertiaryButton
