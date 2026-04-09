@@ -6,7 +6,10 @@
 
 package observe
 
-import "github.com/rapidaai/protos"
+import (
+	"github.com/rapidaai/pkg/types"
+	"github.com/rapidaai/protos"
+)
 
 // =============================================================================
 // Event Components — the "who" that emitted the event
@@ -173,6 +176,49 @@ const (
 	DataMessages   = "messages"
 	DataDigit      = "digit"
 )
+
+// =============================================================================
+// Client Metadata Keys — standardized keys for conversation metadata
+// =============================================================================
+
+const (
+	ClientPhone            = "client.phone"              // Client's phone number (caller on inbound, callee on outbound)
+	ClientAssistantPhone   = "client.assistant_phone"    // Our phone number / DID
+	ClientDirection        = "client.direction"           // "inbound" or "outbound"
+	ClientTelephonyProvider = "client.telephony_provider" // sip, twilio, vonage, exotel, asterisk, webrtc
+	ClientProviderCallID   = "client.provider_call_id"   // Provider-specific call ID (CallSid, UUID, SIP Call-ID, etc.)
+	ClientContextID        = "client.context_id"         // Internal context ID
+	ClientCodec            = "client.codec"              // Audio codec (PCMU, opus, linear16, etc.)
+	ClientSampleRate       = "client.sample_rate"        // Audio sample rate (8000, 16000, 48000)
+)
+
+// ClientMetadata returns standardized client metadata for a conversation.
+// Called from both session.go (telephony channels) and media.go (SIP).
+func ClientMetadata(phone, assistantPhone, direction, provider, providerCallID, contextID, codec, sampleRate string) []*types.Metadata {
+	md := []*types.Metadata{
+		types.NewMetadata(ClientDirection, direction),
+		types.NewMetadata(ClientTelephonyProvider, provider),
+	}
+	if phone != "" {
+		md = append(md, types.NewMetadata(ClientPhone, phone))
+	}
+	if assistantPhone != "" {
+		md = append(md, types.NewMetadata(ClientAssistantPhone, assistantPhone))
+	}
+	if providerCallID != "" {
+		md = append(md, types.NewMetadata(ClientProviderCallID, providerCallID))
+	}
+	if contextID != "" {
+		md = append(md, types.NewMetadata(ClientContextID, contextID))
+	}
+	if codec != "" {
+		md = append(md, types.NewMetadata(ClientCodec, codec))
+	}
+	if sampleRate != "" {
+		md = append(md, types.NewMetadata(ClientSampleRate, sampleRate))
+	}
+	return md
+}
 
 // CallStatusMetric returns a CONVERSATION_STATUS metric for call lifecycle tracking.
 func CallStatusMetric(status, reason string) []*protos.Metric {

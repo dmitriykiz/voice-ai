@@ -469,10 +469,10 @@ func (r *genericRequestor) storeClientInformation(ctx context.Context) {
 		return
 	}
 
-	// Flatten client info into metadata with "client." prefix (same pattern
-	// as telephony.toPhone, telephony.fromPhone). This makes fields like
-	// timezone, platform, language directly available in prompt context via
-	// r.metadata["client.timezone"] etc.
+	// Flatten client info into metadata with "client." prefix.
+	// These fields are directly available in prompt context via r.metadata["client.timezone"] etc.
+	// Note: client.telephony_provider and client.direction are set by the channel pipeline
+	// (session.go / media.go) BEFORE the requestor runs — do not overwrite here.
 	flat := map[string]interface{}{}
 	if clientInfo.Timezone != "" {
 		flat["client.timezone"] = clientInfo.Timezone

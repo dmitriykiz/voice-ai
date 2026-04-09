@@ -8,12 +8,15 @@ package assistant_sip
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"gorm.io/gorm/clause"
 
 	"github.com/rapidaai/api/assistant-api/config"
 	internal_adapter "github.com/rapidaai/api/assistant-api/internal/adapters"
@@ -29,6 +32,7 @@ import (
 	web_client "github.com/rapidaai/pkg/clients/web"
 	"github.com/rapidaai/pkg/commons"
 	"github.com/rapidaai/pkg/connectors"
+	gorm_models "github.com/rapidaai/pkg/models/gorm"
 	"github.com/rapidaai/pkg/storages"
 	storage_files "github.com/rapidaai/pkg/storages/file-storage"
 	"github.com/rapidaai/pkg/types"
@@ -160,11 +164,11 @@ func (m *SIPEngine) Connect(ctx context.Context) error {
 	}
 	m.server = server
 
-	go func() {
-		regCtx, cancel := context.WithTimeout(m.ctx, 60*time.Second)
-		defer cancel()
-		m.registerAllAssistants(regCtx)
-	}()
+	// Initial registration sync — runs before returning so DIDs are active before calls arrive.
+	m.reconcileRegistrations(m.ctx)
+
+	// Background watcher — polls DB every 5 minutes for new/removed/changed deployments.
+	go m.startRegistrationWatcher(m.ctx)
 
 	return nil
 }
@@ -515,9 +519,28 @@ func (m *SIPEngine) resolveAssistantByDID(did string) (uint64, types.SimplePrinc
 	return result.AssistantID, projectScope, nil
 }
 
-// registerAllAssistants loads all active SIP phone deployments and registers
-// each with its provider, parallelized with a concurrency limit of 10.
-func (m *SIPEngine) registerAllAssistants(ctx context.Context) {
+const registrationPollInterval = 5 * time.Minute
+
+// startRegistrationWatcher polls DB every 5 minutes for new/removed SIP phone deployments.
+func (m *SIPEngine) startRegistrationWatcher(ctx context.Context) {
+	ticker := time.NewTicker(registrationPollInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			m.reconcileRegistrations(ctx)
+		}
+	}
+}
+
+// reconcileRegistrations syncs active SIP registrations with DB phone deployments.
+// - New deployments → register
+// - Removed deployments → unregister
+// - Failed/disabled deployments → skip
+// - Already active → no-op (renewLoop handles renewal)
+func (m *SIPEngine) reconcileRegistrations(ctx context.Context) {
 	db := m.postgres.DB(ctx)
 
 	var deployments []internal_assistant_entity.AssistantPhoneDeployment
@@ -526,102 +549,178 @@ func (m *SIPEngine) registerAllAssistants(ctx context.Context) {
 		Where("telephony_provider = ?", "sip").
 		Find(&deployments)
 	if tx.Error != nil {
-		m.logger.Warnw("Failed to load SIP phone deployments for registration", "error", tx.Error)
+		m.logger.Warnw("Failed to load SIP phone deployments", "error", tx.Error)
 		return
 	}
 
-	if len(deployments) == 0 {
-		m.logger.Infow("No SIP phone deployments found for registration")
-		return
+	// Build desired state from DB
+	type desiredDID struct {
+		DID          string
+		CredentialID uint64
+		AssistantID  uint64
+		DeploymentID uint64
+		Status       string
 	}
-
-	m.logger.Infow("Registering SIP phone deployments", "count", len(deployments))
+	desired := make(map[string]desiredDID)
 
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, 10)
 
 	for _, dep := range deployments {
-		dep := dep
-
-		did, _ := dep.GetOptions().GetString("phone")
+		opts := dep.GetOptions()
+		did, _ := opts.GetString("phone")
 		if did == "" {
-			m.logger.Warnw("SIP phone deployment has no DID, skipping registration",
-				"assistant_id", dep.AssistantId)
 			continue
 		}
-
-		credentialID, err := dep.GetOptions().GetUint64("rapida.credential_id")
+		credentialID, err := opts.GetUint64("rapida.credential_id")
 		if err != nil {
-			m.logger.Warnw("SIP phone deployment has no credential_id, skipping registration",
-				"assistant_id", dep.AssistantId, "error", err)
+			continue
+		}
+		sipStatus, _ := opts.GetString("rapida.sip_status")
+
+		// Skip failed/disabled deployments
+		if sipStatus == "failed" || sipStatus == "disabled" {
 			continue
 		}
 
-		var assistant internal_assistant_entity.Assistant
-		if err := db.Where("id = ?", dep.AssistantId).First(&assistant).Error; err != nil {
-			m.logger.Warnw("Failed to load assistant for registration",
-				"assistant_id", dep.AssistantId, "error", err)
+		desired[did] = desiredDID{
+			DID:          did,
+			CredentialID: credentialID,
+			AssistantID:  dep.AssistantId,
+			DeploymentID: dep.Id,
+			Status:       sipStatus,
+		}
+	}
+
+	// Current active registrations
+	activeDIDs := m.registrationClient.GetRegisteredDIDs()
+	activeSet := make(map[string]bool, len(activeDIDs))
+	for _, did := range activeDIDs {
+		activeSet[did] = true
+	}
+
+	// Register new DIDs (in DB but not active)
+	for did, d := range desired {
+		if activeSet[did] {
 			continue
 		}
-		auth := &types.ProjectScope{
-			ProjectId:      &assistant.ProjectId,
-			OrganizationId: &assistant.OrganizationId,
-		}
-
+		d := d
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-
 			select {
 			case sem <- struct{}{}:
 				defer func() { <-sem }()
 			case <-ctx.Done():
 				return
 			}
-
-			vaultCred, err := m.vaultClient.GetCredential(ctx, auth, credentialID)
-			if err != nil {
-				m.logger.Warnw("Failed to fetch vault credential for registration",
-					"assistant_id", dep.AssistantId, "credential_id", credentialID, "error", err)
-				return
-			}
-
-			sipConfig, err := sip_infra.ParseConfigFromVault(vaultCred)
-			if err != nil {
-				m.logger.Warnw("Failed to parse SIP config for registration",
-					"assistant_id", dep.AssistantId, "error", err)
-				return
-			}
-
-			if m.cfg.SIPConfig != nil {
-				sipConfig.ApplyOperationalDefaults(
-					m.cfg.SIPConfig.Port,
-					sip_infra.Transport(m.cfg.SIPConfig.Transport),
-					m.cfg.SIPConfig.RTPPortRangeStart,
-					m.cfg.SIPConfig.RTPPortRangeEnd,
-				)
-			}
-
-			if err := m.registrationClient.Register(ctx, &sip_infra.Registration{
-				DID:         did,
-				Config:      sipConfig,
-				AssistantID: dep.AssistantId,
-			}); err != nil {
-				m.logger.Warnw("Failed to register SIP DID",
-					"did", did,
-					"assistant_id", dep.AssistantId,
-					"error", err)
-				return
-			}
-
-			m.logger.Infow("SIP DID registered",
-				"did", did,
-				"assistant_id", dep.AssistantId,
-				"server", sipConfig.Server)
+			m.registerDID(ctx, d.DID, d.CredentialID, d.AssistantID, d.DeploymentID)
 		}()
 	}
 
+	// Unregister removed DIDs (active but not in DB)
+	for _, did := range activeDIDs {
+		if _, ok := desired[did]; !ok {
+			m.logger.Infow("Unregistering removed DID", "did", did)
+			if err := m.registrationClient.Unregister(ctx, did); err != nil {
+				m.logger.Warnw("Failed to unregister removed DID", "did", did, "error", err)
+			}
+		}
+	}
+
 	wg.Wait()
+
+	if len(desired) > 0 {
+		m.logger.Debugw("Registration reconciliation complete",
+			"desired", len(desired),
+			"active", m.registrationClient.ActiveCount())
+	}
+}
+
+// registerDID registers a single DID with its SIP provider and writes status back to DB.
+func (m *SIPEngine) registerDID(ctx context.Context, did string, credentialID, assistantID, deploymentID uint64) {
+	db := m.postgres.DB(ctx)
+
+	var assistant internal_assistant_entity.Assistant
+	if err := db.Where("id = ?", assistantID).First(&assistant).Error; err != nil {
+		m.logger.Warnw("Failed to load assistant for registration",
+			"assistant_id", assistantID, "error", err)
+		return
+	}
+	auth := &types.ProjectScope{
+		ProjectId:      &assistant.ProjectId,
+		OrganizationId: &assistant.OrganizationId,
+	}
+
+	vaultCred, err := m.vaultClient.GetCredential(ctx, auth, credentialID)
+	if err != nil {
+		m.logger.Warnw("Failed to fetch vault credential for registration",
+			"assistant_id", assistantID, "credential_id", credentialID, "error", err)
+		return
+	}
+
+	sipConfig, err := sip_infra.ParseConfigFromVault(vaultCred)
+	if err != nil {
+		m.logger.Warnw("Failed to parse SIP config for registration",
+			"assistant_id", assistantID, "error", err)
+		return
+	}
+
+	if m.cfg.SIPConfig != nil {
+		sipConfig.ApplyOperationalDefaults(
+			m.cfg.SIPConfig.Port,
+			sip_infra.Transport(m.cfg.SIPConfig.Transport),
+			m.cfg.SIPConfig.RTPPortRangeStart,
+			m.cfg.SIPConfig.RTPPortRangeEnd,
+		)
+	}
+
+	if err := m.registrationClient.Register(ctx, &sip_infra.Registration{
+		DID:         did,
+		Config:      sipConfig,
+		AssistantID: assistantID,
+	}); err != nil {
+		// Auth failure → mark as failed so we don't retry
+		if errors.Is(err, sip_infra.ErrAuthFailed) {
+			m.logger.Errorw("SIP registration auth failed — marking deployment as failed",
+				"did", did, "assistant_id", assistantID, "error", err)
+			m.upsertDeploymentOption(ctx, deploymentID, "rapida.sip_status", "failed")
+			m.upsertDeploymentOption(ctx, deploymentID, "rapida.sip_error", err.Error())
+			return
+		}
+		// Transient failure → will retry next poll
+		m.logger.Warnw("SIP registration failed (will retry)",
+			"did", did, "assistant_id", assistantID, "error", err)
+		return
+	}
+
+	// Success → mark as active
+	m.upsertDeploymentOption(ctx, deploymentID, "rapida.sip_status", "active")
+	m.upsertDeploymentOption(ctx, deploymentID, "rapida.sip_error", "")
+
+	m.logger.Infow("SIP DID registered",
+		"did", did,
+		"assistant_id", assistantID,
+		"server", sipConfig.Server)
+}
+
+// upsertDeploymentOption writes a key-value option to a phone deployment using the
+// same GORM upsert pattern as CreatePhoneDeployment.
+func (m *SIPEngine) upsertDeploymentOption(ctx context.Context, deploymentID uint64, key, value string) {
+	db := m.postgres.DB(ctx)
+	opt := &internal_assistant_entity.AssistantDeploymentTelephonyOption{
+		AssistantDeploymentTelephonyId: deploymentID,
+		Metadata: gorm_models.Metadata{
+			Key:   key,
+			Value: value,
+		},
+	}
+	if err := db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "assistant_deployment_telephony_id"}, {Name: "key"}},
+		DoUpdates: clause.AssignmentColumns([]string{"value", "updated_date"}),
+	}).Create(opt).Error; err != nil {
+		m.logger.Warnw("Failed to upsert deployment option", "deployment_id", deploymentID, "key", key, "error", err)
+	}
 }
 
 // RegisterAssistant registers a specific assistant's DID with its SIP provider.

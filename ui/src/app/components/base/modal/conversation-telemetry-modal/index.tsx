@@ -54,12 +54,16 @@ type TelemetryRow =
 
 const EVENT_TAG_TYPE: Record<string, string> = {
   session: 'gray',
+  sip: 'warm-gray',
+  telephony: 'teal',
+  webrtc: 'cool-gray',
   stt: 'green',
   llm: 'blue',
   tts: 'purple',
   vad: 'warm-gray',
   eos: 'cyan',
   denoise: 'warm-gray',
+  recording: 'purple',
   audio: 'cool-gray',
   tool: 'magenta',
   behavior: 'red',
@@ -223,12 +227,16 @@ export function ConversationTelemetryDialog(
 
   const EVENT_TYPES = [
     'session',
+    'sip',
+    'telephony',
+    'webrtc',
     'stt',
     'llm',
     'tts',
     'vad',
     'eos',
     'denoise',
+    'recording',
     'audio',
     'tool',
     'behavior',

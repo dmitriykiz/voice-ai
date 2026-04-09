@@ -27,6 +27,7 @@ var (
 	ErrDIDNotRegistered    = errors.New("DID is not registered")
 	ErrMissingDID          = errors.New("DID is required for registration")
 	ErrMissingServer       = errors.New("SIP server is required for registration")
+	ErrAuthFailed          = errors.New("SIP authentication failed")
 )
 
 const (
@@ -300,8 +301,13 @@ func (rc *RegistrationClient) sendRegister(ctx context.Context, reg *Registratio
 			Password: cfg.Password,
 		})
 		if err != nil {
-			return 0, fmt.Errorf("digest auth failed: %w", err)
+			return 0, fmt.Errorf("%w: %v", ErrAuthFailed, err)
 		}
+	}
+
+	// Second 401/407 after digest auth means credentials are wrong
+	if resp.StatusCode == 401 || resp.StatusCode == 407 {
+		return 0, fmt.Errorf("%w: %d %s", ErrAuthFailed, resp.StatusCode, resp.Reason)
 	}
 
 	if resp.StatusCode != 200 {

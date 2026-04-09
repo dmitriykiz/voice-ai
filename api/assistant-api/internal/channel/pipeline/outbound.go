@@ -12,7 +12,6 @@ import (
 
 	obs "github.com/rapidaai/api/assistant-api/internal/observe"
 	internal_type "github.com/rapidaai/api/assistant-api/internal/type"
-	"github.com/rapidaai/pkg/types"
 )
 
 func (d *Dispatcher) runOutbound(ctx context.Context, v OutboundRequestedPipeline) *PipelineResult {
@@ -71,12 +70,10 @@ func (d *Dispatcher) runOutbound(ctx context.Context, v OutboundRequestedPipelin
 	}
 
 	if observer != nil {
-		observer.EmitMetadata(ctx, []*types.Metadata{
-			types.NewMetadata("telephony.contextId", contextID),
-			types.NewMetadata("telephony.toPhone", v.ToPhone),
-			types.NewMetadata("telephony.fromPhone", fromPhone),
-			types.NewMetadata("telephony.provider", provider),
-		})
+		observer.EmitMetadata(ctx, obs.ClientMetadata(
+			v.ToPhone, fromPhone, "outbound", provider,
+			"", contextID, "", "",
+		))
 		observer.EmitEvent(ctx, obs.ComponentTelephony, map[string]string{
 			obs.DataType:      obs.EventOutboundRequested,
 			obs.DataProvider:  provider,
@@ -91,14 +88,24 @@ func (d *Dispatcher) runOutbound(ctx context.Context, v OutboundRequestedPipelin
 			d.logger.Error("Pipeline: outbound dispatch failed", "error", err)
 			if observer != nil {
 				observer.EmitEvent(ctx, obs.ComponentTelephony, map[string]string{
-					obs.DataType: obs.EventOutboundDispatchFailed, obs.DataError: err.Error(),
+					obs.DataType:  obs.EventOutboundDispatchFailed,
+					obs.DataError: err.Error(),
 				})
+				observer.EmitMetric(ctx, obs.CallStatusMetric("FAILED", err.Error()))
 				observer.Shutdown(ctx)
 			}
 			return &PipelineResult{ContextID: contextID, ConversationID: conversationID, Error: err}
 		}
 	}
 
-	// Observer stays alive — the outbound call session will use it via the requestor
+	if observer != nil {
+		observer.EmitEvent(ctx, obs.ComponentTelephony, map[string]string{
+			obs.DataType:      obs.EventOutboundDispatched,
+			obs.DataProvider:  provider,
+			obs.DataContextID: contextID,
+		})
+		observer.Shutdown(ctx)
+	}
+
 	return &PipelineResult{ContextID: contextID, ConversationID: conversationID}
 }

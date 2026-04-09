@@ -30,12 +30,13 @@ import (
 // common business logic: provider resolution, call reception, conversation
 // creation, call-context persistence, telemetry application, and session resolution.
 type InboundDispatcher struct {
-	cfg              *config.AssistantConfig
-	store            callcontext.Store
-	logger           commons.Logger
-	vaultClient      web_client.VaultClient
-	assistantService internal_services.AssistantService
-	telephonyOpt TelephonyOption
+	cfg                 *config.AssistantConfig
+	store               callcontext.Store
+	logger              commons.Logger
+	vaultClient         web_client.VaultClient
+	assistantService    internal_services.AssistantService
+	conversationService internal_services.AssistantConversationService
+	telephonyOpt        TelephonyOption
 
 	createConversation CreateConversationFunc
 }
@@ -46,12 +47,13 @@ type CreateConversationFunc func(ctx context.Context, auth types.SimplePrinciple
 // NewInboundDispatcher creates a new inbound call dispatcher.
 func NewInboundDispatcher(deps TelephonyDispatcherDeps) *InboundDispatcher {
 	return &InboundDispatcher{
-		cfg:              deps.Cfg,
-		store:            deps.Store,
-		logger:           deps.Logger,
-		vaultClient:      deps.VaultClient,
-		assistantService: deps.AssistantService,
-		telephonyOpt: deps.TelephonyOpt,
+		cfg:                 deps.Cfg,
+		store:               deps.Store,
+		logger:              deps.Logger,
+		vaultClient:         deps.VaultClient,
+		assistantService:    deps.AssistantService,
+		conversationService: deps.ConversationService,
+		telephonyOpt:        deps.TelephonyOpt,
 		createConversation: func(ctx context.Context, auth types.SimplePrinciple, callerNumber string, assistantID, assistantProviderID uint64, direction type_enums.ConversationDirection, source utils.RapidaSource) (uint64, error) {
 			conv, err := deps.ConversationService.CreateConversation(ctx, auth, callerNumber, assistantID, assistantProviderID, direction, source)
 			if err != nil {
@@ -83,6 +85,30 @@ func (d *InboundDispatcher) HandleStatusCallback(c *gin.Context, provider string
 		"event", statusInfo.Event,
 		"assistant_id", assistantId,
 		"conversation_id", conversationId)
+
+	// Persist callback event as metadata so it's visible in conversation history.
+	// Terminal events (completed, failed, busy, no-answer, canceled) also persist a status metric.
+	if d.conversationService != nil {
+		metadata := []*types.Metadata{
+			types.NewMetadata("telephony.callback.event", statusInfo.Event),
+			types.NewMetadata("telephony.callback.provider", provider),
+		}
+		if err := d.conversationService.PersistMetadata(c, auth, assistantId, conversationId, metadata); err != nil {
+			d.logger.Warnw("Failed to persist callback metadata", "error", err)
+		}
+
+		switch statusInfo.Event {
+		case "completed":
+			d.conversationService.PersistMetrics(c, auth, assistantId, conversationId, []*types.Metric{
+				{Name: "status", Value: "COMPLETED", Description: "call_completed_callback"},
+			})
+		case "failed", "busy", "no-answer", "canceled", "rejected":
+			d.conversationService.PersistMetrics(c, auth, assistantId, conversationId, []*types.Metric{
+				{Name: "status", Value: "FAILED", Description: statusInfo.Event},
+			})
+		}
+	}
+
 	return nil
 }
 

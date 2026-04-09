@@ -74,9 +74,18 @@ func (d *Dispatcher) runSession(ctx context.Context, v SessionConnectedPipeline)
 		}
 	}
 
-	// --- Emit call_started ---
+	// --- Emit call_started + client metadata ---
 	if observer != nil {
-		observer.EmitMetadata(ctx, obs.ConversationState(cc.Provider, cc.Direction, cc.CallerNumber, contextID))
+		clientPhone := cc.CallerNumber
+		assistantPhone := cc.FromNumber
+		if cc.Direction == "outbound" {
+			clientPhone = cc.CallerNumber // CallerNumber = toPhone for outbound
+			assistantPhone = cc.FromNumber
+		}
+		observer.EmitMetadata(ctx, obs.ClientMetadata(
+			clientPhone, assistantPhone, cc.Direction, cc.Provider,
+			cc.ChannelUUID, contextID, "", "", // codec/sampleRate set by streamer
+		))
 		observer.EmitEvent(ctx, obs.ComponentTelephony, map[string]string{
 			obs.DataType:      obs.EventCallStarted,
 			obs.DataProvider:  cc.Provider,

@@ -13,7 +13,6 @@ import (
 
 	obs "github.com/rapidaai/api/assistant-api/internal/observe"
 	sip_infra "github.com/rapidaai/api/assistant-api/sip/infra"
-	"github.com/rapidaai/pkg/types"
 )
 
 func (d *Dispatcher) handleSessionEstablished(ctx context.Context, v sip_infra.SessionEstablishedPipeline) {
@@ -69,11 +68,20 @@ func (d *Dispatcher) handleSessionEstablished(ctx context.Context, v sip_infra.S
 	}
 
 	if observer != nil {
-		observer.EmitMetadata(ctx, []*types.Metadata{
-			types.NewMetadata("sip.caller_uri", v.FromURI),
-			types.NewMetadata("conversation.direction", string(v.Direction)),
-			types.NewMetadata("conversation.provider", "sip"),
-		})
+		clientPhone := sip_infra.ExtractDIDFromURI(v.FromURI)
+		if clientPhone == "" {
+			clientPhone = v.FromURI
+		}
+		codec := ""
+		sampleRate := ""
+		if negotiated := v.Session.GetNegotiatedCodec(); negotiated != nil {
+			codec = negotiated.Name
+			sampleRate = fmt.Sprintf("%d", negotiated.ClockRate)
+		}
+		observer.EmitMetadata(ctx, obs.ClientMetadata(
+			clientPhone, "", string(v.Direction), "sip",
+			v.ID, "", codec, sampleRate,
+		))
 		observer.EmitEvent(ctx, obs.ComponentTelephony, map[string]string{
 			obs.DataType:      obs.EventCallStarted,
 			obs.DataProvider:  "sip",

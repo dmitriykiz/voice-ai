@@ -146,16 +146,6 @@ func (o *ConversationObserver) Meta() SessionMeta {
 	return o.meta
 }
 
-// ConversationState returns standard metadata entries for a conversation's identity.
-func ConversationState(provider, direction, callerNumber, contextID string) []*types.Metadata {
-	return []*types.Metadata{
-		types.NewMetadata("conversation.provider", provider),
-		types.NewMetadata("conversation.direction", direction),
-		types.NewMetadata("conversation.caller_number", callerNumber),
-		types.NewMetadata("conversation.context_id", contextID),
-	}
-}
-
 // ServicePersister adapts any service with ApplyConversationMetrics/ApplyConversationMetadata
 // (which return a typed result + error) to the ConversationPersister interface (error only).
 type ServicePersister struct {
