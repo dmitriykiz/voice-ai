@@ -13,8 +13,14 @@ import (
 
 func main() {
 	// Initialize structured logger
+	// Using LevelDebug locally to get more verbose output while learning the codebase
+	logLevel := slog.LevelDebug
+	if os.Getenv("APP_ENV") == "production" {
+		logLevel = slog.LevelInfo
+	}
+
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+		Level: logLevel,
 	}))
 	slog.SetDefault(logger)
 
