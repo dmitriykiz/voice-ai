@@ -389,6 +389,20 @@ func parsePortValue(v any) int {
 	return 0
 }
 
+// NormalizeDID normalizes a phone number to a canonical form for deduplication.
+// Numbers longer than 5 digits get a "+" prefix (E.164); shorter ones (extensions) are left as-is.
+func NormalizeDID(did string) string {
+	did = strings.TrimSpace(did)
+	if did == "" {
+		return did
+	}
+	stripped := strings.TrimPrefix(did, "+")
+	if len(stripped) > 5 {
+		return "+" + stripped
+	}
+	return stripped
+}
+
 // ExtractDIDFromURI extracts the user part from a SIP URI as a phone number (DID).
 func ExtractDIDFromURI(uri string) string {
 	raw := strings.TrimPrefix(strings.TrimPrefix(uri, "sip:"), "sips:")

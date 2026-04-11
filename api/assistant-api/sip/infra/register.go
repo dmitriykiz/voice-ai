@@ -28,6 +28,7 @@ var (
 	ErrMissingDID          = errors.New("DID is required for registration")
 	ErrMissingServer       = errors.New("SIP server is required for registration")
 	ErrAuthFailed          = errors.New("SIP authentication failed")
+	ErrPermanentFailure    = errors.New("SIP registration permanently rejected")
 )
 
 const (
@@ -106,7 +107,7 @@ func (rc *RegistrationClient) Register(ctx context.Context, reg *Registration) e
 
 	grantedExpiry, err := rc.sendRegister(ctx, reg, expiresIn, bindingCallID, cseq)
 	if err != nil {
-		return fmt.Errorf("%w: DID %s at %s: %v", ErrRegistrationFailed, reg.DID, reg.Config.Server, err)
+		return fmt.Errorf("%w: DID %s at %s: %w", ErrRegistrationFailed, reg.DID, reg.Config.Server, err)
 	}
 
 	regCtx, cancelReg := context.WithCancel(ctx)
@@ -311,6 +312,9 @@ func (rc *RegistrationClient) sendRegister(ctx context.Context, reg *Registratio
 	}
 
 	if resp.StatusCode != 200 {
+		if isPermanentSIPResponse(resp.StatusCode) {
+			return 0, fmt.Errorf("%w: %d %s", ErrPermanentFailure, resp.StatusCode, resp.Reason)
+		}
 		return 0, fmt.Errorf("rejected with %d %s", resp.StatusCode, resp.Reason)
 	}
 
@@ -402,6 +406,25 @@ func contextWithTimeout(parent context.Context, timeout time.Duration) (context.
 // Some registrars reject "+" in the userinfo field.
 func normalizeUser(did string) string {
 	return strings.TrimPrefix(did, "+")
+}
+
+// isPermanentSIPResponse returns true for SIP response codes that indicate a
+// configuration or authorization problem that will not resolve by retrying.
+func isPermanentSIPResponse(code int) bool {
+	switch code {
+	case 403, // Forbidden — blocked, wrong credentials, or policy rejection
+		404, // Not Found — DID/AOR unknown to registrar
+		405, // Method Not Allowed — provider does not support REGISTER
+		410, // Gone — resource permanently removed
+		416, // Unsupported URI Scheme
+		484, // Address Incomplete
+		485, // Ambiguous
+		604, // Does Not Exist Anywhere
+		606: // Not Acceptable
+		return true
+	default:
+		return false
+	}
 }
 
 // parseContactExpires extracts the expires parameter from a Contact header value.
