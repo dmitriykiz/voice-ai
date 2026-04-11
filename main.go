@@ -50,8 +50,9 @@ func main() {
 	}()
 
 	// Wait for interrupt or termination signal
+	// Also handling SIGHUP so I can reload config without a full restart during local dev
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
 	select {
 	case sig := <-quit:
