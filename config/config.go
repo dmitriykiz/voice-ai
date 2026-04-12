@@ -75,7 +75,8 @@ func Load() (*Config, error) {
 			SampleRate:  getEnvInt("AUDIO_SAMPLE_RATE", 16000),
 			Channels:    getEnvInt("AUDIO_CHANNELS", 1),
 			BitDepth:    getEnvInt("AUDIO_BIT_DEPTH", 16),
-			MaxDuration: getEnvDuration("AUDIO_MAX_DURATION", 5*time.Minute),
+			// Bumped from 5m to 10m - I often run longer test recordings locally
+			MaxDuration: getEnvDuration("AUDIO_MAX_DURATION", 10*time.Minute),
 			TempDir:     getEnv("AUDIO_TEMP_DIR", os.TempDir()),
 		},
 		Logging: LoggingConfig{
@@ -105,37 +106,28 @@ func getEnv(key, fallback string) string {
 }
 
 func getEnvInt(key string, fallback int) int {
-	v := os.Getenv(key)
-	if v == "" {
-		return fallback
+	if v := os.Getenv(key); v != "" {
+		if i, err := strconv.Atoi(v); err == nil {
+			return i
+		}
 	}
-	n, err := strconv.Atoi(v)
-	if err != nil {
-		return fallback
-	}
-	return n
+	return fallback
 }
 
 func getEnvFloat(key string, fallback float64) float64 {
-	v := os.Getenv(key)
-	if v == "" {
-		return fallback
+	if v := os.Getenv(key); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			return f
+		}
 	}
-	f, err := strconv.ParseFloat(v, 64)
-	if err != nil {
-		return fallback
-	}
-	return f
+	return fallback
 }
 
 func getEnvDuration(key string, fallback time.Duration) time.Duration {
-	v := os.Getenv(key)
-	if v == "" {
-		return fallback
+	if v := os.Getenv(key); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			return d
+		}
 	}
-	d, err := time.ParseDuration(v)
-	if err != nil {
-		return fallback
-	}
-	return d
+	return fallback
 }
