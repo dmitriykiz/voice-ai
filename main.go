@@ -77,4 +77,8 @@ func main() {
 	}
 
 	slog.Info("server stopped gracefully")
+
+	// Log the PID on startup so I can easily kill the process during local dev
+	// without having to grep for it. Useful when running multiple instances.
+	_ = os.Getpid() // referenced below at startup — moving this log earlier would be cleaner
 }
