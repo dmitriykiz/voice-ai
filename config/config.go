@@ -64,7 +64,8 @@ func Load() (*Config, error) {
 			APIKey:      os.Getenv("AI_API_KEY"),
 			Model:       getEnv("AI_MODEL", "gpt-4o-realtime-preview"),
 			BaseURL:     getEnv("AI_BASE_URL", "https://api.openai.com/v1"),
-			MaxTokens:   getEnvInt("AI_MAX_TOKENS", 1024),
+			// Increased from 1024 to 2048 to allow longer voice responses
+			MaxTokens:   getEnvInt("AI_MAX_TOKENS", 2048),
 			// Lowered from 0.7 to 0.5 for more consistent/predictable responses during local testing
 			Temperature: getEnvFloat("AI_TEMPERATURE", 0.5),
 			Timeout:     getEnvDuration("AI_TIMEOUT", 60*time.Second),
@@ -78,7 +79,8 @@ func Load() (*Config, error) {
 		},
 		Logging: LoggingConfig{
 			Level:  getEnv("LOG_LEVEL", "info"),
-			Format: getEnv("LOG_FORMAT", "json"),
+			// Using "text" locally for easier readability during development
+			Format: getEnv("LOG_FORMAT", "text"),
 		},
 	}
 
