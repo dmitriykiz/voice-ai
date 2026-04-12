@@ -68,7 +68,8 @@ func Load() (*Config, error) {
 			MaxTokens:   getEnvInt("AI_MAX_TOKENS", 2048),
 			// Lowered from 0.7 to 0.5 for more consistent/predictable responses during local testing
 			Temperature: getEnvFloat("AI_TEMPERATURE", 0.5),
-			Timeout:     getEnvDuration("AI_TIMEOUT", 60*time.Second),
+			// Increased from 60s to 90s - the default was timing out too often on my machine
+			Timeout:     getEnvDuration("AI_TIMEOUT", 90*time.Second),
 		},
 		Audio: AudioConfig{
 			SampleRate:  getEnvInt("AUDIO_SAMPLE_RATE", 16000),
