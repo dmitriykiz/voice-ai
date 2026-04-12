@@ -65,7 +65,8 @@ func Load() (*Config, error) {
 			Model:       getEnv("AI_MODEL", "gpt-4o-realtime-preview"),
 			BaseURL:     getEnv("AI_BASE_URL", "https://api.openai.com/v1"),
 			MaxTokens:   getEnvInt("AI_MAX_TOKENS", 1024),
-			Temperature: getEnvFloat("AI_TEMPERATURE", 0.7),
+			// Lowered from 0.7 to 0.5 for more consistent/predictable responses during local testing
+			Temperature: getEnvFloat("AI_TEMPERATURE", 0.5),
 			Timeout:     getEnvDuration("AI_TIMEOUT", 60*time.Second),
 		},
 		Audio: AudioConfig{
