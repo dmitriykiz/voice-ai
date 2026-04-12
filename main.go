@@ -65,6 +65,9 @@ func main() {
 	}
 
 	// Graceful shutdown with timeout
+	// TODO: cfg.Server.ShutdownTimeout defaulted to 5s upstream which felt too short
+	// during local testing when I had active WebSocket connections. Bumping to 15s
+	// in my config for now until I understand the connection draining logic better.
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
 	defer cancel()
 
