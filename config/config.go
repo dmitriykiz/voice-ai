@@ -80,7 +80,8 @@ func Load() (*Config, error) {
 			TempDir:     getEnv("AUDIO_TEMP_DIR", os.TempDir()),
 		},
 		Logging: LoggingConfig{
-			Level:  getEnv("LOG_LEVEL", "info"),
+			// Using "debug" locally to get more verbose output while experimenting
+			Level:  getEnv("LOG_LEVEL", "debug"),
 			// Using "text" locally for easier readability during development
 			Format: getEnv("LOG_FORMAT", "text"),
 		},
@@ -99,35 +100,3 @@ func (s *ServerConfig) Addr() string {
 }
 
 func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
-}
-
-func getEnvInt(key string, fallback int) int {
-	if v := os.Getenv(key); v != "" {
-		if i, err := strconv.Atoi(v); err == nil {
-			return i
-		}
-	}
-	return fallback
-}
-
-func getEnvFloat(key string, fallback float64) float64 {
-	if v := os.Getenv(key); v != "" {
-		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			return f
-		}
-	}
-	return fallback
-}
-
-func getEnvDuration(key string, fallback time.Duration) time.Duration {
-	if v := os.Getenv(key); v != "" {
-		if d, err := time.ParseDuration(v); err == nil {
-			return d
-		}
-	}
-	return fallback
-}
